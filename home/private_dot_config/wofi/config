@@ -1,0 +1,6 @@
+show=drun
+allow_images=true
+image_size=24
+width=500
+height=400
+prompt=Search...

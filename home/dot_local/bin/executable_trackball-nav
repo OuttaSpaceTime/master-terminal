@@ -1,0 +1,389 @@
+#!/usr/bin/env python3
+"""Trackball nav daemon for MX Ergo S.
+
+Button + ball gestures with proper tap-vs-hold:
+  BTN_SIDE tap              -> browser back (BTN_SIDE click)
+  BTN_SIDE + ball left/right-> Super+Alt+H / Super+Alt+L (workspace switch)
+  BTN_SIDE + ball up/down   -> Shift+Alt+H / Shift+Alt+L (move window to workspace)
+  BTN_EXTRA tap             -> browser forward (BTN_EXTRA click)
+  BTN_EXTRA + ball up/down  -> Alt+Tab / Alt+Shift+Tab (app switch)
+  BTN_EXTRA + ball left/rgt -> Ctrl+Shift+Tab / Ctrl+Tab (tab switch)
+  BTN_MIDDLE tap            -> middle click
+  BTN_MIDDLE + ball         -> scroll (vertical + horizontal)
+  Wheel tilt left (single)  -> Super+K / Super+J (toggle maximize/unmaximize)
+  Wheel tilt left (double)  -> Super+Shift+Q (close window)
+  Wheel tilt right          -> Ctrl+C (copy)
+  DPI Switch tap            -> Enter  (via HIDpp diversion; set with: solaar config divert-keys "DPI Switch" Diverted)
+
+Any other button or event is forwarded unchanged. When a modifier button is
+held, cursor movement is fully suppressed; the tap is emitted on release only
+if no action ever fired.
+"""
+
+import errno
+import glob
+import os
+import signal
+import struct
+import sys
+import threading
+import time
+
+import evdev
+from evdev import ecodes as e
+from evdev import InputDevice, UInput
+
+DEVICE_NAME = "MX Ergo S Mouse"
+
+# HIDpp diversion: DPI Switch -> Enter
+# Feature index 10 is REPROG_CONTROLS_V4 (0x1B04) on this device/firmware.
+# Verify with: sudo solaar show "MX Ergo S" | grep -A1 REPROG
+# Requires the button to be diverted: sudo solaar config "MX Ergo S" divert-keys "DPI Switch" Diverted
+# Requires hidraw read access: /etc/udev/rules.d/99-mx-ergo-s.rules with
+#   SUBSYSTEM=="hidraw", KERNELS=="0005:046D:B03E.*", MODE="0640", GROUP="input"
+DPI_SWITCH_CID       = 253   # CID of the DPI Switch button
+REPROG_CTRL_FEAT_IDX = 10    # Runtime feature index of REPROG_CONTROLS_V4
+HIDRAW_GLOB          = '/sys/devices/virtual/misc/uhid/0005:046D:B03E.*/hidraw/hidraw*'
+
+# Gesture thresholds (accumulated ball delta units before an action fires).
+DOUBLE_TILT_MS = 0.300    # seconds window for double tilt-left (close window)
+
+SCROLL_STEP = 20          # ball units per scroll notch
+WORKSPACE_STEP = 60       # ball units per workspace switch
+APPSWITCH_STEP = 120      # ball units per alt-tab tick
+TABSWITCH_STEP = 120      # ball units per ctrl-tab tick
+
+MODIFIER_BUTTONS = {e.BTN_SIDE, e.BTN_EXTRA, e.BTN_MIDDLE}
+
+STATE_IDLE = 0
+STATE_PENDING = 1   # button held, no action fired yet -> release = tap
+STATE_ACTIVE = 2    # an action fired -> release = nothing
+
+CAPS = {
+    e.EV_KEY: [
+        e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE, e.BTN_SIDE, e.BTN_EXTRA,
+        e.KEY_LEFTALT, e.KEY_LEFTSHIFT, e.KEY_LEFTMETA, e.KEY_LEFTCTRL,
+        e.KEY_TAB, e.KEY_C, e.KEY_ENTER, e.KEY_H, e.KEY_J, e.KEY_K, e.KEY_L, e.KEY_Q,
+    ],
+    e.EV_REL: [
+        e.REL_X, e.REL_Y, e.REL_WHEEL, e.REL_HWHEEL,
+    ],
+}
+
+
+def log(msg):
+    print(f"trackball-nav: {msg}", flush=True)
+
+
+def find_device():
+    for path in evdev.list_devices():
+        try:
+            d = InputDevice(path)
+        except OSError:
+            continue
+        if d.name == DEVICE_NAME:
+            return d
+    return None
+
+
+def wait_for_device():
+    while True:
+        dev = find_device()
+        if dev is not None:
+            return dev
+        time.sleep(1)
+
+
+class Nav:
+    def __init__(self, dev, ui):
+        self.dev = dev
+        self.ui = ui
+        self.state = {b: STATE_IDLE for b in MODIFIER_BUTTONS}
+        self.accum_x = 0.0
+        self.accum_y = 0.0
+        self._maximize_toggled = False  # False -> next tilt-left sends Super+K, True -> Super+J
+        self._tilt_left_pending = False  # True while waiting to see if a second tilt-left follows
+        self._tilt_left_timer = None
+
+    # ---- output helpers ----------------------------------------------------
+
+    def _syn(self):
+        self.ui.syn()
+
+    def _write(self, type_, code, value):
+        self.ui.write(type_, code, value)
+
+    def _click(self, btn):
+        self._write(e.EV_KEY, btn, 1)
+        self._syn()
+        self._write(e.EV_KEY, btn, 0)
+        self._syn()
+
+    def _combo(self, modifiers, key):
+        for m in modifiers:
+            self._write(e.EV_KEY, m, 1)
+        self._write(e.EV_KEY, key, 1)
+        self._syn()
+        self._write(e.EV_KEY, key, 0)
+        for m in reversed(modifiers):
+            self._write(e.EV_KEY, m, 0)
+        self._syn()
+
+    # ---- state -------------------------------------------------------------
+
+    def _active_modifier(self):
+        for btn, st in self.state.items():
+            if st != STATE_IDLE:
+                return btn
+        return None
+
+    def _reset_accum(self):
+        self.accum_x = 0.0
+        self.accum_y = 0.0
+
+    # ---- handlers ----------------------------------------------------------
+
+    def handle_key(self, code, value):
+        if code not in MODIFIER_BUTTONS:
+            # foreign button -> pass through
+            self._write(e.EV_KEY, code, value)
+            self._syn()
+            return
+
+        if value == 1:  # press
+            # if another modifier is already held, prefer the first; ignore new
+            if self._active_modifier() is not None and self._active_modifier() != code:
+                return
+            self.state[code] = STATE_PENDING
+            self._reset_accum()
+        elif value == 0:  # release
+            if self.state[code] == STATE_PENDING:
+                self._click(code)
+            self.state[code] = STATE_IDLE
+            self._reset_accum()
+        # value == 2 (autorepeat) ignored
+
+    def handle_rel(self, code, value):
+        btn = self._active_modifier()
+        if btn is None:
+            if code == e.REL_HWHEEL:
+                if value < 0:
+                    self._handle_tilt_left()
+                else:
+                    self._combo([e.KEY_LEFTCTRL], e.KEY_C)
+            else:
+                self._write(e.EV_REL, code, value)
+                self._syn()
+            return
+
+        # suppress cursor movement, accumulate and maybe act
+        if code == e.REL_X:
+            self.accum_x += value
+        elif code == e.REL_Y:
+            self.accum_y += value
+        else:
+            # wheel event from the physical device while modifier held -> forward
+            self._write(e.EV_REL, code, value)
+            self._syn()
+            return
+
+        if btn == e.BTN_MIDDLE:
+            self._drain_scroll()
+        elif btn == e.BTN_SIDE:
+            self._drain_workspace()
+        elif btn == e.BTN_EXTRA:
+            self._drain_appswitch()
+
+    # ---- gesture actions ---------------------------------------------------
+
+    def _handle_tilt_left(self):
+        if self._tilt_left_pending:
+            # Second tilt within window -> double tilt: cancel delayed maximize, close window
+            if self._tilt_left_timer is not None:
+                self._tilt_left_timer.cancel()
+                self._tilt_left_timer = None
+            self._tilt_left_pending = False
+            self._combo([e.KEY_LEFTMETA, e.KEY_LEFTSHIFT], e.KEY_Q)
+        else:
+            # First tilt: wait to see if a second follows before firing maximize
+            self._tilt_left_pending = True
+            self._tilt_left_timer = threading.Timer(DOUBLE_TILT_MS, self._emit_tilt_left)
+            self._tilt_left_timer.daemon = True
+            self._tilt_left_timer.start()
+
+    def _emit_tilt_left(self):
+        """Fired by the timer when no second tilt arrived — emit single-tilt maximize toggle."""
+        self._tilt_left_timer = None
+        self._tilt_left_pending = False
+        if not self._maximize_toggled:
+            self._combo([e.KEY_LEFTMETA], e.KEY_K)
+        else:
+            self._combo([e.KEY_LEFTMETA], e.KEY_J)
+        self._maximize_toggled = not self._maximize_toggled
+
+    def _drain_scroll(self):
+        wrote = False
+        # vertical: ball down (positive REL_Y) should scroll down (REL_WHEEL -1)
+        while self.accum_y >= SCROLL_STEP:
+            self._write(e.EV_REL, e.REL_WHEEL, -1)
+            self.accum_y -= SCROLL_STEP
+            wrote = True
+        while self.accum_y <= -SCROLL_STEP:
+            self._write(e.EV_REL, e.REL_WHEEL, 1)
+            self.accum_y += SCROLL_STEP
+            wrote = True
+        # horizontal: ball right (positive REL_X) -> REL_HWHEEL +1
+        while self.accum_x >= SCROLL_STEP:
+            self._write(e.EV_REL, e.REL_HWHEEL, 1)
+            self.accum_x -= SCROLL_STEP
+            wrote = True
+        while self.accum_x <= -SCROLL_STEP:
+            self._write(e.EV_REL, e.REL_HWHEEL, -1)
+            self.accum_x += SCROLL_STEP
+            wrote = True
+        if wrote:
+            self._syn()
+            self.state[e.BTN_MIDDLE] = STATE_ACTIVE
+
+    def _drain_workspace(self):
+        # X axis: switch workspace
+        while self.accum_x >= WORKSPACE_STEP:
+            self._combo([e.KEY_LEFTMETA, e.KEY_LEFTALT], e.KEY_L)  # switch right
+            self.accum_x -= WORKSPACE_STEP
+            self.state[e.BTN_SIDE] = STATE_ACTIVE
+        while self.accum_x <= -WORKSPACE_STEP:
+            self._combo([e.KEY_LEFTMETA, e.KEY_LEFTALT], e.KEY_H)  # switch left
+            self.accum_x += WORKSPACE_STEP
+            self.state[e.BTN_SIDE] = STATE_ACTIVE
+        # Y axis: move focused window to workspace
+        while self.accum_y >= WORKSPACE_STEP:
+            self._combo([e.KEY_LEFTSHIFT, e.KEY_LEFTALT], e.KEY_L)  # move window right
+            self.accum_y -= WORKSPACE_STEP
+            self.state[e.BTN_SIDE] = STATE_ACTIVE
+        while self.accum_y <= -WORKSPACE_STEP:
+            self._combo([e.KEY_LEFTSHIFT, e.KEY_LEFTALT], e.KEY_H)  # move window left
+            self.accum_y += WORKSPACE_STEP
+            self.state[e.BTN_SIDE] = STATE_ACTIVE
+
+    def _drain_appswitch(self):
+        # ball up (negative REL_Y) -> forward Alt+Tab
+        # ball down (positive REL_Y) -> backward Alt+Shift+Tab
+        while self.accum_y <= -APPSWITCH_STEP:
+            self._combo([e.KEY_LEFTALT], e.KEY_TAB)
+            self.accum_y += APPSWITCH_STEP
+            self.state[e.BTN_EXTRA] = STATE_ACTIVE
+        while self.accum_y >= APPSWITCH_STEP:
+            self._combo([e.KEY_LEFTALT, e.KEY_LEFTSHIFT], e.KEY_TAB)
+            self.accum_y -= APPSWITCH_STEP
+            self.state[e.BTN_EXTRA] = STATE_ACTIVE
+        # ball right (positive REL_X) -> next tab Ctrl+Tab
+        # ball left  (negative REL_X) -> prev tab Ctrl+Shift+Tab
+        while self.accum_x >= TABSWITCH_STEP:
+            self._combo([e.KEY_LEFTCTRL], e.KEY_TAB)
+            self.accum_x -= TABSWITCH_STEP
+            self.state[e.BTN_EXTRA] = STATE_ACTIVE
+        while self.accum_x <= -TABSWITCH_STEP:
+            self._combo([e.KEY_LEFTCTRL, e.KEY_LEFTSHIFT], e.KEY_TAB)
+            self.accum_x += TABSWITCH_STEP
+            self.state[e.BTN_EXTRA] = STATE_ACTIVE
+
+    # ---- main loop ---------------------------------------------------------
+
+    def run(self):
+        for event in self.dev.read_loop():
+            if event.type == e.EV_KEY:
+                self.handle_key(event.code, event.value)
+            elif event.type == e.EV_REL:
+                self.handle_rel(event.code, event.value)
+            # EV_SYN/EV_MSC: we generate our own SYN after each logical batch
+
+
+def find_hidraw_path():
+    """Return /dev/hidrawN for the MX Ergo S via sysfs, or None."""
+    matches = glob.glob(HIDRAW_GLOB)
+    if matches:
+        return '/dev/' + os.path.basename(matches[0])
+    return None
+
+
+def hidraw_loop(ui):
+    """Background thread: emit KEY_ENTER when HIDpp DivertedButtonsEvent carries DPI Switch CID."""
+    prev_cids: set = set()
+    while True:
+        path = find_hidraw_path()
+        if path is None:
+            time.sleep(2)
+            continue
+        try:
+            fd = os.open(path, os.O_RDONLY)
+        except OSError as err:
+            log(f'hidraw: cannot open {path}: {err}')
+            time.sleep(2)
+            continue
+        log(f'hidraw: opened {path}')
+        prev_cids = set()
+        try:
+            while True:
+                data = os.read(fd, 20)
+                # LONG HIDpp notification: report_id=0x11, dev_idx, feat_idx, addr=0x00, 4×uint16-BE CIDs
+                if (len(data) == 20 and data[0] == 0x11
+                        and data[2] == REPROG_CTRL_FEAT_IDX and data[3] == 0x00):
+                    cids = set(struct.unpack('!4H', data[4:12])) - {0}
+                    if DPI_SWITCH_CID in cids and DPI_SWITCH_CID not in prev_cids:
+                        ui.write(e.EV_KEY, e.KEY_ENTER, 1)
+                        ui.syn()
+                        ui.write(e.EV_KEY, e.KEY_ENTER, 0)
+                        ui.syn()
+                    prev_cids = cids
+        except OSError as err:
+            log(f'hidraw: {err}, reconnecting')
+        finally:
+            try:
+                os.close(fd)
+            except Exception:
+                pass
+        time.sleep(1)
+
+
+def main():
+    # Clean shutdown on SIGTERM/SIGINT so the device ungrabs.
+    def stop(*_):
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+
+    ui = UInput(CAPS, name="trackball-nav")
+    log("virtual device created")
+
+    t = threading.Thread(target=hidraw_loop, args=[ui], daemon=True)
+    t.start()
+
+    while True:
+        dev = wait_for_device()
+        log(f"found {DEVICE_NAME} at {dev.path}")
+        try:
+            dev.grab()
+        except OSError as err:
+            if err.errno == errno.EBUSY:
+                log("device busy (already grabbed), retrying in 2s")
+                time.sleep(2)
+                continue
+            raise
+        try:
+            Nav(dev, ui).run()
+        except OSError as err:
+            log(f"device error: {err}; will reconnect")
+            time.sleep(1)
+        finally:
+            try:
+                dev.ungrab()
+            except Exception:
+                pass
+            try:
+                dev.close()
+            except Exception:
+                pass
+
+
+if __name__ == "__main__":
+    main()

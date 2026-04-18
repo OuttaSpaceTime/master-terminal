@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dot Manage"
+  short_description: "Manage workspace-specific dotfile and agent-skill adjustments"
+  default_prompt: "Use $dot-manage to classify workspace-specific dotfile and agent-skill adjustments, inspect the relevant home files, and ensure the durable result is captured in the wiki."

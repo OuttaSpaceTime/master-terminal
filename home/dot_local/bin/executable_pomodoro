@@ -1,0 +1,495 @@
+#!/usr/bin/env python3
+"""Pomodoro timer with GNOME top bar indicator and fullscreen transition dialog."""
+
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("AyatanaAppIndicator3", "0.1")
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+
+from gi.repository import AyatanaAppIndicator3 as AppIndicator
+from gi.repository import Gdk, GLib, Gtk
+
+from pomodoro_core import ACTIVE, BREAK, IDLE, WORK, PomodoroCore, TimerCore
+
+ALARM_SOUND = "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+
+# Shared CSS for fullscreen dialogs
+DIALOG_CSS = b"""
+    .dialog-bg { background-color: #1a1a2e; }
+    .title-label { font-size: 48px; font-weight: bold; color: #e0e0e0; }
+    .subtitle-label { font-size: 24px; color: #a0a0b0; }
+    .extend-btn {
+        font-size: 22px; padding: 16px 32px;
+        background: #2d2d44; color: #e0e0e0;
+        border: 2px solid #444466; border-radius: 12px;
+    }
+    .extend-btn:hover { background: #3d3d55; }
+    .transition-btn {
+        font-size: 26px; padding: 20px 48px;
+        border-radius: 14px; font-weight: bold;
+    }
+    .transition-work {
+        background: #1b5e20; color: #e0e0e0;
+        border: 2px solid #2e7d32;
+    }
+    .transition-work:hover { background: #2e7d32; }
+    .transition-break {
+        background: #0d47a1; color: #e0e0e0;
+        border: 2px solid #1565c0;
+    }
+    .transition-break:hover { background: #1565c0; }
+    .stop-btn {
+        font-size: 22px; padding: 14px 36px;
+        background: #b71c1c; color: #e0e0e0;
+        border: 2px solid #d32f2f; border-radius: 12px;
+    }
+    .stop-btn:hover { background: #d32f2f; }
+    .input-box {
+        font-size: 22px; padding: 8px 16px;
+        background: #2d2d44; color: #e0e0e0;
+        border: 2px solid #444466; border-radius: 8px;
+    }
+"""
+
+
+def _apply_css():
+    css = Gtk.CssProvider()
+    css.load_from_data(DIALOG_CSS)
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(),
+        css,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    )
+
+
+def _make_fullscreen_shell():
+    """Create the outer fullscreen window and centered content box."""
+    win = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+    win.set_decorated(False)
+    win.set_keep_above(True)
+
+    vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=30)
+    vbox.set_valign(Gtk.Align.CENTER)
+    vbox.set_halign(Gtk.Align.CENTER)
+    vbox.get_style_context().add_class("dialog-bg")
+
+    overlay = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    overlay.get_style_context().add_class("dialog-bg")
+    overlay.set_valign(Gtk.Align.FILL)
+    overlay.set_halign(Gtk.Align.FILL)
+    overlay.set_vexpand(True)
+    overlay.set_hexpand(True)
+    overlay.pack_start(vbox, True, False, 0)
+
+    win.add(overlay)
+    return win, vbox
+
+
+def _add_extend_buttons(vbox, callback):
+    extend_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
+    extend_box.set_halign(Gtk.Align.CENTER)
+    for mins in (1, 2, 3):
+        btn = Gtk.Button(label=f"+{mins} min")
+        btn.get_style_context().add_class("extend-btn")
+        btn.connect("clicked", callback, mins)
+        extend_box.pack_start(btn, False, False, 0)
+    vbox.pack_start(extend_box, False, False, 20)
+
+
+def _notify_done(label):
+    subprocess.Popen(
+        ["paplay", ALARM_SOUND],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.Popen(
+        ["notify-send", "Timer", f"{label} complete!"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+class PomodoroApp:
+    def __init__(self):
+        self.core = PomodoroCore()
+        self.ticker_id = None
+        self.dialog_window = None
+        self.timer = TimerCore()
+        self.timer_ticker_id = None
+
+        # Indicator
+        self.indicator = AppIndicator.Indicator.new(
+            "pomodoro-timer",
+            "preferences-system-time-symbolic",
+            AppIndicator.IndicatorCategory.APPLICATION_STATUS,
+        )
+        self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
+        self._update_label()
+
+        # Menu
+        self.menu = Gtk.Menu()
+
+        # -- Pomodoro submenu --
+        pomo_item = Gtk.MenuItem(label="Pomodoro")
+        pomo_menu = Gtk.Menu()
+        pomo_item.set_submenu(pomo_menu)
+
+        start_item = Gtk.MenuItem(label="Start")
+        start_item.connect("activate", self._on_pomo_start)
+        pomo_menu.append(start_item)
+
+        pause_item = Gtk.MenuItem(label="Pause")
+        pause_item.connect("activate", self._on_pomo_pause)
+        pomo_menu.append(pause_item)
+
+        reset_item = Gtk.MenuItem(label="Reset")
+        reset_item.connect("activate", self._on_pomo_reset)
+        pomo_menu.append(reset_item)
+
+        self.menu.append(pomo_item)
+
+        # -- Timer submenu --
+        timer_item = Gtk.MenuItem(label="Timer")
+        timer_menu = Gtk.Menu()
+        timer_item.set_submenu(timer_menu)
+
+        set_timer_item = Gtk.MenuItem(label="Set Timer...")
+        set_timer_item.connect("activate", self._on_timer_set)
+        timer_menu.append(set_timer_item)
+
+        timer_pause_item = Gtk.MenuItem(label="Pause")
+        timer_pause_item.connect("activate", self._on_timer_pause)
+        timer_menu.append(timer_pause_item)
+
+        timer_resume_item = Gtk.MenuItem(label="Resume")
+        timer_resume_item.connect("activate", self._on_timer_resume)
+        timer_menu.append(timer_resume_item)
+
+        timer_stop_item = Gtk.MenuItem(label="Stop")
+        timer_stop_item.connect("activate", self._on_timer_stop)
+        timer_menu.append(timer_stop_item)
+
+        self.menu.append(timer_item)
+
+        self.menu.append(Gtk.SeparatorMenuItem())
+
+        quit_item = Gtk.MenuItem(label="Quit")
+        quit_item.connect("activate", self._on_quit)
+        self.menu.append(quit_item)
+
+        self.menu.show_all()
+        self.indicator.set_menu(self.menu)
+
+    # --- Active engine label ---
+
+    def _active_engine(self):
+        """Return whichever engine is currently running, preferring timer."""
+        if self.timer.running or self.timer.mode != IDLE:
+            return self.timer
+        return self.core
+
+    def _update_label(self):
+        self.indicator.set_label(self._active_engine().format_time(), "")
+
+    # --- Shared ticker helpers ---
+
+    def _start_pomo_ticker(self):
+        if self.ticker_id is None:
+            self.ticker_id = GLib.timeout_add_seconds(1, self._pomo_tick)
+
+    def _stop_pomo_ticker(self):
+        if self.ticker_id is not None:
+            GLib.source_remove(self.ticker_id)
+            self.ticker_id = None
+
+    def _start_timer_ticker(self):
+        if self.timer_ticker_id is None:
+            self.timer_ticker_id = GLib.timeout_add_seconds(1, self._timer_tick)
+
+    def _stop_timer_ticker(self):
+        if self.timer_ticker_id is not None:
+            GLib.source_remove(self.timer_ticker_id)
+            self.timer_ticker_id = None
+
+    # --- Pomodoro tick ---
+
+    def _pomo_tick(self):
+        result = self.core.tick()
+        self._update_label()
+        if result == "stopped":
+            self.ticker_id = None
+            return False
+        if result == "done":
+            self.ticker_id = None
+            self._on_pomo_done()
+            return False
+        return True
+
+    # --- Timer tick ---
+
+    def _timer_tick(self):
+        result = self.timer.tick()
+        self._update_label()
+        if result == "stopped":
+            self.timer_ticker_id = None
+            return False
+        if result == "done":
+            self.timer_ticker_id = None
+            self._on_timer_done()
+            return False
+        return True
+
+    # --- Pomodoro menu callbacks ---
+
+    def _on_pomo_start(self, _widget):
+        self.core.start()
+        self._update_label()
+        self._start_pomo_ticker()
+
+    def _on_pomo_pause(self, _widget):
+        self.core.pause()
+
+    def _on_pomo_reset(self, _widget):
+        self.core.reset()
+        self._stop_pomo_ticker()
+        self._update_label()
+
+    # --- Timer menu callbacks ---
+
+    def _on_timer_set(self, _widget):
+        minutes = self._ask_minutes("Set Timer", "Minutes:")
+        if minutes is not None and minutes > 0:
+            self.timer.set_timer(minutes)
+            self._update_label()
+            self._start_timer_ticker()
+
+    def _on_timer_pause(self, _widget):
+        self.timer.pause()
+
+    def _on_timer_resume(self, _widget):
+        if self.timer.mode != IDLE:
+            self.timer.start()
+            self._start_timer_ticker()
+
+    def _on_timer_stop(self, _widget):
+        self.timer.stop()
+        self._stop_timer_ticker()
+        self._update_label()
+
+    def _on_quit(self, _widget):
+        Gtk.main_quit()
+
+    # --- Minutes input dialog ---
+
+    def _ask_minutes(self, title, label):
+        dialog = Gtk.Dialog(
+            title=title,
+            transient_for=None,
+            flags=0,
+        )
+        dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                           Gtk.STOCK_OK, Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+
+        box = dialog.get_content_area()
+        box.set_spacing(10)
+        box.set_margin_start(20)
+        box.set_margin_end(20)
+        box.set_margin_top(10)
+        box.set_margin_bottom(10)
+
+        lbl = Gtk.Label(label=label)
+        box.pack_start(lbl, False, False, 0)
+
+        entry = Gtk.SpinButton.new_with_range(1, 999, 1)
+        entry.set_value(10)
+        entry.set_activates_default(True)
+        box.pack_start(entry, False, False, 0)
+
+        dialog.show_all()
+        response = dialog.run()
+        value = int(entry.get_value()) if response == Gtk.ResponseType.OK else None
+        dialog.destroy()
+        return value
+
+    # --- Pomodoro done ---
+
+    def _on_pomo_done(self):
+        _notify_done("Work" if self.core.mode == WORK else "Break")
+        self._show_pomo_dialog()
+
+    def _show_pomo_dialog(self):
+        self._close_dialog()
+        _apply_css()
+
+        win, vbox = _make_fullscreen_shell()
+        self.dialog_window = win
+
+        if self.core.mode == WORK:
+            title_text = "Work Session Complete!"
+            transition_text = "Start Break"
+            transition_class = "transition-break"
+        else:
+            title_text = "Break Over!"
+            transition_text = "Back to Work"
+            transition_class = "transition-work"
+
+        title = Gtk.Label(label=title_text)
+        title.get_style_context().add_class("title-label")
+        vbox.pack_start(title, False, False, 20)
+
+        subtitle = Gtk.Label(label="Extend current session or move on:")
+        subtitle.get_style_context().add_class("subtitle-label")
+        vbox.pack_start(subtitle, False, False, 0)
+
+        _add_extend_buttons(vbox, self._on_pomo_extend)
+
+        trans_btn = Gtk.Button(label=transition_text)
+        trans_btn.get_style_context().add_class("transition-btn")
+        trans_btn.get_style_context().add_class(transition_class)
+        trans_btn.connect("clicked", self._on_pomo_transition)
+        vbox.pack_start(trans_btn, False, False, 10)
+
+        win.show_all()
+        win.fullscreen()
+        win.present()
+
+    def _on_pomo_extend(self, _widget, minutes):
+        self.core.extend(minutes)
+        self._update_label()
+        self._start_pomo_ticker()
+        self._close_dialog()
+
+    def _on_pomo_transition(self, _widget):
+        self.core.transition()
+        self._update_label()
+        self._start_pomo_ticker()
+        self._close_dialog()
+
+    # --- Timer done ---
+
+    def _on_timer_done(self):
+        mode_label = "Timer" if self.timer.mode == ACTIVE else "Break"
+        _notify_done(mode_label)
+        self._show_timer_dialog()
+
+    def _show_timer_dialog(self):
+        self._close_dialog()
+        _apply_css()
+
+        win, vbox = _make_fullscreen_shell()
+        self.dialog_window = win
+
+        if self.timer.mode in (ACTIVE, IDLE):
+            title_text = "Timer Complete!"
+            action_text = "Take a Break"
+            action_class = "transition-break"
+        else:
+            title_text = "Break Over!"
+            action_text = "Done"
+            action_class = "transition-work"
+
+        title = Gtk.Label(label=title_text)
+        title.get_style_context().add_class("title-label")
+        vbox.pack_start(title, False, False, 20)
+
+        subtitle = Gtk.Label(label="Extend or move on:")
+        subtitle.get_style_context().add_class("subtitle-label")
+        vbox.pack_start(subtitle, False, False, 0)
+
+        _add_extend_buttons(vbox, self._on_timer_extend)
+
+        if self.timer.mode in (ACTIVE, IDLE):
+            # "Take a Break" row: spin button + go button
+            break_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            break_box.set_halign(Gtk.Align.CENTER)
+
+            break_lbl = Gtk.Label(label="Break:")
+            break_lbl.get_style_context().add_class("subtitle-label")
+            break_box.pack_start(break_lbl, False, False, 0)
+
+            self._break_spin = Gtk.SpinButton.new_with_range(1, 999, 1)
+            self._break_spin.set_value(5)
+            self._break_spin.get_style_context().add_class("input-box")
+            break_box.pack_start(self._break_spin, False, False, 0)
+
+            min_lbl = Gtk.Label(label="min")
+            min_lbl.get_style_context().add_class("subtitle-label")
+            break_box.pack_start(min_lbl, False, False, 0)
+
+            break_btn = Gtk.Button(label=action_text)
+            break_btn.get_style_context().add_class("transition-btn")
+            break_btn.get_style_context().add_class(action_class)
+            break_btn.connect("clicked", self._on_timer_start_break)
+            break_box.pack_start(break_btn, False, False, 0)
+
+            vbox.pack_start(break_box, False, False, 20)
+        else:
+            # Break is done — just a "Done" button
+            done_btn = Gtk.Button(label=action_text)
+            done_btn.get_style_context().add_class("transition-btn")
+            done_btn.get_style_context().add_class(action_class)
+            done_btn.connect("clicked", self._on_timer_finish)
+            vbox.pack_start(done_btn, False, False, 20)
+
+        # Stop button always available
+        stop_btn = Gtk.Button(label="Stop")
+        stop_btn.get_style_context().add_class("stop-btn")
+        stop_btn.connect("clicked", self._on_timer_finish)
+        vbox.pack_start(stop_btn, False, False, 10)
+
+        win.show_all()
+        win.fullscreen()
+        win.present()
+
+    def _on_timer_extend(self, _widget, minutes):
+        self.timer.extend(minutes)
+        self._update_label()
+        self._start_timer_ticker()
+        self._close_dialog()
+
+    def _on_timer_start_break(self, _widget):
+        mins = int(self._break_spin.get_value())
+        self.timer.set_break(mins)
+        self._update_label()
+        self._start_timer_ticker()
+        self._close_dialog()
+
+    def _on_timer_finish(self, _widget):
+        self.timer.stop()
+        self._stop_timer_ticker()
+        self._update_label()
+        self._close_dialog()
+
+    # --- Dialog helpers ---
+
+    def _close_dialog(self):
+        if self.dialog_window:
+            self.dialog_window.destroy()
+            self.dialog_window = None
+
+
+def main():
+    # Prevent duplicate instances
+    import fcntl
+    import os
+    import tempfile
+
+    lock_path = os.path.join(tempfile.gettempdir(), "pomodoro-timer.lock")
+    lock_file = open(lock_path, "w")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("Pomodoro timer is already running.", file=sys.stderr)
+        sys.exit(1)
+
+    PomodoroApp()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

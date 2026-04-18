@@ -1,0 +1,4 @@
+interface:
+  display_name: "Port Claude Skill To Codex"
+  short_description: "Import a Claude skill into the shared Codex-compatible tree"
+  default_prompt: "Use $port-claude-skill-to-codex to sync a changed Claude Code skill into the shared chezmoi-managed skills tree."

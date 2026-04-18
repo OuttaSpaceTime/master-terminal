@@ -1,0 +1,22 @@
+[
+  {"query": "ok so our test suite has gotten really slow — like 3 minutes for just the auth module. i want to systematically try different approaches to get it under 60 seconds. can you keep experimenting until you find what works?", "should_trigger": true},
+  {"query": "i've been trying to improve my CLAUDE.md rules for component generation but i'm not sure what actually makes a difference. can you try a bunch of variations and compare which ones produce better output?", "should_trigger": true},
+  {"query": "/autoresearch --max 20 reduce the bundle size of the dashboard lazy chunk", "should_trigger": true},
+  {"query": "the memory usage of our data pipeline keeps creeping up. i want to run experiments on process_data.py — try different approaches, measure peak RSS after each change, keep what works, revert what doesn't", "should_trigger": true},
+  {"query": "i need to find the best state management approach for notifications. can you try different architectures, evaluate each one against a few real use cases, and keep iterating until we find what works?", "should_trigger": true},
+  {"query": "our lighthouse performance score for the landing page is 62. i want to iteratively optimize it — try changes one at a time, measure after each, keep improvements, revert regressions. go until we hit 90+", "should_trigger": true},
+  {"query": "i have a skill for writing commit messages but it's mediocre. can you systematically experiment with different instruction approaches and test each version against realistic scenarios to find what produces the best messages?", "should_trigger": true},
+  {"query": "the strict typescript migration has 847 errors. i want to chip away at them autonomously — fix a batch, verify the count dropped, commit if it did, revert if not, repeat", "should_trigger": true},
+  {"query": "try different approaches for the caching layer and evaluate each one. i want to find the best strategy through experimentation, not just pick one and hope", "should_trigger": true},
+  {"query": "keep experimenting with the prompt template until the extraction accuracy improves. measure against our test set after each change", "should_trigger": true},
+  {"query": "can you fix the bug where the sidebar doesn't collapse on mobile? the hamburger menu click handler isn't firing", "should_trigger": false},
+  {"query": "i need to add a new API endpoint for user preferences. it should accept PATCH requests with a JSON body containing theme and language settings", "should_trigger": false},
+  {"query": "explain how the authentication flow works in this codebase — trace through from the login form submission to the session being established", "should_trigger": false},
+  {"query": "review my PR — i refactored the dashboard component to use signals instead of observables. check for regressions", "should_trigger": false},
+  {"query": "what's the best way to handle file uploads in Angular? i need to add a profile picture upload feature", "should_trigger": false},
+  {"query": "can you refactor the user service to use the new JSON:API client pattern? just a straightforward migration, nothing experimental", "should_trigger": false},
+  {"query": "write unit tests for the inbox-card component. it currently has no spec file", "should_trigger": false},
+  {"query": "i want to understand how the credit enforcement interceptor works. walk me through the code", "should_trigger": false},
+  {"query": "make the dashboard load faster — just remove the blocking forceRefresh guard, that's the main bottleneck", "should_trigger": false},
+  {"query": "research what other teams are doing for real-time notifications in Angular apps. websockets vs SSE vs polling — give me a summary of the tradeoffs", "should_trigger": false}
+]

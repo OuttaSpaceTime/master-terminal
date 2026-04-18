@@ -1,0 +1,4 @@
+interface:
+  display_name: "UV Jupyter Setup"
+  short_description: "Set up uv + Jupyter in Python repos"
+  default_prompt: "Use $uv-jupyter-repo-setup to configure this repo for uv, Jupyter, and notebook dependencies."

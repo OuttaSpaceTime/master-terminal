@@ -1,0 +1,46 @@
+/* Wofi — Catppuccin Latte */
+
+window {
+    margin: 0;
+    border: 2px solid #bcc0cc;
+    border-radius: 8px;
+    background-color: #eff1f5;
+    font-family: "JetBrainsMono Nerd Font", "Sans";
+    font-size: 14px;
+}
+
+#input {
+    margin: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: #e6e9ef;
+    color: #4c4f69;
+}
+
+#inner-box {
+    margin: 0 8px 8px 8px;
+}
+
+#outer-box {
+    margin: 0;
+    padding: 0;
+}
+
+#text {
+    color: #4c4f69;
+}
+
+#img {
+    margin-right: 8px;
+}
+
+#entry {
+    padding: 6px 12px;
+    border-radius: 6px;
+}
+
+#entry:selected {
+    background-color: #7287fd;
+    color: #eff1f5;
+}

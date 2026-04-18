@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+
+import argparse
+import re
+import shutil
+import sys
+import textwrap
+from pathlib import Path
+
+
+PORTABLE_NAMES = ("SKILL.md", "scripts", "references", "assets", "agents")
+SKIP_SKILL_NAMES = {"references"}
+SKIP_SUFFIXES = ("-workspace",)
+DEFAULT_REPO_MARKERS = ("AGENTS.md", "home")
+
+
+def find_repo_root(start: Path) -> Path | None:
+    current = start.resolve()
+    for candidate in (current, *current.parents):
+        if all((candidate / marker).exists() for marker in DEFAULT_REPO_MARKERS):
+            return candidate
+    return None
+
+
+def parse_frontmatter(skill_path: Path) -> dict[str, str]:
+    text = skill_path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        raise ValueError(f"{skill_path} is missing YAML frontmatter")
+    _, frontmatter, _ = text.split("---", 2)
+    result: dict[str, str] = {}
+    lines = frontmatter.strip("\n").splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+        match = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
+        if not match:
+            i += 1
+            continue
+        key, value = match.groups()
+        if value in {">", "|"}:
+            block: list[str] = []
+            i += 1
+            while i < len(lines) and (lines[i].startswith("  ") or not lines[i].strip()):
+                block.append(lines[i][2:] if lines[i].startswith("  ") else "")
+                i += 1
+            joined = "\n".join(block).strip()
+            if value == ">":
+                joined = re.sub(r"\s+", " ", joined)
+            result[key] = joined
+            continue
+        result[key] = value.strip().strip('"').strip("'")
+        i += 1
+    return result
+
+
+def slug_to_title(slug: str) -> str:
+    parts = slug.split("-")
+    titled: list[str] = []
+    for part in parts:
+        if part.isupper():
+            titled.append(part)
+        elif part in {"uv", "api", "ui", "cli", "llm"}:
+            titled.append(part.upper())
+        else:
+            titled.append(part.capitalize())
+    return " ".join(titled)
+
+
+def make_short_description(description: str) -> str:
+    sentence = re.split(r"(?<=[.!?])\s+", description.strip(), 1)[0]
+    if len(sentence) <= 72:
+        return sentence
+    trimmed = sentence[:69].rstrip(" ,;:")
+    return f"{trimmed}..."
+
+
+def make_default_prompt(name: str, description: str) -> str:
+    sentence = re.split(r"(?<=[.!?])\s+", description.strip(), 1)[0].rstrip(".")
+    return f"Use ${name} to {sentence[:140].rstrip()}."
+
+
+def generate_openai_yaml(skill_dir: Path, name: str, description: str) -> None:
+    agents_dir = skill_dir / "agents"
+    agents_dir.mkdir(parents=True, exist_ok=True)
+    content = (
+        "interface:\n"
+        f'  display_name: "{slug_to_title(name)}"\n'
+        f'  short_description: "{make_short_description(description).replace(chr(34), chr(39))}"\n'
+        f'  default_prompt: "{make_default_prompt(name, description).replace(chr(34), chr(39))}"\n'
+    )
+    (agents_dir / "openai.yaml").write_text(content, encoding="utf-8")
+
+
+def normalize_frontmatter(skill_dir: Path) -> None:
+    skill_file = skill_dir / "SKILL.md"
+    if not skill_file.exists():
+        return
+    text = skill_file.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return
+    parts = text.split("---", 2)
+    if len(parts) != 3:
+        return
+    _, frontmatter, body = parts
+    lines = frontmatter.strip("\n").splitlines()
+    normalized: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("description:"):
+            if line.strip() in {"description: >", "description: |"}:
+                value_lines: list[str] = []
+                i += 1
+                while i < len(lines) and (lines[i].startswith("  ") or not lines[i].strip()):
+                    if lines[i].startswith("  "):
+                        value_lines.append(lines[i][2:].strip())
+                    i += 1
+                description = " ".join(part for part in value_lines if part).strip()
+            else:
+                description = line.split(":", 1)[1].strip().strip('"').strip("'")
+                i += 1
+            if len(description) > 1024:
+                description = f"{description[:1021].rstrip()}..."
+            normalized.append("description: >")
+            for wrapped in textwrap.wrap(description, width=88):
+                normalized.append(f"  {wrapped}")
+            continue
+        normalized.append(line)
+        i += 1
+    rebuilt = "---\n" + "\n".join(normalized) + "\n---" + body
+    skill_file.write_text(rebuilt, encoding="utf-8")
+
+
+def rewrite_portability_paths(skill_dir: Path) -> None:
+    skill_file = skill_dir / "SKILL.md"
+    if not skill_file.exists():
+        return
+    text = skill_file.read_text(encoding="utf-8")
+    text = text.replace(
+        "`~/.claude/skills/references/interactive-principles.md`",
+        "`../references/interactive-principles.md`",
+    )
+    text = text.replace(
+        "bash ~/.claude/skills/d2/scripts/render_and_open.sh",
+        "bash scripts/render_and_open.sh",
+    )
+    skill_file.write_text(text, encoding="utf-8")
+
+
+def list_source_skills(source_root: Path) -> list[Path]:
+    skills: list[Path] = []
+    for entry in sorted(source_root.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name in SKIP_SKILL_NAMES:
+            continue
+        if entry.name.endswith(SKIP_SUFFIXES):
+            continue
+        if not (entry / "SKILL.md").exists():
+            continue
+        skills.append(entry)
+    return skills
+
+
+def portable_children(skill_dir: Path) -> list[Path]:
+    children: list[Path] = []
+    for name in PORTABLE_NAMES:
+        path = skill_dir / name
+        if path.exists():
+            children.append(path)
+    return children
+
+
+def ensure_deleted(path: Path, apply: bool) -> None:
+    if not path.exists():
+        return
+    print(f"remove {path}")
+    if not apply:
+        return
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def copy_path(src: Path, dst: Path, apply: bool) -> None:
+    print(f"copy {src} -> {dst}")
+    if not apply:
+        return
+    if src.is_dir():
+        shutil.copytree(src, dst)
+    else:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+
+def sync_skill(src_skill: Path, target_root: Path, apply: bool) -> None:
+    target_skill = target_root / src_skill.name
+    print(f"\n[{src_skill.name}]")
+    ensure_deleted(target_skill, apply)
+    if apply:
+        target_skill.mkdir(parents=True, exist_ok=True)
+    for child in portable_children(src_skill):
+        copy_path(child, target_skill / child.name, apply)
+    if apply:
+        normalize_frontmatter(target_skill)
+        rewrite_portability_paths(target_skill)
+        frontmatter = parse_frontmatter(target_skill / "SKILL.md")
+        name = frontmatter.get("name", src_skill.name)
+        description = frontmatter.get("description", "").strip()
+        if not description:
+            raise ValueError(f"{target_skill / 'SKILL.md'} is missing a description")
+        generate_openai_yaml(target_skill, name, description)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Sync portable Claude or Codex skills into a shared chezmoi-managed skill tree."
+    )
+    parser.add_argument("--apply", action="store_true", help="Write changes instead of printing them.")
+    parser.add_argument("--dry-run", action="store_true", help="Print planned changes without writing.")
+    parser.add_argument("--skill", help="Only sync one named skill.")
+    parser.add_argument(
+        "--source",
+        choices=("claude", "codex"),
+        default="claude",
+        help="Import from ~/.claude/skills or ~/.codex/skills.",
+    )
+    parser.add_argument(
+        "--repo-root",
+        help="Repo root containing the chezmoi source tree. Defaults to autodetect from the current directory.",
+    )
+    args = parser.parse_args()
+
+    if args.apply and args.dry_run:
+        parser.error("choose either --apply or --dry-run")
+    apply = args.apply
+
+    source_root = Path.home() / f".{args.source}" / "skills"
+    if not source_root.exists():
+        raise SystemExit(f"missing source skill directory: {source_root}")
+
+    repo_root = Path(args.repo_root).resolve() if args.repo_root else find_repo_root(Path.cwd())
+    if repo_root:
+        target_root = repo_root / "home" / "dot_agents" / "skills"
+    else:
+        target_root = Path.home() / ".agents" / "skills"
+    print(f"source root: {source_root}")
+    print(f"target root: {target_root}")
+    print(f"mode: {'apply' if apply else 'dry-run'}")
+
+    skills = list_source_skills(source_root)
+    if args.skill:
+        skills = [skill for skill in skills if skill.name == args.skill]
+    if not skills:
+        raise SystemExit("no matching portable skills found")
+
+    if apply:
+        target_root.mkdir(parents=True, exist_ok=True)
+
+    for skill in skills:
+        sync_skill(skill, target_root, apply)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)

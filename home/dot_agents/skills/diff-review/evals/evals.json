@@ -1,0 +1,46 @@
+{
+  "skill_name": "diff-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished building the inbox feature on this branch. Can you walk me through my changes against main? /diff-review main",
+      "expected_output": "Full 4-checkpoint interactive walkthrough with large-diff scope limiting, overview table, focused file walks, concerns, and notes file.",
+      "files": [],
+      "expectations": [
+        "Recognizes 45 files / ~2600 lines as a large diff and triggers the scope limit (asks for walk order or confirmation before proceeding)",
+        "Produces a Diff Overview table with columns for File, Type, Lines changed, and Area",
+        "Asks the developer about intent before proceeding to the walkthrough",
+        "References or creates a notes file path under .claude/docs/diff-notes/",
+        "All 4 checkpoints appear in sequence (Checkpoint 1 through Checkpoint 4)",
+        "Shows actual git diff hunks in Checkpoint 2 (not just prose descriptions of what changed)",
+        "Surfaces at least one concern in Checkpoint 3 using the ⚠️ Concern format with file:line reference",
+        "Includes a Progress Tracker table with file status indicators"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/diff-review\n\nI just edited the inbox page component and the mock service — walk me through what I changed",
+      "expected_output": "Conversation-mode walkthrough of 2 files with behavioral summaries, prediction questions, correction handling, data flow analysis, and concerns.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies conversation mode and scopes to the 2 specified files (inbox.component.ts and inbox-mock.service.ts)",
+        "Each file walkthrough includes a behavioral summary with 'What changed', 'Where in flow', or 'Data in → out' fields",
+        "Asks at least one non-trivial prediction question in Checkpoint 2 (not 'what does this do?' but something specific)",
+        "When the developer's prediction is partially wrong, names the gap and explains the correct behavior before advancing",
+        "Checkpoint 3 traces at least one data path and names invariants (what must be true)",
+        "Concerns include file:line references so the developer knows exactly where to look"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/diff-review",
+      "expected_output": "Graceful handling of no-changes edge case: clear communication, alternative offered, no broken output.",
+      "files": [],
+      "expectations": [
+        "Clearly states that no conversation edits were found AND no unstaged/staged changes exist",
+        "Offers a graceful alternative or asks the developer what they want to review (does not just stop)",
+        "Does not produce broken output, empty checkpoints, or error messages — handles the edge case cleanly"
+      ]
+    }
+  ]
+}

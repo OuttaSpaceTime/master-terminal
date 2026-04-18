@@ -1,0 +1,21 @@
+" Make plain Vim copy like LazyVim when possible.
+if has('clipboard')
+  set clipboard=unnamedplus
+else
+  let s:vim_clipboard_cmd = ''
+
+  if executable('wl-copy')
+    let s:vim_clipboard_cmd = 'wl-copy'
+  elseif executable('xclip')
+    let s:vim_clipboard_cmd = 'xclip -selection clipboard'
+  elseif executable('xsel')
+    let s:vim_clipboard_cmd = 'xsel --clipboard --input'
+  endif
+
+  if !empty(s:vim_clipboard_cmd) && exists('##TextYankPost')
+    augroup vim_system_clipboard
+      autocmd!
+      autocmd TextYankPost * if index(['y', 'd', 'c'], v:event.operator) >= 0 | call system(s:vim_clipboard_cmd, getreg('"')) | endif
+    augroup END
+  endif
+endif

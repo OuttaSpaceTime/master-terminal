@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+set_binding() {
+  local schema=$1
+  local key=$2
+  local value=$3
+
+  gsettings set "$schema" "$key" "$value"
+}
+
+apply_bindings() {
+  # Reapply custom GNOME window movement bindings.
+  gsettings set org.gnome.mutter dynamic-workspaces false
+  gsettings set org.gnome.desktop.wm.preferences num-workspaces 4
+
+  set_binding org.gnome.desktop.wm.keybindings move-to-monitor-left "['<Control><Super>h']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-monitor-right "['<Control><Super>l']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-monitor-down "@as []"
+  set_binding org.gnome.desktop.wm.keybindings move-to-monitor-up "@as []"
+
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-left "['<Super><Alt>h']"
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-right "['<Super><Alt>l']"
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-down "@as []"
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-up "@as []"
+
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-left "['<Shift><Alt>h']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-right "['<Shift><Alt>l']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-down "@as []"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-up "@as []"
+
+  # Keep the split/maximize shortcuts stable too, while disabling the extension's
+  # default Super+Left/Right/Up/Down bindings.
+  set_binding org.gnome.mutter.keybindings toggle-tiled-left "['<Super>h']"
+  set_binding org.gnome.mutter.keybindings toggle-tiled-right "['<Super>l']"
+  set_binding org.gnome.desktop.wm.keybindings close "['<Super><Shift>q']"
+  set_binding org.gnome.desktop.wm.keybindings unmaximize "['<Super>j']"
+  set_binding org.gnome.desktop.wm.keybindings maximize "['<Super>k']"
+
+  set_binding org.gnome.shell.extensions.tiling-assistant tile-left-half "@as []"
+  set_binding org.gnome.shell.extensions.tiling-assistant tile-right-half "@as []"
+  set_binding org.gnome.shell.extensions.tiling-assistant tile-maximize "@as []"
+  set_binding org.gnome.shell.extensions.tiling-assistant restore-window "@as []"
+  set_binding org.gnome.shell.extensions.tiling-assistant overridden-settings "@a{sv} {}"
+
+  # Let dash-to-panel own the Super+1-9 app hotkeys without GNOME Shell also
+  # binding them to the app switcher.
+  set_binding org.gnome.shell.keybindings switch-to-application-1 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-2 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-3 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-4 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-5 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-6 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-7 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-8 "@as []"
+  set_binding org.gnome.shell.keybindings switch-to-application-9 "@as []"
+
+  # Add a durable lock-screen shortcut alongside the rest of the system bindings.
+  set_binding org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super><Shift>l']"
+}
+
+apply_login_retries() {
+  local delay
+
+  apply_bindings
+
+  # GNOME Shell and extensions may restore defaults later in session startup.
+  # Reassert the mapping after a few delays so login races do not win.
+  for delay in 5 15 30; do
+    sleep "$delay"
+    apply_bindings
+  done
+}
+
+if [[ "${1:-}" == "--login" ]]; then
+  apply_login_retries
+else
+  apply_bindings
+fi

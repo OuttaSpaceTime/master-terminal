@@ -1,0 +1,29 @@
+{
+  "skill_name": "plan",
+  "evals": [
+    {
+      "id": 0,
+      "name": "medium-feature",
+      "prompt": "/plan Add a user preferences page where users can toggle email notification settings (e.g. weekly digest, mention alerts, announcement notifications). The page should be accessible from the sidebar under Settings, use the existing JSON:API service pattern, and persist preferences via a new PUT /api/v2/notification-preferences endpoint. The page needs a form with toggles and a save button.",
+      "expected_output": "A proportionally-sized implementation plan with file impact, execution flow, testing strategy, and draft diffs. Should identify the routing change, new feature module, service extending JsonApiClientService, and form component with OnPush.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 1,
+      "name": "small-change",
+      "prompt": "/plan Add a loading skeleton to the inbox list while messages are being fetched. The skeleton should show 5 placeholder rows that match the inbox item layout.",
+      "expected_output": "A lean, proportionally small plan. Most sections should be 1-2 lines. Should identify the inbox component, the request state observable, and a simple conditional template change. Should NOT be a massive plan for a small change.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "cross-cutting",
+      "prompt": "/plan Implement role-based access control (RBAC) for sidebar navigation items. Currently all sidebar items are visible to all logged-in users. We need to conditionally show/hide sidebar items based on the user's permissions from their session. Some items like 'Admin' should only show for users with the 'admin:access' permission. The permission check should use the existing Session.hasPermission() method.",
+      "expected_output": "A thorough plan that traces the session permission system end-to-end, identifies the sidebar component and route configuration, maps the permission check integration points, and has a solid testing strategy covering permission scenarios.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}

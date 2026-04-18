@@ -1,0 +1,35 @@
+{
+  "skill_name": "scout",
+  "baseline": "pre-edit SKILL.md snapshot at skill-snapshot/SKILL.md",
+  "repo_root": "/home/felix/Code/Misc/master-terminal",
+  "evals": [
+    {
+      "id": 0,
+      "name": "feature-changelog-skill",
+      "kind": "feature",
+      "prompt": "Scout this ticket: Add a new `/changelog` skill under home/dot_agents/skills/changelog/ that generates a markdown changelog from recent git history. Must deploy through the existing chezmoi symlink chain to ~/.claude/skills/ and ~/.codex/skills/. Produce the scout report non-interactively — no back-and-forth, write the full 5-checkpoint artifact directly.",
+      "assertions": []
+    },
+    {
+      "id": 1,
+      "name": "bug-skill-symlink-resolution",
+      "kind": "bug",
+      "prompt": "Scout this bug: After `chezmoi -S home apply`, skills deployed under `~/.claude/skills/` are symlinks, but some resolve to the wrong target path and the skill body fails to load. We suspect the symlink_ files in home/dot_claude/skills/ are pointing at the wrong relative path. Trace the root cause and propose fix options. Produce the scout report non-interactively — no back-and-forth, write the full 5-checkpoint artifact directly.",
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "small-wiki-frontmatter",
+      "kind": "small",
+      "prompt": "Scout this small change: Add an `updated` field (ISO date) to the YAML frontmatter of every file under wiki/, and update wiki/index.md's conventions note to require it. Produce the scout report non-interactively — no back-and-forth, write the full 5-checkpoint artifact directly.",
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "cross-cutting-skill-frontmatter-hook",
+      "kind": "cross-cutting",
+      "prompt": "Scout this cross-cutting change: Add a git pre-commit hook that validates every SKILL.md under home/dot_agents/skills/ has valid YAML frontmatter with required fields (name, description). The hook must integrate with the existing chezmoi-managed dotfile workflow and not break agent-skills-sync. Produce the scout report non-interactively — no back-and-forth, write the full 5-checkpoint artifact directly.",
+      "assertions": []
+    }
+  ]
+}

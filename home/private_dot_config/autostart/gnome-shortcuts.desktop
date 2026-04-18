@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Apply GNOME shortcuts
+Comment=Reapply custom GNOME window shortcuts at login
+Exec=/home/felix/.local/bin/apply-gnome-shortcuts --login
+Terminal=false
+OnlyShowIn=GNOME;
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=10
+NoDisplay=true

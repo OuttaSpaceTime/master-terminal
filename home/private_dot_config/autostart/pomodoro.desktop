@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pomodoro Timer
+Comment=Start pomodoro timer indicator at login
+Exec=/home/felix/.local/bin/pomodoro
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5
+NoDisplay=true
