@@ -163,6 +163,15 @@ CP1 produces **two channels**: a self-contained HTML overview that opens in the 
 conversational anchor). The walkthrough in CP2 happens entirely in chat — the HTML is
 read once at the start, then ignored.
 
+**Hard precondition (non-negotiable):** the HTML file MUST exist on disk and
+`scripts/render_overview.sh` MUST have been invoked before any chat summary is emitted.
+Skipping the HTML render and jumping to the chat summary is a contract violation that
+invalidates the review — it does not matter how small, how obvious, or how time-pressed
+the diff feels. The only exception is the trivial-diff fast path defined at the end of
+this checkpoint (single-file, single-hunk, <20 LOC). If you catch yourself about to write
+the five-line chat summary and you have not yet executed steps 4-6, stop and execute
+them first.
+
 1. Run the git command(s) for the selected mode.
 2. **Compute overview data.** From the diff:
    - File list with Type (`modified`/`added`/`deleted`/`renamed`) and Lines±.
@@ -195,12 +204,22 @@ read once at the start, then ignored.
 6. **Open the overview.** Invoke `scripts/render_overview.sh <path> --open`. The script
    detaches and never blocks. If no display server is reachable, it prints the `file://`
    URI instead — pass that URI through to the chat summary so the developer can open it
-   manually.
-7. **Emit the chat summary** (5 lines, no table dump in chat):
+   manually. This step is mandatory: step 7 must not run until this invocation has
+   completed (success or graceful fallback). Record the path you used here — it is the
+   `<overview-path>` that step 7 is required to include.
+7. **Emit the chat summary.** Before writing a single character of the summary, verify:
+   (a) the `.claude/docs/diff-overviews/NNN-<branch>-YYYYMMDD.html` file exists on disk,
+   and (b) `scripts/render_overview.sh` has been invoked this turn. If either is false,
+   return to step 4 — do NOT emit the summary. The summary is 5 lines, no table dump in
+   chat, and every `<...>` placeholder below is mandatory. The `<overview-path>` slot
+   (absolute path or `file://` URI of the rendered HTML) must be filled with the real
+   path written in step 5 — a summary without it is structurally invalid and must not
+   be sent:
 
    ```
    <N> files, +<A>/−<B> LOC. <TL;DR sentence>.
-   Biggest logical change: <path>. Overview opened in browser (<file:// URI>).
+   Biggest logical change: <path>.
+   Overview: <overview-path>
    What was the intent behind these changes?
    ```
 
