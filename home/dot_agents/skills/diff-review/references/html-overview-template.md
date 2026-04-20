@@ -126,7 +126,12 @@ produce an SVG, then inline the SVG markup directly into `{{FLOW_SECTION}}`. Dro
   .size { color: #888; font-size: 0.9rem; margin-top: 1.5rem; }
   .nudge { background: #fff4d6; color: #7a5500; padding: 0.6rem 0.9rem; border-left: 3px solid #d68910; margin-top: 0.5rem; }
   .cdn-warn { background: #fff4d6; color: #7a5500; padding: 0.6rem 0.9rem; border-left: 3px solid #d68910; margin-top: 0.5rem; }
-  pre.mermaid { text-align: center; background: transparent; }
+  pre.mermaid {
+    text-align: center; background: transparent;
+    width: min(1400px, calc(100vw - 2rem));
+    margin-left: 50%; transform: translateX(-50%);
+  }
+  pre.mermaid svg { width: 100% !important; max-width: none !important; height: auto !important; }
 </style>
 </head>
 <body>
@@ -152,7 +157,12 @@ produce an SVG, then inline the SVG markup directly into `{{FLOW_SECTION}}`. Dro
 
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
-  mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "default",
+    securityLevel: "loose",
+    flowchart: { useMaxWidth: false, htmlLabels: true, nodeSpacing: 50, rankSpacing: 60 }
+  });
 </script>
 </body>
 </html>
