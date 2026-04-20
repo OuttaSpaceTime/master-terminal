@@ -121,7 +121,7 @@ The developer can stop and discuss at any moment — not gated to checkpoint 4.
 **Path:** `.claude/docs/diff-notes/YYYYMMDD-<branch>.md`
 - `<branch>` from `git rev-parse --abbrev-ref HEAD`; replace `/` with `-`.
 - Detached HEAD: use `git rev-parse --short HEAD`.
-- Create with `mkdir -p` after the developer states their intent (Checkpoint 1, step 5).
+- Create with `mkdir -p` after the developer states their intent (Checkpoint 1, step 9).
 - **Non-blocking:** if creation fails, state it and continue. Offer to retry at the end.
 - Update Progress Tracker after each file status change — do not batch.
 
@@ -158,31 +158,71 @@ Use the exact emoji indicators above — not plain text like "pending" or "revie
 
 ### Checkpoint 1/4: Diff Overview
 
+CP1 produces **two channels**: a self-contained HTML overview that opens in the browser
+(the developer's 15-second orientation map) and a thin five-line summary in chat (the
+conversational anchor). The walkthrough in CP2 happens entirely in chat — the HTML is
+read once at the start, then ignored.
+
 1. Run the git command(s) for the selected mode.
-2. Produce the **Diff Overview table**: File | Type | Lines ± | Area
-   - Type: `modified`, `added`, `deleted`, `renamed`
-   - Area: inferred layer or feature (e.g. `inbox UI`, `routing`, `shared`)
-3. State: N files changed, rough ±line count, areas touched.
-4. **Execution Flow Changes table.** Before the per-file walk, establish the high-level
-   mental model of the change and its effects on control flow. Dense table form — no
-   code excerpts (those belong in CP2):
+2. **Compute overview data.** From the diff:
+   - File list with Type (`modified`/`added`/`deleted`/`renamed`) and Lines±.
+   - Inferred layer/area per file from path conventions (component / service / resolver
+     / interceptor / controller / middleware / util / types / route / config / test).
+   - Total ±LOC across all files.
+   - **Cross-layer flag** — true iff files span 2+ distinct layers.
+   - **New-public-entry flag** — true iff any non-test file has a `+export ` line (or
+     equivalent in the language at hand).
+   - **Ripple list** — files that *consume* changed exported symbols but are not in the
+     diff. Source it from the parallel **Impact mapper** agent when active; otherwise
+     keep it conservative — grep for importers of changed exported symbols and list at
+     most 5. Omit the section entirely when nothing surfaces.
+   - **Intent bucket per file** per `references/intent-buckets.md`. When unsure use
+     `Other` — a wrong bucket is worse than a vague one.
+   - **Biggest logical change** — the single file with the largest absolute LOC delta
+     among non-test files. Test files never lead.
+3. **Generate the flow Mermaid block** ONLY IF cross-layer flag OR new-public-entry
+   flag. Use `flowchart LR` with `subgraph` per layer; mark new nodes with `classDef
+   new`, unchanged nodes with `classDef same`. Keep ≤ 12 nodes — collapse non-essential
+   intermediate steps. If neither flag holds, the flow section is omitted entirely.
+4. **Render the HTML.** Substitute the placeholders documented in
+   `references/html-overview-template.md` and use the full template inline at the bottom
+   of that file.
+5. **Write to disk.** `mkdir -p .claude/docs/diff-overviews`. Compute `NNN` as the next
+   zero-padded 3-digit prefix in that directory. Write to
+   `.claude/docs/diff-overviews/NNN-<branch>-YYYYMMDD.html` (`<branch>` follows the same
+   convention as the notes file — replace `/` with `-`; detached HEAD uses the short
+   commit hash).
+6. **Open the overview.** Invoke `scripts/render_overview.sh <path> --open`. The script
+   detaches and never blocks. If no display server is reachable, it prints the `file://`
+   URI instead — pass that URI through to the chat summary so the developer can open it
+   manually.
+7. **Emit the chat summary** (5 lines, no table dump in chat):
 
    ```
-   | Phase | Files | What crosses the boundary |
-   |-------|-------|---------------------------|
-   | request entry | src/guard.ts | new claim-validation check |
-   | session setup | src/session.service.ts | tightened timeout contract |
-   | ...   | ...   | ...                       |
+   <N> files, +<A>/−<B> LOC. <TL;DR sentence>.
+   Biggest logical change: <path>. Overview opened in browser (<file:// URI>).
+   What was the intent behind these changes?
    ```
 
-   Purpose: give the developer the cross-file mental model before drilling into per-file
-   hunks in CP2. **Skip to a one-line summary** for trivial diffs or small diffs
-   contained within a single layer.
-5. If large, propose a walk order and ask for confirmation.
-6. Ask: "What was the intent behind these changes?" Wait — it shapes walkthrough depth
-   and what concerns in Checkpoint 3 are worth flagging.
-7. After receiving the intent: create the notes file with all files `⬜ pending`,
-   state the path. If creation fails, note it and continue.
+   - If total LOC > 400, append a sixth line:
+     `⚠ <X> LOC — past the ~400-LOC ceiling where defect-detection drops sharply
+     (SmartBear/Cisco). Consider walking in chunks or asking for a split.`
+   - On the **first run after this skill upgrade**, append a one-time note:
+     `(walk order now starts at the biggest logical change — name any file to override.)`
+8. **Wait for the intent answer** — it shapes walkthrough depth and what concerns in
+   Checkpoint 3 are worth flagging.
+9. After receiving the intent: create the notes file with all files `⬜ pending`, state
+   the path. If creation fails, note it and continue.
+
+**Trivial diff** (single-file, single-hunk, < 20 LOC): skip the HTML render and the
+five-line summary template — fall through to the one-message summary path documented in
+`Scope Limits` above. The browser tab adds friction without value at this size.
+
+**Offline mode (`/diff-review --offline`)** or a detected CDN block: instead of the
+Mermaid `<pre>` block, write the same flow as `/tmp/diff-overview-flow.d2`, invoke the
+`/d2` skill's `scripts/render_and_open.sh` to produce an SVG, and inline the SVG markup
+into the flow section in place of the `<pre class="mermaid">` block. Drop the
+`<noscript>` warning in this branch. The chat summary is unchanged.
 
 ---
 
@@ -220,10 +260,25 @@ For each hunk:
 5. **Prediction question — only when non-obvious** (complex operator chains, indirect
    mutations, non-linear execution). Test a *consequence* or *interaction*, not textbook
    knowledge. Skip for straightforward changes (guard, rename, constant).
-6. If a prediction was off: name the gap, discuss, resolve before advancing.
+6. If a prediction was off — or if the developer's stated mental model of the hunk
+   diverges from what the code does — **name the gap, discuss, resolve before
+   advancing**. Surfacing that divergence is the highest-value moment in the walk;
+   never let it slide.
 
-**Walk order:** most self-contained first (fewest imports from other changed files),
-outward toward integrators and consumers. Comprehension builds from leaves inward.
+**Walk order:** **biggest logical change first** — Google eng-practices' default for
+reviewers, so any major design feedback lands before the author builds further. The CP1
+overview names the file; start there, or override by naming any other file in the diff.
+
+**Risk-spot priority (tiebreaker).** When multiple files share a similar logical-change
+size, walk **hot-risk areas first**: auth, data mutation, shared libraries, cross-cutting
+interceptors, middleware, guards, base classes. Their downstream blast-radius makes
+mental-model gaps most expensive when undetected.
+
+**Cross-cutting rule.** When a hunk lives in a shared layer (middleware / guard /
+interceptor / base class / shared service), trace not only the direct code path but also
+**at least one representative downstream path** that exercises the changed behavior in
+context. The downstream walk is brief — one consumer is enough — but mandatory: shared-
+layer changes silently alter consumers, and the hunk in isolation hides that.
 
 **Hunk order within a file:** top-to-bottom in source order unless one hunk obviously
 depends on a later one — then walk the dependency first.

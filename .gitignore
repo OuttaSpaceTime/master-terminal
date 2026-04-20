@@ -5,3 +5,6 @@ hello.py
 plan-workspace/
 scout-workspace/
 .claude/docs/plans/
+.claude/docs/diff-notes/
+.claude/docs/diff-overviews/
+.claude/docs/reviews/

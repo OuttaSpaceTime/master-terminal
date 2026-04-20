@@ -56,8 +56,8 @@ apply_bindings() {
   set_binding org.gnome.shell.keybindings switch-to-application-8 "@as []"
   set_binding org.gnome.shell.keybindings switch-to-application-9 "@as []"
 
-  # Add a durable lock-screen shortcut alongside the rest of the system bindings.
-  set_binding org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super><Shift>l']"
+  # Lock-screen shortcut.
+  set_binding org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super>b']"
 }
 
 apply_login_retries() {
