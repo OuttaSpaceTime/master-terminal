@@ -210,24 +210,33 @@ them first.
 7. **Emit the chat summary.** Before writing a single character of the summary, verify:
    (a) the `.claude/docs/diff-overviews/NNN-<branch>-YYYYMMDD.html` file exists on disk,
    and (b) `scripts/render_overview.sh` has been invoked this turn. If either is false,
-   return to step 4 — do NOT emit the summary. The summary is 5 lines, no table dump in
-   chat, and every `<...>` placeholder below is mandatory. The `<overview-path>` slot
-   (absolute path or `file://` URI of the rendered HTML) must be filled with the real
-   path written in step 5 — a summary without it is structurally invalid and must not
-   be sent:
+   return to step 4 — do NOT emit the summary. The summary uses the markdown template
+   below; every `<...>` placeholder is mandatory. The `<overview-path>` slot (absolute
+   path or `file://` URI of the rendered HTML) must be filled with the real path
+   written in step 5 — a summary without it is structurally invalid and must not
+   be sent. Blank lines between sections are part of the template — do not collapse
+   them, they are what makes the summary scannable:
 
    ```
-   <N> files, +<A>/−<B> LOC. <TL;DR sentence>.
-   Biggest logical change: <path>.
-   Overview: <overview-path>
-   What was the intent behind these changes?
+   **<N> files · +<A> / −<B> LOC**
+
+   <TL;DR sentence — what the change does, not what it touches.>
+
+   - **Biggest change:** `<path>`
+   - **Overview:** <overview-path>
+
+   **What was the intent behind these changes?**
    ```
 
-   - If total LOC > 400, append a sixth line:
-     `⚠ <X> LOC — past the ~400-LOC ceiling where defect-detection drops sharply
+   - If total LOC > 400, insert a warning callout as its own paragraph *after* the
+     bulleted list and *before* the intent question, separated by blank lines:
+     `> ⚠ <X> LOC — past the ~400-LOC ceiling where defect-detection drops sharply
      (SmartBear/Cisco). Consider walking in chunks or asking for a split.`
-   - On the **first run after this skill upgrade**, append a one-time note:
-     `(walk order now starts at the biggest logical change — name any file to override.)`
+   - The standing walk-order reminder (`(walk order starts at the biggest logical
+     change — name any file to override.)`) appears as a dim italic line directly
+     under the bulleted list. Include it every run, not just once.
+   - Do NOT append editorial follow-up questions beyond the single intent question.
+     Keep the summary to exactly this structure.
 8. **Wait for the intent answer** — it shapes walkthrough depth and what concerns in
    Checkpoint 3 are worth flagging.
 9. After receiving the intent: create the notes file with all files `⬜ pending`, state

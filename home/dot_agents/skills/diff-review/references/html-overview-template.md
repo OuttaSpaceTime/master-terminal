@@ -9,7 +9,7 @@ it via `scripts/render_overview.sh <path> --open`.
 | Placeholder | Type | Notes |
 |---|---|---|
 | `{{TITLE}}` | text | e.g. `Diff Overview — add-theme-preference` |
-| `{{META}}` | text | e.g. `8 files · +187 / −12 · branch add-theme-preference · 2026-04-20` |
+| `{{META}}` | HTML | one `<span>` per fact; the CSS auto-inserts `·` separators. e.g. `<span>8 files</span><span>+187 / −12</span><span>branch add-theme-preference</span><span>2026-04-20</span>` |
 | `{{TLDR}}` | inline HTML | one or two sentences naming what the change *does*, not the diff |
 | `{{FILE_ROWS}}` | HTML `<tr>...</tr>` rows | one per changed file; emit empty string if there are zero (impossible in practice) |
 | `{{RIPPLE_SECTION}}` | HTML block or empty string | the whole `<h2>Touches but does not modify</h2><ul>...</ul>` block, OR an empty string when no ripple files |
@@ -20,7 +20,7 @@ it via `scripts/render_overview.sh <path> --open`.
 ## File-row format
 
 ```html
-<tr><td><span class="bucket b-feature"></span>Feature</td><td><code>features/settings/settings.component.ts</code></td><td>adds <code>themeControl</code>; wires submit</td></tr>
+<tr><td><span class="bucket b-feature"></span>Feature</td><td class="file-cell"><code>features/settings/settings.component.ts</code></td><td>adds <code>themeControl</code>; wires submit</td></tr>
 ```
 
 The `b-<bucket>` class names come from `references/intent-buckets.md`.
@@ -103,13 +103,21 @@ produce an SVG, then inline the SVG markup directly into `{{FLOW_SECTION}}`. Dro
     th, td { border-color: #333; }
     code { background: #2a2a2a; }
   }
-  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .meta { color: #888; font-size: 0.9rem; margin-bottom: 1.5rem; }
-  .tldr { padding: 0.8rem 1rem; background: #fff; border-left: 3px solid #4a7ec1; margin: 1rem 0; }
+  header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e4e4e4; }
+  @media (prefers-color-scheme: dark) { header { border-bottom-color: #2a2a2a; } }
+  h1 { font-size: 1.5rem; margin: 0 0 0.35rem; letter-spacing: -0.01em; }
+  .meta { color: #888; font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
+  .meta span { white-space: nowrap; }
+  .meta span + span::before { content: "·"; margin-right: 0.75rem; color: #bbb; }
+  .tldr { padding: 0.85rem 1.05rem; background: #fff; border-left: 3px solid #4a7ec1; margin: 1.25rem 0; border-radius: 0 4px 4px 0; }
   h2 { font-size: 1.05rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
-  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
-  th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; table-layout: fixed; }
+  col.c-bucket  { width: 8.5rem; }
+  col.c-file    { width: 22rem; }
+  col.c-purpose { width: auto; }
+  th, td { border: 1px solid #ddd; padding: 0.45rem 0.65rem; text-align: left; vertical-align: top; }
   th { background: #f0f0f0; }
+  td.file-cell code { display: inline-block; max-width: 100%; white-space: normal; word-break: break-all; overflow-wrap: anywhere; line-height: 1.35; }
   code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88rem; }
   code { background: #efefef; padding: 1px 4px; border-radius: 3px; }
   ul.ripple { padding-left: 1.2rem; }
@@ -135,13 +143,20 @@ produce an SVG, then inline the SVG markup directly into `{{FLOW_SECTION}}`. Dro
 </style>
 </head>
 <body>
-<h1>{{TITLE}}</h1>
-<div class="meta">{{META}}</div>
+<header>
+  <h1>{{TITLE}}</h1>
+  <div class="meta">{{META}}</div>
+</header>
 
 <div class="tldr"><strong>TL;DR.</strong> {{TLDR}}</div>
 
 <h2>Changes by intent</h2>
 <table>
+  <colgroup>
+    <col class="c-bucket">
+    <col class="c-file">
+    <col class="c-purpose">
+  </colgroup>
   <thead><tr><th>Bucket</th><th>File</th><th>Purpose</th></tr></thead>
   <tbody>
 {{FILE_ROWS}}
