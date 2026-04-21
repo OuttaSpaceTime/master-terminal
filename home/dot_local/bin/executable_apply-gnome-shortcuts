@@ -58,6 +58,18 @@ apply_bindings() {
 
   # Lock-screen shortcut.
   set_binding org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super>b']"
+
+  # Custom keybindings list.
+  gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings \
+    "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
+
+  # Bluetooth audio profile toggle (WH-1000XM5): Super+Shift+i
+  # (plain Super+i is silently grabbed by a shell extension on Wayland.)
+  local base="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding"
+  local path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+  gsettings set "${base}:${path}" name    "Toggle headset"
+  gsettings set "${base}:${path}" command "${HOME}/.local/bin/bt-audio-toggle"
+  gsettings set "${base}:${path}" binding "<Super><Shift>i"
 }
 
 apply_login_retries() {

@@ -1,7 +1,7 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-04-14
+updated: 2026-04-21
 ---
 
 # Wiki Index
@@ -18,3 +18,4 @@ updated: 2026-04-14
 - [Claude Code](claude-code.md) — managed files, settings.json drift constraints, notification hooks
 - [Agent File Access](agent-file-access.md) — deny rules, ignore files, sandbox boundaries, secret-handling patterns
 - [Sofle Keyboard](sofle-keyboard.md) — Keebart Sofle Choc Pro, Vial config, layout decisions
+- [Bluetooth Audio Toggle](bluetooth-audio-toggle.md) — Super+Shift+i WH-1000XM5 profile switch, codec ceiling, GNOME grab quirks

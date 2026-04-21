@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+HEADSET_MAC="AC:80:0A:9E:6C:B2"
+CARD="bluez_card.$(echo "$HEADSET_MAC" | tr ':' '_')"
+
+notify() {
+    local title=$1
+    local body=$2
+    local icon=${3:-audio-headset-bluetooth}
+    notify-send --app-name="WH-1000XM5" --icon="$icon" --expire-time=2500 "$title" "$body" 2>/dev/null || true
+    echo "$title — $body"
+}
+
+if ! bluetoothctl info "$HEADSET_MAC" | grep -q "Connected: yes"; then
+    notify "WH-1000XM5" "Not connected" "network-wireless-disconnected"
+    exit 1
+fi
+
+current=$(pactl list cards 2>/dev/null \
+    | awk "/Name: $CARD/{found=1} found && /Active Profile:/{print \$3; exit}")
+
+if [[ "$current" == "a2dp-sink" || "$current" == "a2dp-sink-sbc" || "$current" == "a2dp-sink-sbc_xq" ]]; then
+    pactl set-card-profile "$CARD" headset-head-unit-msbc
+    notify "WH-1000XM5" "Headset mode — mic on (HSP/HFP mSBC)" "audio-input-microphone"
+else
+    pactl set-card-profile "$CARD" a2dp-sink
+    notify "WH-1000XM5" "Hi-fi mode — LDAC (A2DP, no mic)" "audio-headphones"
+fi
