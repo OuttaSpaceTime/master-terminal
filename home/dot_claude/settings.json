@@ -1,11 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(npx ng serve*)",
       "WebSearch",
       "WebFetch"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "hooks": {
     "PreToolUse": [
@@ -24,6 +28,15 @@
           {
             "type": "command",
             "command": "~/.claude/set-tab-icon.sh running"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/chezmoi-guard.sh"
           }
         ]
       }
@@ -60,9 +73,9 @@
     "skill-creator@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true
   },
-  "effortLevel": "high",
-  "advisorModel": "opus",
-  "voiceEnabled": true,
+  "effortLevel": "medium",
   "autoDreamEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true
 }
