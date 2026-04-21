@@ -22,6 +22,7 @@ return {
               "signatureHelp",
               "workspaceSymbol",
               "inlayHint",
+              "references",
             },
           },
           capabilities = {
@@ -30,11 +31,8 @@ return {
             },
           },
         },
-        solargraph = {
-          cmd = { "rbenv", "exec", "solargraph", "stdio" },
-        },
         rubocop = {
-          cmd = { "rbenv", "exec", "rubocop", "--lsp" },
+          cmd = { "rbenv", "exec", "bundle", "exec", "rubocop", "--lsp" },
           capabilities = {
             general = {
               positionEncodings = { "utf-16" },
