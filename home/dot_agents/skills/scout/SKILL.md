@@ -27,12 +27,34 @@ The scout succeeds when the developer can explain the affected code paths, unkno
 
 When you encounter ambiguity — scope boundaries, design choices, API shape, data flow direction, permission models, error handling — **never silently pick a direction.** Present options with concrete tradeoffs and ask the developer to choose.
 
+## Correction Primitive
+
+When the developer corrects a prior finding, assumption, or decision:
+
+- **Edit the original statement in the artifact, in place.** Do not append "actually, X" at the bottom.
+- If the correction invalidates a later checkpoint, mark affected downstream findings with `[STALE — re-derive]` and re-walk them together. Do not carry invalidated conclusions forward.
+- In the chat walkthrough, acknowledge the edit with one line: "Updated CP2 Step 1 — the ledger now reads X." Then continue from the corrected state.
+- Never argue with the dev by appending a contradiction; the artifact must reflect current shared understanding, not its edit history.
+
+This matters because downstream conclusions compound. An uncorrected wrong finding in CP2 poisons the decision gates in CP3 and the risk model in CP4.
+
 ## Interactive Constraints (mandatory)
 - ONE concept per message, under 200 words of prose. Pause after each step or checkpoint.
 - 3-12 lines of prose per message. If more is needed, split.
 - Code snippets: use fenced blocks with `lang path:start-end` info string and enclosing context.
 - If developer says "skip" or "I know this," fast-forward immediately.
+- **No slot-machine steps.** A checkpoint must never end in "I will now go do extensive work — come back later for the result." If a step would require more than ~30s of hands-off waiting before the dev's next decision point, split it smaller or spawn parallel agents with a concrete return point. Scout's value comes from tight feedback, not variable-reward batching.
 - For additional shared principles (scope awareness, handling disagreement), see `references/interactive-principles.md`.
+
+## Modes
+
+Scout runs in one of three modes, set by the developer on invocation or by a `--mode=learning|standard|concise` flag. Default is **Standard**.
+
+- **Learning** — highest adaptive depth. CP2 code traces use predict-first walkthroughs. Probe mode is encouraged. The Look Back coda is mandatory. Expect more exchanges, more pauses, more "what would you expect here?" questions.
+- **Standard** — the baseline. Predict-first optional (use it at high-risk forks). Probe mode on demand. Look Back coda recommended.
+- **Concise** — minimum viable scout. Compact template unless reclassified. No predict-first, no probe mode unless asked. Look Back collapses to a single sentence.
+
+Announce the active mode in the first message. If discovery reveals a mismatch — the dev keeps asking "why" (bump to Learning) or keeps saying "skip" (drop to Concise) — suggest a mode change. Do not switch silently.
 
 ## Output Contract — Progress Footer (mandatory)
 
@@ -54,6 +76,8 @@ Two outputs, two purposes:
 - **Interactive chat walkthrough**: The *conversation* — questions, code traces shown to the developer, pauses for response. Builds the developer's mental model. Not persisted.
 
 In non-interactive contexts (subagents, report-only requests), produce the report directly. The two outputs naturally collapse into one — that's fine.
+
+**Export tagging.** Findings that must reach `/plan` are tagged inline with `[→plan]`. The `/plan` handoff reads only tagged findings plus the Running Ledger. This lets the scout be thorough without forcing `/plan` to parse the whole document. The Look Back coda and the ledger's Decided/Open sections are `[→plan]` by default.
 
 **Report-only structural rules:** Omit checkpoint numbering labels (`Checkpoint 3/5:`) — use content headings instead (e.g., "Decision Gates" not "Checkpoint 3/5: Decision Gates"). Proportional depth still applies — a small feature in report-only mode is a short document, not a long one with all five section headers.
 
@@ -79,6 +103,34 @@ Scale depth to feature complexity — determined by execution paths, architectur
 - **Large features** (cross-cutting concerns, new abstractions, multiple integration points): Full depth. Split dense checkpoints into multiple steps. Expect 10+ exchanges.
 
 A 2-file change to an auth interceptor is large. A 10-file rename is small. Judge by impact, not file count.
+
+## Running Ledger
+
+Every scout report begins with a ledger block, updated after each checkpoint. The ledger is the single source of truth for scout state — everything below it is supporting detail.
+
+Format:
+
+```markdown
+## Ledger
+
+**Known** (verified against code/docs):
+- <fact> — `path:line`
+
+**Assumed** (inferred, not verified):
+- <assumption> — source: <ticket | adjacent code | convention>
+
+**Open** (unresolved, blocks planning):
+- <question> — CP where it was surfaced
+
+**Decided** (gates resolved in this scout):
+- <decision> — rationale in one line
+```
+
+Rules:
+- Every finding elsewhere in the report must appear in exactly one ledger section.
+- Movement is one-way by checkpoint: Open → Decided (via CP3), Assumed → Known (via verification or a probe), Known stays Known.
+- When the Correction Primitive fires, update the ledger first, the prose sections second.
+- Report-only invocations: still write the ledger. It is what `/plan` reads.
 
 ### Complexity Reclassification
 
@@ -175,6 +227,8 @@ Split into 2-3 steps, pausing after each.
 - **Verify ticket claims against actual code** — if the ticket names a service or behavior, confirm it exists and works as described. Contradictions are high-priority findings.
 - **Surface questions as you trace** — don't wait for a separate checkpoint. When you hit an ambiguity or fork point, flag it immediately ("this could work as X or Y — we'll decide in Checkpoint 3").
 - Have the developer trace along — if their mental model diverges from code, pause and align.
+- **Predict-first (mandatory in Learning, optional in Standard, off in Concise).** Before revealing what a line or call does, ask: "What do you expect `x` to be here?" or "Which branch do you expect this to take?" Reveal the answer only after the dev commits to a prediction. If the prediction is wrong, pause and walk the code together until the model aligns — do not just correct and move on. This is how CP2 actually builds a mental model instead of narrating one.
+- **Scenario selection for predictions.** Pick prediction points where being wrong would change planning — forks, error paths, state transitions, boundary conversions, nullability. Do not ask the dev to predict trivia.
 
 > Example shape (illustrative, not prescriptive): *"Touch field `theme` on `UserSettings` at `a.ts:42` → serializer at `b.ts:88` emits a new key → cache read at `c.ts:15` misses on existing users → the theme resolver at `d.tsx:30` currently assumes `light` as fallback → test `e.spec.ts:22` asserts the old serialized shape and would fail."*
 
@@ -184,6 +238,10 @@ Split into 2-3 steps, pausing after each.
 - **Extension Points:** Where the existing code provides natural hook points. Ask: "Can we hook into existing state, or do we need something new?"
 - **Test Seams:** Testable entry points (component inputs, service methods, observable emissions, route params, API endpoints). For each, note the test tool or pattern that controls it. Distinguish seams that already work from seams that need creation.
 - **Test Scenario Landscape:** Map acceptance criteria to happy-path scenarios. Surface edge cases and error cases from the walkthrough. Mental-model level, not detailed test specs.
+
+**Probe mode (optional, on demand):** When static reading leaves a load-bearing ambiguity — the type is `any`, the config source isn't obvious, runtime shape differs from declared type, the bug's actual input is unknown — run a small probe and cite the *result*, not just the code. Examples: a one-shot `console.log`/`pp`/`dbg` at a known hit point; `git show HEAD:path/to/config.json | jq .key`; a single-row DB probe; `rg <symbol>` to enumerate real call sites; a unit-test harness run that prints a value. Paste the output in the artifact as a fenced block labeled `probe: <command>` and link it to the ledger entry it resolves. Probes move findings from **Assumed** → **Known**.
+
+**Probe defaults:** Run probes automatically when the probe is read-only and converts an Assumed-blocker to Known in a single command. Ask the developer first when the probe mutates state, touches shared systems, or requires inserting temporary instrumentation that must be reverted. Use probes sparingly — each one is a cache miss on the dev's attention. Reserve them for load-bearing ambiguities. For common probe idioms by layer, see `references/workflow.md` → Probe Patterns.
 
 **Blocking questions:** After the code trace, ask the 2-4 most important questions — the ones that could change scope, data flow, or API shape. Use forced-choice framing when possible ("Should this be A or B?"). Tie each question to a planning consequence ("if A, we need X; if B, we need Y"). Do not advance to Checkpoint 3 until blocking questions are answered or explicitly deferred.
 
@@ -240,6 +298,16 @@ An iterative stress test that builds the developer's mental model of the change 
 - State whether planning is ready, conditionally ready, or blocked.
 - Summarize: minimal `Now` scope, open blockers, next action.
 - Verify the scout produced what `/plan` needs: (1) clear `Now/Later/Out` boundaries, (2) all blocking ambiguities resolved or accepted as risks, (3) affected files and test seams identified.
+
+## Look Back (coda after CP5)
+
+After the handoff summary, one short block — mandatory in Learning mode, recommended in Standard, single-sentence in Concise:
+
+- **What was surprising?** The one finding that was not predicted by the ticket or the first-glance code reading. If nothing was surprising, the scout was probably under-depth — flag it.
+- **What heuristic generalizes?** One sentence a future scout in this area should know. Example: *"Any change to the settings serializer needs a matching migration in `user_settings_v2.ts` — the pair is load-bearing."*
+- **What would unblock faster next time?** A concrete tool, doc, probe, or test harness the dev wished they had during this scout.
+
+Persist the coda in the artifact under a `## Look Back` heading (`[→plan]` by default). When scouting the same area later, read prior Look Back sections first — they compound across scouts. The template lives in `references/workflow.md` → Look Back Template.
 
 ## Workflow
 
