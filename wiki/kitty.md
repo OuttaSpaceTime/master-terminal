@@ -2,7 +2,7 @@
 title: Kitty
 tags: [kitty, terminal]
 created: 2026-04-07
-updated: 2026-04-17
+updated: 2026-04-21
 ---
 
 # Kitty
@@ -37,6 +37,15 @@ This repo also binds kitty-scrollback.nvim for vim-style browsing:
 - `Ctrl+Shift+H` — open full scrollback buffer in nvim (`kitty.conf:78`)
 - `Ctrl+Shift+G` — open last command's output in nvim (`kitty.conf:80`)
 - Inside the nvim pager: normal motions (`j/k`, `Ctrl+U`/`Ctrl+D`, `gg`/`G`, `/` to search)
+
+## Copy On Select
+
+- `copy_on_select yes` copies selected text to the clipboard automatically
+- `strip_trailing_spaces smart` strips trailing whitespace from copied selections so pasted commands don't carry extra line breaks from terminal line-wrapping
+  - Values: `never` (default, keeps everything), `smart` (strip on normal selections, preserve in rectangle selections), `always` (strip on both)
+  - Rectangle selection in kitty: hold `Ctrl+Alt` while dragging — selects a block instead of flowing line-by-line, useful for grabbing aligned columns where padding spaces matter
+  - Stripping only affects the clipboard contents, not the visual highlight — the selection overlay still covers the whitespace
+  - Only trailing whitespace (between the last non-space character and the newline) is removed; leading whitespace and inter-word spaces are preserved
 
 ## Sessions
 
