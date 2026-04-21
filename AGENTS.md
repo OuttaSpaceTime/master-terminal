@@ -50,6 +50,7 @@ This repository has three responsibilities:
 - When a request touches tools, settings, plugins, keymaps, shells, or workspace skills, inspect the relevant `home/` files directly
 - Keep durable repo-specific workflow knowledge in the local `wiki/`
 - Do not use a separate repo-local `.agents/skills/wiki-*` layer in this repository
+- Skills that are no longer in regular use can be archived with `agent-skills-archive <name>` — the source is moved to `home/dot_agents/skills-archive/` and the Claude/Codex symlinks plus deployed copies are removed. Restore with `agent-skills-archive --restore <name>`. Archived skills are preserved in the repo, just not deployed.
 
 ## Working With The Local Wiki
 
@@ -83,6 +84,11 @@ chezmoi -S home apply --force
 
 # Deploy only skills
 chezmoi -S home apply --force ~/.agents/skills ~/.claude/skills ~/.codex/skills
+
+# Archive a rarely-used skill (move source out of deployment path)
+agent-skills-archive <name> [<name> ...]
+agent-skills-archive --list
+agent-skills-archive --restore <name>
 
 # Import skills from deployed ~/.claude/skills back into chezmoi source tree
 agent-skills-sync --source claude --apply

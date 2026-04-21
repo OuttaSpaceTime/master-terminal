@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# agent-skills-archive — archive or restore workspace-local agent skills.
+#
+# Archived skills are moved out of the deployment path so chezmoi no longer
+# deploys them, but the source is preserved under skills-archive/ and can be
+# restored later.
+#
+# Usage:
+#   agent-skills-archive <name> [<name> ...]   archive skills
+#   agent-skills-archive --restore <name>       restore an archived skill
+#   agent-skills-archive --list                 list archived skills
+
+set -euo pipefail
+
+REPO="${MASTER_TERMINAL_REPO:-$HOME/Code/Misc/master-terminal}"
+SRC="$REPO/home/dot_agents/skills"
+ARCHIVE="$REPO/home/dot_agents/skills-archive"
+CLAUDE_SYMLINKS="$REPO/home/dot_claude/skills"
+CODEX_SYMLINKS="$REPO/home/dot_codex/skills"
+
+usage() {
+  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+list_archived() {
+  if [[ -d "$ARCHIVE" ]]; then
+    find "$ARCHIVE" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+  fi
+}
+
+archive_one() {
+  local name="$1"
+  if [[ ! -d "$SRC/$name" ]]; then
+    echo "skip: $name not found at $SRC/$name" >&2
+    return 1
+  fi
+  mkdir -p "$ARCHIVE"
+  mv "$SRC/$name" "$ARCHIVE/$name"
+  rm -f "$CLAUDE_SYMLINKS/symlink_$name" "$CODEX_SYMLINKS/symlink_$name"
+  # chezmoi apply does not remove orphaned targets; clean up deployed copies.
+  rm -f "$HOME/.claude/skills/$name" "$HOME/.codex/skills/$name"
+  rm -rf "$HOME/.agents/skills/$name"
+  echo "archived: $name"
+}
+
+restore_one() {
+  local name="$1"
+  if [[ ! -d "$ARCHIVE/$name" ]]; then
+    echo "error: $name not found at $ARCHIVE/$name" >&2
+    return 1
+  fi
+  if [[ -d "$SRC/$name" ]]; then
+    echo "error: $SRC/$name already exists" >&2
+    return 1
+  fi
+  mv "$ARCHIVE/$name" "$SRC/$name"
+  printf '../../.agents/skills/%s' "$name" > "$CLAUDE_SYMLINKS/symlink_$name"
+  printf '../../.agents/skills/%s' "$name" > "$CODEX_SYMLINKS/symlink_$name"
+  echo "restored: $name"
+}
+
+apply_chezmoi() {
+  if command -v chezmoi >/dev/null 2>&1; then
+    echo
+    echo "Deploying with chezmoi..."
+    chezmoi -S "$REPO/home" apply "$HOME/.agents/skills" "$HOME/.claude/skills" "$HOME/.codex/skills"
+  else
+    echo "note: chezmoi not found — run 'chezmoi -S $REPO/home apply' manually" >&2
+  fi
+}
+
+[[ $# -eq 0 ]] && usage 1
+
+case "$1" in
+  -h|--help) usage 0 ;;
+  --list) list_archived; exit 0 ;;
+  --restore)
+    shift
+    [[ $# -eq 0 ]] && usage 1
+    for n in "$@"; do restore_one "$n"; done
+    apply_chezmoi
+    ;;
+  *)
+    for n in "$@"; do archive_one "$n" || true; done
+    apply_chezmoi
+    ;;
+esac
