@@ -4,6 +4,7 @@ return {
     opts = {
       servers = {
         ruby_lsp = {
+          mason = false,
           cmd = { "rbenv", "exec", "ruby-lsp" },
           init_options = {
             enabledFeatures = {
@@ -32,7 +33,8 @@ return {
           },
         },
         rubocop = {
-          cmd = { "rbenv", "exec", "bundle", "exec", "rubocop", "--lsp" },
+          mason = false,
+          cmd = { "rbenv", "exec", "bundle", "exec", "rubocop", "--lsp", "--no-server" },
           capabilities = {
             general = {
               positionEncodings = { "utf-16" },

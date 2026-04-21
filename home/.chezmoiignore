@@ -1,0 +1,4 @@
+.agents/skills-archive
+.agents/skills-archive/**
+.local/bin/__pycache__
+.local/bin/__pycache__/**
