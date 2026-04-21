@@ -22,3 +22,25 @@ vim.api.nvim_create_autocmd({ "VimEnter", "DirChanged", "BufEnter" }, {
   group = title_group,
   callback = update_project_title,
 })
+
+-- Aggressively check for external file changes (e.g. Claude Code edits)
+-- so `autoread` actually kicks in without manual :checktime.
+local checktime_group = vim.api.nvim_create_augroup("auto_checktime", { clear = true })
+
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "CursorHoldI", "TermLeave" }, {
+  group = checktime_group,
+  pattern = "*",
+  callback = function()
+    if vim.fn.getcmdwintype() == "" and vim.bo.buftype ~= "nofile" then
+      pcall(vim.cmd, "checktime")
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
+  group = checktime_group,
+  pattern = "*",
+  callback = function()
+    vim.notify("File changed on disk — buffer reloaded.", vim.log.levels.INFO)
+  end,
+})
