@@ -1,6 +1,7 @@
 ---
 name: scope-first
-description: Front-load scope before any multi-file refactor. Produces a short scope contract — files to touch, exact behavior changes, what will NOT change — and waits for explicit user sign-off before any edits. Use when the user asks for a refactor, rename, extraction, or any change likely to touch more than two files. Trigger on "refactor X", "rename X across the codebase", "extract X into Y", "clean up X", "/scope-first", or any request where scope creep is a risk. Distinct from /plan (full sequenced strategy) and /sketch (draft diffs) — this is lighter-weight: just the scope contract, no diffs, no implementation plan.
+description: >-
+  Front-load scope before any multi-file refactor. Produces a short scope contract — files to touch, exact behavior changes, what will NOT change — and waits for explicit user sign-off before any edits. Use when the user asks for a refactor, rename, extraction, or any change likely to touch more than two files. Trigger on "refactor X", "rename X across the codebase", "extract X into Y", "clean up X", "/scope-first", or any request where scope creep is a risk. Distinct from /plan (full sequenced strategy) and /sketch (draft diffs) — this is lighter-weight: just the scope contract, no diffs, no implementation plan.
 ---
 
 # scope-first

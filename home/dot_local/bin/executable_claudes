@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Run claude against the Siemens LLM gateway.
+# ANTHROPIC_AUTH_TOKEN must be provided by the environment (e.g. via direnv).
+set -euo pipefail
+
+if [[ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
+  echo "claudes: ANTHROPIC_AUTH_TOKEN is not set (expected from direnv)." >&2
+  exit 1
+fi
+
+export ANTHROPIC_BASE_URL="https://api.siemens.com/llm"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-5"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5"
+export API_TIMEOUT_MS="3000000"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
+export DISABLE_FEEDBACK_COMMAND="1"
+export CLAUDE_CODE_NO_FLICKER="1"
+
+exec claude "$@"

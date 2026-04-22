@@ -179,6 +179,8 @@ bindkey "^ " forward-char
 bindkey '^H' backward-kill-word
 bindkey '^[OA' up-line-or-search
 bindkey '^[OB' down-line-or-select
+# Ctrl+Enter accepts zsh-autosuggestion (kitty sends \e[13;5u for this chord)
+bindkey '^[[13;5u' autosuggest-accept
 
 
 function rebase-onto {
