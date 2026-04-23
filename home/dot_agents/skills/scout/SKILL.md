@@ -17,7 +17,7 @@ Discover what must be learned before planning or implementation.
 
 The scout succeeds when the developer can explain the affected code paths, unknowns, and scope rationale themselves — not when the artifact is written. Give the developer better questions, better code understanding, and better decision surfaces — do not make decisions for them.
 
-## Learning Integration
+## Adaptive Integration
 
 - At each checkpoint, trace the code path together so the developer follows the execution, not just the summary.
 - When the developer's response reveals a gap in understanding, pause to fill it before continuing (adaptive depth).
@@ -46,15 +46,17 @@ This matters because downstream conclusions compound. An uncorrected wrong findi
 - **No slot-machine steps.** A checkpoint must never end in "I will now go do extensive work — come back later for the result." If a step would require more than ~30s of hands-off waiting before the dev's next decision point, split it smaller or spawn parallel agents with a concrete return point. Scout's value comes from tight feedback, not variable-reward batching.
 - For additional shared principles (scope awareness, handling disagreement), see `references/interactive-principles.md`.
 
-## Modes
+## Interaction Mode
 
-Scout runs in one of three modes, set by the developer on invocation or by a `--mode=learning|standard|concise` flag. Default is **Standard**.
+Scout runs in one interactive mode that adapts depth to the developer's responses.
 
-- **Learning** — highest adaptive depth. CP2 code traces use predict-first walkthroughs. Probe mode is encouraged. The Look Back coda is mandatory. Expect more exchanges, more pauses, more "what would you expect here?" questions.
-- **Standard** — the baseline. Predict-first optional (use it at high-risk forks). Probe mode on demand. Look Back coda recommended.
-- **Concise** — minimum viable scout. Compact template unless reclassified. No predict-first, no probe mode unless asked. Look Back collapses to a single sentence.
+- Start with the normal checkpoint flow and keep the discussion tight and concrete.
+- Go deeper when the developer keeps asking "why" or shows a gap in understanding.
+- Fast-forward when the developer says "skip" or "I know this."
+- Use predict-first walkthroughs and probe-style checks whenever they improve clarity, especially at higher-risk forks.
+- Keep the Look Back coda proportionate to the material, from a short recap for small scopes to a fuller handoff when the feature is larger.
 
-Announce the active mode in the first message. If discovery reveals a mismatch — the dev keeps asking "why" (bump to Learning) or keeps saying "skip" (drop to Concise) — suggest a mode change. Do not switch silently.
+Announce that scout is running interactively in the first message. Do not present mode choices or switch between named modes.
 
 ## Output Contract — Progress Footer (mandatory)
 
@@ -227,7 +229,7 @@ Split into 2-3 steps, pausing after each.
 - **Verify ticket claims against actual code** — if the ticket names a service or behavior, confirm it exists and works as described. Contradictions are high-priority findings.
 - **Surface questions as you trace** — don't wait for a separate checkpoint. When you hit an ambiguity or fork point, flag it immediately ("this could work as X or Y — we'll decide in Checkpoint 3").
 - Have the developer trace along — if their mental model diverges from code, pause and align.
-- **Predict-first (mandatory in Learning, optional in Standard, off in Concise).** Before revealing what a line or call does, ask: "What do you expect `x` to be here?" or "Which branch do you expect this to take?" Reveal the answer only after the dev commits to a prediction. If the prediction is wrong, pause and walk the code together until the model aligns — do not just correct and move on. This is how CP2 actually builds a mental model instead of narrating one.
+- **Predict-first when it improves clarity.** Before revealing what a line or call does, ask: "What do you expect `x` to be here?" or "Which branch do you expect this to take?" Reveal the answer only after the dev commits to a prediction. If the prediction is wrong, pause and walk the code together until the model aligns — do not just correct and move on. This is how CP2 actually builds a mental model instead of narrating one.
 - **Scenario selection for predictions.** Pick prediction points where being wrong would change planning — forks, error paths, state transitions, boundary conversions, nullability. Do not ask the dev to predict trivia.
 
 > Example shape (illustrative, not prescriptive): *"Touch field `theme` on `UserSettings` at `a.ts:42` → serializer at `b.ts:88` emits a new key → cache read at `c.ts:15` misses on existing users → the theme resolver at `d.tsx:30` currently assumes `light` as fallback → test `e.spec.ts:22` asserts the old serialized shape and would fail."*
@@ -301,7 +303,7 @@ An iterative stress test that builds the developer's mental model of the change 
 
 ## Look Back (coda after CP5)
 
-After the handoff summary, one short block — mandatory in Learning mode, recommended in Standard, single-sentence in Concise:
+After the handoff summary, one short block:
 
 - **What was surprising?** The one finding that was not predicted by the ticket or the first-glance code reading. If nothing was surprising, the scout was probably under-depth — flag it.
 - **What heuristic generalizes?** One sentence a future scout in this area should know. Example: *"Any change to the settings serializer needs a matching migration in `user_settings_v2.ts` — the pair is load-bearing."*

@@ -53,29 +53,19 @@ The footer is a single line, rendered verbatim, at the very bottom of the messag
 - Checkpoints sharpen reasoning — keep them generative, not bureaucratic.
 - Success test: the developer could implement without referring back to the artifact. The understanding is internalized; the artifact is backup.
 
-## Planning Modes
+## Interactive Planning Flow
 
-**Mode selection:** Check `.claude/docs/scouts/` for files matching the current feature, issue number, or branch name. Match found and current (same feature/issue, created this session or explicitly referenced) -> Mode A. Otherwise -> Mode B.
+Plan always runs interactively. It adapts how much discovery it does, but it does not expose named modes.
 
-### Mode A: Scout-Backed Planning
-
-- Inherit the scout as primary source: problem framing, current-flow understanding, resolved questions, scope boundaries, risks, blockers.
-- Inherit scout's test landscape — testing seams, scenario landscape, existing patterns and helpers — and turn them into concrete test specs (precondition → action → expected outcome) rather than re-discovering.
-- Validate only what matters for implementation accuracy — do not re-explore.
-- Focus on sequencing, touchpoints, verification, compatibility, and draft diffs.
-- Rebuild exploratory sections only if the scout is contradicted by code or missing implementation-critical detail.
-
-### Mode B: Direct Planning With Minimal Discovery
-
-- Run a bounded discovery pass first: read no more than 10-15 files.
-- **File prioritization heuristic**: Start with (1) the route/entrypoint file, (2) the most similar existing feature for pattern reference, (3) shared services the feature will depend on, (4) existing models/types in the affected domain, (5) existing test files for pattern reference. Deprioritize config files, unrelated features, and generic utilities.
-- Build only enough understanding to plan safely: entrypoint, execution flow, architectural boundaries, local patterns, high-confidence touchpoints, major unknowns.
+- If a matching scout exists for the same feature, issue, or branch, inherit it as the primary source and validate only what matters for implementation accuracy.
+- If no scout exists, run a bounded discovery pass first: read no more than 10-15 files.
+- Use the smallest amount of discovery needed to plan safely: entrypoint, execution flow, architectural boundaries, local patterns, high-confidence touchpoints, major unknowns.
 - After discovery, classify each ambiguity found and choose one of three outcomes:
   1. **Resolved by discovery** — the search answered the question. State what was found and proceed.
   2. **1-2 isolated ambiguities remain** — present options with tradeoffs and ask the developer to decide. Do not punt to `/scout` for questions you can frame clearly.
   3. **Broad ambiguity remains** — multiple unknowns that interact or cascade (e.g., unknown API contract that reshapes service layer, auth, and test strategy). Stop and recommend `/scout`, specifying what the scout should resolve.
 - The classification must appear in the **Discovery Assessment** section of the output (see Output Template). Skipping this reasoning is not allowed — even when discovery resolves all ambiguities, state that explicitly.
-- Do not silently expand into a full scout.
+- Do not silently expand into a fully exploratory scout.
 
 **Minimal discovery exit criteria** -- all must be satisfied before proceeding to planning:
 
@@ -110,23 +100,23 @@ Present three checkpoints interactively, each as `Checkpoint X/3: <title>`. Afte
 
 ## Workflow Steps
 
-### 1. Gather Inputs and Select Planning Mode
+### 1. Gather Inputs and Select Planning Flow
 
 - Require an issue, brief, or equivalent source input.
-- If a scout document already exists for this feature, use `Mode A: Scout-Backed Planning`.
-- If no scout exists, use `Mode B: Direct Planning With Minimal Discovery`.
+- If a scout document already exists for this feature, inherit it as the primary source.
+- If no scout exists, perform the minimal bounded discovery needed to plan safely.
 - Preserve source requirements verbatim in the output.
-- Mark which mode is active near the top of the plan.
+- Mark whether the plan is scout-backed or discovery-based near the top of the plan.
 
 ### 2. Load Existing Understanding
 
-If using scout-backed planning:
+If using a scout-backed flow:
 
 - extract decided items, assumptions, blockers, and scope boundaries from the scout
 - inherit the current-flow understanding unless code inspection disproves it
 - inherit resolved questions instead of asking them again
 
-If using direct planning with minimal discovery:
+If using a discovery-based flow:
 
 - record the initial constraints, non-goals, and missing inputs
 - state that only minimal discovery was performed
@@ -147,7 +137,7 @@ If using direct planning with minimal discovery:
 
 ### 5. Assess Discovery and Decide Whether Planning Can Continue
 
-This step produces the **Discovery Assessment** section in the output. It is required for Mode B and must appear before any implementation detail.
+This step produces the **Discovery Assessment** section in the output when no scout exists, and it must appear before any implementation detail.
 
 - List each ambiguity found during discovery.
 - Classify each as: **resolved** (discovery answered it), **isolated** (remains but can be framed as options), or **broad** (interacts with other unknowns, cascades).
@@ -160,8 +150,8 @@ This step produces the **Discovery Assessment** section in the output. It is req
 ### 6. Set Objective and Scope Guardrails
 
 - Start with a concise objective statement.
-- In scout-backed mode, inherit scope boundaries from the scout and restate only what matters for implementation.
-- In direct mode, define the smallest safe in-scope and out-of-scope boundary supported by the minimal discovery pass.
+- In a scout-backed flow, inherit scope boundaries from the scout and restate only what matters for implementation.
+- In a discovery-based flow, define the smallest safe in-scope and out-of-scope boundary supported by the minimal discovery pass.
 - Separate confirmed decisions from assumptions.
 - Mark each decision gate with a status: `[DECIDED]` (resolved, proceed), `[OPEN]` (unresolved, implementation must not proceed past this point without developer input), or `[ASSUMED]` (assumed but not confirmed, flag if implementation reveals it's wrong). An implementation agent encountering an `[OPEN]` gate must stop and ask. It must not silently resolve the decision.
 
@@ -244,7 +234,7 @@ If discovery reveals that the initial classification is wrong — e.g., the prom
 
 Use this template when the change is genuinely small after discovery:
 
-1. Planning Mode + TL;DR (combined, 2-3 sentences)
+1. Planning Flow + TL;DR (combined, 2-3 sentences)
 2. File Impact (table)
 3. Implementation Steps (numbered)
 4. Testing Strategy (table)
@@ -258,8 +248,8 @@ Omit: separate Source Requirements, Objective, Scope Guardrails, Before/After Ex
 
 **Always-present sections** (core of every medium+ plan):
 1. Report Location
-2. Planning Mode
-3. Discovery Assessment (Mode B only) — ambiguities found, classification, path chosen and why
+2. Planning Flow
+3. Discovery Assessment (when no scout exists) — ambiguities found, classification, path chosen and why
 4. TL;DR
 5. Source Requirements
 6. Objective
@@ -288,20 +278,20 @@ Always save the final plan to `.claude/docs/plans/plan-YYYYMMDD-HHMMSS.md` (crea
 
 For shared protocol mechanics (complexity gate, spawn protocol, synthesis, on-demand triggers), see `references/parallel-agents.md`. For this skill's agent roster, return format schemas, and critique agent protocol, see `references/parallel-discovery.md`.
 
-**Activation:** Mode B medium+ tasks spawn upfront agents automatically. Mode A (scout-backed) skips upfront agents by default — the scout already did discovery. Override with `--parallel` (force agents) or `--no-parallel` (force single-pass).
+**Activation:** Discovery-based medium+ tasks spawn upfront agents automatically. Scout-backed flows skip upfront agents by default because the scout already did discovery. Override with `--parallel` (force agents) or `--no-parallel` (force single-pass).
 
-**Upfront agent roster (Mode B, medium+ tasks):**
+**Upfront agent roster (discovery-based medium+ tasks):**
 - **Entrypoint flow tracer** — trace trigger-to-outcome execution path, map architectural boundaries
 - **Pattern reference reader** — read the most similar existing feature for conventions, naming, structure, test style
 - **Test infrastructure scanner** — check test helpers, patterns, existing coverage, framework-specific test utilities
 
-**Phase placement:** Agents run during Steps 1-5 (discovery phase). Synthesis feeds Step 6+ (planning phase). If the project has a verification suite, run gate checks in parallel with upfront agents. The 10-15 file cap for Mode B minimal discovery applies to the main thread only — upfront agents operate within their own bounded mandate.
+**Phase placement:** Agents run during Steps 1-5 (discovery phase). Synthesis feeds Step 6+ (planning phase). If the project has a verification suite, run gate checks in parallel with upfront agents. The 10-15 file cap for the discovery-based main thread applies only to the main thread — upfront agents operate within their own bounded mandate.
 
 **Scope at spawn time:** If scope guardrails have not yet been set (Step 6 runs after discovery), pass the raw feature request as a tentative scope proxy in agent payloads.
 
 **Critique agent:** Fires after Step 13 (Draft Diffs), before Step 14 (Readiness and Finish Signals). Receives the complete plan and draft diffs (the in-memory artifact, not yet written to file). Returns: missed implementation steps, ordering bugs, untested paths, scope creep beyond guardrails. Valid ordering bugs may trigger a diff revision before Step 14. All other valid findings are appended to Open Questions / Blockers in Step 14.
 
-**Mode A exception:** If the inherited scout is stale or the plan needs to validate specific claims against current code, upfront agents may spawn on a case-by-case basis. Announce the reason.
+**Scout-backed exception:** If the inherited scout is stale or the plan needs to validate specific claims against current code, upfront agents may spawn on a case-by-case basis. Announce the reason.
 
 **Read `references/parallel-discovery.md` before spawning** — it contains the return format schemas required for each agent's spawn payload.
 
