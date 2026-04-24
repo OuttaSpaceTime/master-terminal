@@ -18,6 +18,12 @@ updated: 2026-04-14
 - `Space+S+R` — resume last picker state
 - `Space+G+S` — open changed files
 - `Space+G+D` — grouped git diff picker
+- `]f` / `[f` — jump to next/previous function start
+- `]F` / `[F` — jump to next/previous function end
+- `]c` / `[c` — jump to next/previous class start
+- `]C` / `[C` — jump to next/previous class end
+- `]a` / `[a` — jump to next/previous parameter start
+- `]A` / `[A` — jump to next/previous parameter end
 - `]h` — jump to the next git hunk in the current buffer
 - `[h` — jump to the previous git hunk in the current buffer
 - `Ctrl+/` — floating terminal
@@ -36,6 +42,14 @@ updated: 2026-04-14
 - `Space+b+P` — delete all buffers except pinned ones
 - `:bufdo bd` — close all listed buffers
 - `:2,5bd` — close a specific range of buffer numbers
+
+## Ruby / RuboCop
+
+- RuboCop is not Mason-managed in this config; `mason = false` is set for the Ruby servers
+- The RuboCop LSP is launched with `rbenv exec bundle exec rubocop --lsp --no-server`
+- That means the project’s `Gemfile` / `Gemfile.lock` decides the RuboCop version, not a global Mason install
+- After changing RuboCop in the bundle, restart the LSP or Neovim to avoid stale server processes
+- `ruby_lsp` is also started via `rbenv exec ruby-lsp`, so it follows the Ruby version selected by `rbenv`
 
 ## Indentation
 

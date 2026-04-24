@@ -1,7 +1,7 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-04-21
+updated: 2026-04-22
 ---
 
 # Wiki Index
@@ -10,8 +10,10 @@ updated: 2026-04-21
 
 - [Repo Purpose](repo-purpose.md) — what this repo is and how it's structured
 - [Chezmoi](chezmoi.md) — commands, workflow, decisions
+- [Chrome](chrome.md) — tab switching, tab numbers, side panel behavior
 - [Kitty](kitty.md) — shortcuts, sessions, tab titles
 - [Neovim](neovim.md) — LazyVim shortcuts and navigation
+- [Zsh Completion](zsh-completion.md) — `zsh-autocomplete` freeze note and the `fzf-tab` replacement
 - [GNOME](gnome.md) — hotkeys, workspace navigation, window management
 - [Mouse Follows Focus](mouse-follows-focus.md) — extension path, focus-warp bug, patch direction
 - [Mouse Remapping](mouse-remapping.md) — MX Ergo S trackball-nav daemon, gesture mapping, sensitivity tuning

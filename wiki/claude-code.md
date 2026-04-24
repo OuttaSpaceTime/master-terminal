@@ -2,7 +2,7 @@
 title: Claude Code
 tags: [claude-code, chezmoi, settings, hooks]
 created: 2026-04-11
-updated: 2026-04-14
+updated: 2026-04-24
 ---
 
 # Claude Code
@@ -53,6 +53,20 @@ chezmoi -S home apply --force ~/.claude/settings.json
 
 This overwrites the deployed file with the source, discarding any runtime mutations.
 
+## Global env settings
+
+Claude Code documents `~/.claude/settings.json` as the user-global settings file. Any Claude Code environment variable can be set under the `env` key there to apply it to every session.
+
+For the agent-teams flag, the source file should contain:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
 ## Hooks
 
 `~/.claude/settings.json` configures hooks that fire during a Claude session:
@@ -88,10 +102,11 @@ The script discovers sibling windows via the same `kitty @ ls` call it uses to r
 ### Lifecycle
 
 1. The `claude()` zsh wrapper calls `set-tab-icon.sh running` on entry
-2. Claude Code hooks update the icon during the session
-3. Redundant `PreToolUse` calls are skipped (state file comparison, no `kitty @` call)
-4. On exit (normal or signal), the wrapper calls `set-tab-icon.sh clear` which strips the icon prefix and removes the state file
-5. If no state files exist (not in kitty, or session started before the wrapper), the script is a silent no-op
+2. The wrapper runs `direnv allow .` quietly before launching Claude so the current project stays authorized
+3. Claude Code hooks update the icon during the session
+4. Redundant `PreToolUse` calls are skipped (state file comparison, no `kitty @` call)
+5. On exit (normal or signal), the wrapper calls `set-tab-icon.sh clear` which strips the icon prefix and removes the state file
+6. If no state files exist (not in kitty, or session started before the wrapper), the script is a silent no-op
 
 ### Testing
 

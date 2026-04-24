@@ -4,11 +4,12 @@
     {
       "id": 1,
       "prompt": "I just finished building the inbox feature on this branch. Can you walk me through my changes against main? /diff-review main",
-      "expected_output": "Full 4-checkpoint interactive walkthrough with large-diff scope limiting, overview table, focused file walks, concerns, and notes file.",
+      "expected_output": "Full 4-checkpoint interactive walkthrough with large-diff scope limiting, tree-based browser overview, optional dedicated flow page, focused file walks, concerns, and notes file.",
       "files": [],
       "expectations": [
         "Recognizes 45 files / ~2600 lines as a large diff and triggers the scope limit (asks for walk order or confirmation before proceeding)",
-        "Produces a Diff Overview table with columns for File, Type, Lines changed, and Area",
+        "Produces a tree-based Diff Overview HTML with rolled-up folder summaries instead of the old file table",
+        "When a cross-layer flow exists, emits a separate dedicated flow page rather than embedding the Mermaid graph into the overview page",
         "Asks the developer about intent before proceeding to the walkthrough",
         "References or creates a notes file path under .claude/docs/diff-notes/",
         "All 4 checkpoints appear in sequence (Checkpoint 1 through Checkpoint 4)",

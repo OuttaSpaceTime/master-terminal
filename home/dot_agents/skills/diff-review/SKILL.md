@@ -90,7 +90,7 @@ If the argument is unrecognized, ask — do not guess.
 
 - **Trivial diff** (rename-only, formatting, single-line constant): offer a one-message
   summary, skip the checkpoint ceremony. Ask whether to proceed.
-- **Large diff** (40+ files or 1500+ lines): show the overview table, ask the developer
+- **Large diff** (40+ files or 1500+ lines): show the overview tree, ask the developer
   to name the 3-5 most important files, walk only those. Note skipped files.
 - **Mixed unrelated changes**: surface this before starting. Ask whether to walk together
   or focus on one area.
@@ -158,23 +158,28 @@ Use the exact emoji indicators above — not plain text like "pending" or "revie
 
 ### Checkpoint 1/4: Diff Overview
 
-CP1 produces **two channels**: a self-contained HTML overview that opens in the browser
-(the developer's 15-second orientation map) and a thin five-line summary in chat (the
-conversational anchor). The walkthrough in CP2 happens entirely in chat — the HTML is
-read once at the start, then ignored.
+CP1 produces **one browser-first orientation page** plus a thin chat anchor. The browser
+output is always a single HTML page. When the flow diagram is gated on, that page uses
+tabs: `Overview` for the tree and summary, `Control flow` for the larger Mermaid
+comparison. The walkthrough in CP2 happens entirely in chat — the HTML is read once at
+the start, then ignored.
 
-**Hard precondition (non-negotiable):** the HTML file MUST exist on disk and
-`scripts/render_overview.sh` MUST have been invoked before any chat summary is emitted.
-Skipping the HTML render and jumping to the chat summary is a contract violation that
-invalidates the review — it does not matter how small, how obvious, or how time-pressed
-the diff feels. The only exception is the trivial-diff fast path defined at the end of
-this checkpoint (single-file, single-hunk, <20 LOC). If you catch yourself about to write
-the five-line chat summary and you have not yet executed steps 4-6, stop and execute
-them first.
+**Hard precondition (non-negotiable):** the overview HTML page MUST exist on disk and
+`scripts/render_overview.sh` MUST have been invoked for it before any chat summary is
+emitted. Skipping the browser artifact render and jumping to the chat summary is a
+contract violation that invalidates the review — it does not matter how small, how
+obvious, or how time-pressed the diff feels. The only exception is the trivial-diff fast
+path defined at the end of this checkpoint (single-file, single-hunk, <20 LOC). If you
+catch yourself about to write the chat summary and you have not yet executed steps 4-6,
+stop and execute them first.
 
 1. Run the git command(s) for the selected mode.
 2. **Compute overview data.** From the diff:
    - File list with Type (`modified`/`added`/`deleted`/`renamed`) and Lines±.
+   - **Path tree groups** inferred from file paths. Roll files up into collapsible
+     folder groups (top-level dirs, then meaningful nested groups only where they help
+     orientation). Each group gets file count, Lines± total, and a one-sentence summary
+     of the behavioral change in that subtree.
    - Inferred layer/area per file from path conventions (component / service / resolver
      / interceptor / controller / middleware / util / types / route / config / test).
    - Total ±LOC across all files.
@@ -184,38 +189,53 @@ them first.
    - **Ripple list** — files that *consume* changed exported symbols but are not in the
      diff. Source it from the parallel **Impact mapper** agent when active; otherwise
      keep it conservative — grep for importers of changed exported symbols and list at
-     most 5. Omit the section entirely when nothing surfaces.
+     most 5. Render these in a separate **Indirect consumers** section below the real
+     path tree. Keep the main tree strictly path-true — never invent a fake folder like
+     `ripple-effects/`.
    - **Intent bucket per file** per `references/intent-buckets.md`. When unsure use
      `Other` — a wrong bucket is worse than a vague one.
+   - **Dominant bucket per group** — inferred from the files under that group. If the
+     subtree is mixed without a clear leader, use `Mixed` rather than forcing a lie.
    - **Biggest logical change** — the single file with the largest absolute LOC delta
      among non-test files. Test files never lead.
-3. **Generate the flow Mermaid block** ONLY IF cross-layer flag OR new-public-entry
-   flag. Use `flowchart LR` with `subgraph` per layer; mark new nodes with `classDef
-   new`, unchanged nodes with `classDef same`. Keep ≤ 12 nodes — collapse non-essential
-   intermediate steps. If neither flag holds, the flow section is omitted entirely.
-4. **Render the HTML.** Substitute the placeholders documented in
+3. **Generate flow artifacts** ONLY IF cross-layer flag OR new-public-entry flag.
+   - Build a concise **flow summary** for the `Overview` tab: 2-4 bullets or short lines
+     naming the main entrypoint, the key hop(s), and the boundary/output where the change
+     lands. This is the "graph summary" — not the full diagram.
+   - Treat **Indirect consumers** as a curated impact list, not a complete propagation
+     trace. The complete ripple/execution path belongs in `Control flow`, not in that
+     section.
+   - Build **two Mermaid blocks** for the `Control flow` tab:
+     `Before` — the pre-change path or dependency shape that explains the bug/risk.
+     `After` — the post-change path the diff now enforces.
+   - Use `flowchart LR` with `subgraph` per layer or major phase; keep each graph ≤ 12
+     nodes — collapse non-essential intermediate steps.
+   - The `Control flow` tab may also include 1-2 compact framing cards above the diagrams
+     explaining the behavioral difference between `Before` and `After`.
+   - If neither flag holds, omit the `Control flow` tab entirely and render only the
+     `Overview` tab.
+4. **Render the HTML page.** Substitute the placeholders documented in
    `references/html-overview-template.md` and use the full template inline at the bottom
    of that file.
 5. **Write to disk.** `mkdir -p .claude/docs/diff-overviews`. Compute `NNN` as the next
-   zero-padded 3-digit prefix in that directory. Write to
-   `.claude/docs/diff-overviews/NNN-<branch>-YYYYMMDD.html` (`<branch>` follows the same
-   convention as the notes file — replace `/` with `-`; detached HEAD uses the short
-   commit hash).
-6. **Open the overview.** Invoke `scripts/render_overview.sh <path> --open`. The script
-   detaches and never blocks. If no display server is reachable, it prints the `file://`
-   URI instead — pass that URI through to the chat summary so the developer can open it
-   manually. This step is mandatory: step 7 must not run until this invocation has
+   zero-padded 3-digit prefix in that directory. Write to:
+   `.claude/docs/diff-overviews/NNN-<branch>-YYYYMMDD.html`
+   `<branch>` follows the same convention as the notes file — replace `/` with `-`;
+   detached HEAD uses the short commit hash.
+6. **Open the overview page.** Invoke `scripts/render_overview.sh <overview-path> --open`.
+   The script detaches and never blocks. If no display server is reachable, it prints the
+   `file://` URI instead — pass that URI through to the chat summary so the developer can
+   open it manually. This step is mandatory: step 7 must not run until this invocation has
    completed (success or graceful fallback). Record the path you used here — it is the
    `<overview-path>` that step 7 is required to include.
 7. **Emit the chat summary.** Before writing a single character of the summary, verify:
-   (a) the `.claude/docs/diff-overviews/NNN-<branch>-YYYYMMDD.html` file exists on disk,
-   and (b) `scripts/render_overview.sh` has been invoked this turn. If either is false,
-   return to step 4 — do NOT emit the summary. The summary uses the markdown template
-   below; every `<...>` placeholder is mandatory. The `<overview-path>` slot (absolute
-   path or `file://` URI of the rendered HTML) must be filled with the real path
-   written in step 5 — a summary without it is structurally invalid and must not
-   be sent. Blank lines between sections are part of the template — do not collapse
-   them, they are what makes the summary scannable:
+   (a) the overview page exists on disk and (b) `scripts/render_overview.sh` has been
+   invoked this turn for it. If either check fails, return to step 4 — do NOT emit the
+   summary. The summary uses the markdown template below; every `<...>` placeholder is
+   mandatory. The `<overview-path>` slot (absolute path or `file://` URI of the rendered
+   overview page) must be filled with the real path written in step 5 — a summary without
+   it is structurally invalid and must not be sent. Blank lines between sections are part
+   of the template — do not collapse them, they are what makes the summary scannable:
 
    ```
    **<N> files · +<A> / −<B> LOC**
@@ -243,14 +263,8 @@ them first.
    the path. If creation fails, note it and continue.
 
 **Trivial diff** (single-file, single-hunk, < 20 LOC): skip the HTML render and the
-five-line summary template — fall through to the one-message summary path documented in
+chat summary template — fall through to the one-message summary path documented in
 `Scope Limits` above. The browser tab adds friction without value at this size.
-
-**Offline mode (`/diff-review --offline`)** or a detected CDN block: instead of the
-Mermaid `<pre>` block, write the same flow as `/tmp/diff-overview-flow.d2`, invoke the
-`/d2` skill's `scripts/render_and_open.sh` to produce an SVG, and inline the SVG markup
-into the flow section in place of the `<pre class="mermaid">` block. Drop the
-`<noscript>` warning in this branch. The chat summary is unchanged.
 
 ---
 
@@ -390,7 +404,7 @@ criterion as Checkpoint 2. One question per step; resolve before advancing.
 
 - **Detached HEAD:** use short commit hash for notes filename.
 - **No `main` branch:** try `master`; if also absent, ask for base branch.
-- **Binary files:** `[binary, skipped]` in overview table, `⏭ skipped` in tracker.
+- **Binary files:** `[binary, skipped]` in the overview tree leaf, `⏭ skipped` in tracker.
 - **Renamed file, no content change:** state as rename in overview, `⏭ skipped` in tracker.
 - **File with both staged and unstaged changes:** in `staged`/`unstaged` mode, note that
   the other layer also has changes for that file.

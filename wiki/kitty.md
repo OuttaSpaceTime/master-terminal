@@ -2,7 +2,7 @@
 title: Kitty
 tags: [kitty, terminal]
 created: 2026-04-07
-updated: 2026-04-21
+updated: 2026-04-23
 ---
 
 # Kitty
@@ -22,6 +22,18 @@ updated: 2026-04-21
 - `Ctrl+Alt+K` — clear the current terminal screen
 - `Ctrl+Shift+Alt+T` — rename current tab
 - `kitten @ set-tab-title "New Name"` — rename tab from CLI
+
+## Line Editing
+
+These are the usual readline/zsh-style shortcuts for editing commands in the prompt:
+
+- `Alt+F` — move forward one word
+- `Alt+B` — move back one word
+- `Ctrl+A` — jump to the start of the line
+- `Ctrl+E` — jump to the end of the line
+- `Alt+D` — delete the next word
+- `Ctrl+W` — delete the previous word
+- `Ctrl+R` — search shell history interactively
 
 ## Scrolling (Keyboard)
 

@@ -32,7 +32,6 @@ All skills that produce artifacts write to `.claude/` relative to the project ro
 | /plan | `.claude/docs/plans/` | `plan-YYYYMMDD-HHMMSS.md` |
 | /review | `.claude/docs/reviews/` | `NNN-<name>-YYYYMMDD.md` |
 | /sketch | `.claude/docs/sketches/` | `YYYYMMDD-<topic>.md` |
-| /d2 | `.claude/diagrams/` | `<flow-name>.d2` (+ .svg, .png) |
 | /walkthrough | none (interactive only) | — |
 | /control-flow-trace | none (inline output) | — |
 | /strict-diff | none (inline output) | — |
@@ -54,5 +53,5 @@ Exception: `/walkthrough` consumes upstream artifacts but produces none itself.
 
 **Interactive (checkpoint-based)**: scout, plan, review, walkthrough, diff-review, explore-solutions, control-flow-trace
 **Autonomous loop**: autoresearch
-**Single-pass**: sketch, d2, strict-diff, research
+**Single-pass**: sketch, strict-diff, research
 **Workspace-local orchestration**: dot-manage

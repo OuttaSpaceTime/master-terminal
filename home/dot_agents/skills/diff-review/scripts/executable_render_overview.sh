@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # render_overview.sh — open a self-contained HTML overview produced by /diff-review CP1.
-# Mirrors the ergonomics of ../../d2/scripts/render_and_open.sh: detached launch via
-# `setsid -f`, error log under /tmp, never blocks the caller. The HTML itself is written
-# by the skill — this script only opens it.
+# Detached launch via `setsid -f`, error log under /tmp, never blocks the caller. The
+# HTML itself is written by the skill — this script only opens it.
 #
 # Usage: render_overview.sh <input.html> [--open]
 #

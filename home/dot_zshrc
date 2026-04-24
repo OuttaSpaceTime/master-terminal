@@ -111,11 +111,12 @@ DISABLE_AUTO_TITLE="true"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
+# fzf-tab keeps directory completion lighter than zsh-autocomplete.
 plugins=(
   git 
+  fzf-tab
   zsh-autosuggestions 
   fast-syntax-highlighting 
-  zsh-autocomplete
   aliases
   alias-finder
   bundler
@@ -126,9 +127,14 @@ plugins=(
   asdf
 )
 
+zstyle ':completion:*:git-checkout:*' sort false
+
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#9ab8ff'
 
 source $ZSH/oh-my-zsh.sh
+
+# Keep autosuggestions off by default; fetch them only when requested.
+typeset -g _ZSH_AUTOSUGGEST_DISABLED=1
 
 # User configuration
 
@@ -181,6 +187,8 @@ bindkey '^[OA' up-line-or-search
 bindkey '^[OB' down-line-or-select
 # Ctrl+Enter accepts zsh-autosuggestion (kitty sends \e[13;5u for this chord)
 bindkey '^[[13;5u' autosuggest-accept
+# Ctrl+Space fetches a suggestion on demand.
+bindkey '^ ' autosuggest-fetch
 
 
 function rebase-onto {
@@ -192,6 +200,26 @@ function rebase-onto {
     n|N ) echo "aborted.";;
     * ) eval "$test_command";;
   esac
+}
+
+gcof() {
+  local branch
+  branch=$(git for-each-ref --format='%(refname:short)' refs/heads/ | fzf --prompt 'branch> ') || return
+  git checkout "$branch"
+}
+
+# Override the Oh My Zsh git alias with a branch picker.
+unalias gcor 2>/dev/null
+gcor() {
+  local remote branch
+  remote=$(git for-each-ref --format='%(refname:short)' refs/remotes/origin | grep -v '^origin/HEAD$' | fzf --prompt 'remote branch> ') || return
+  branch=${remote#origin/}
+
+  if git show-ref --verify --quiet "refs/heads/$branch"; then
+    git switch "$branch"
+  else
+    git switch --track -c "$branch" "$remote"
+  fi
 }
 
 alias gpo='git push origin'
@@ -246,6 +274,9 @@ function claude() {
   local title status
   title="claude $(_project_folder_name)"
   _set_terminal_title "$title"
+
+  # Keep the current project authorized before starting Claude.
+  direnv allow . >/dev/null 2>&1 || true
 
   ~/.claude/set-tab-icon.sh running
 

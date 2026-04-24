@@ -143,10 +143,6 @@ def rewrite_portability_paths(skill_dir: Path) -> None:
         "`~/.claude/skills/references/interactive-principles.md`",
         "`../references/interactive-principles.md`",
     )
-    text = text.replace(
-        "bash ~/.claude/skills/d2/scripts/render_and_open.sh",
-        "bash scripts/render_and_open.sh",
-    )
     skill_file.write_text(text, encoding="utf-8")
 
 

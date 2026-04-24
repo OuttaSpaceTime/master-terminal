@@ -1,8 +1,10 @@
 # Intent Buckets
 
-Used by `/diff-review` Checkpoint 1 when filling the **Changes by intent** column of the
-HTML overview. Pick exactly one bucket per file. When unsure, use `Other` rather than
-forcing a fit — a wrong bucket is worse than a vague one because it misleads orientation.
+Used by `/diff-review` Checkpoint 1 when labeling file leaves and rolled-up tree groups in
+the HTML overview. Pick exactly one bucket per file. Group badges should follow the
+dominant bucket in that subtree; if the subtree is genuinely mixed, use `Mixed`. When
+unsure on a file, use `Other` rather than forcing a fit — a wrong bucket is worse than a
+vague one because it misleads orientation.
 
 ## The eight buckets
 
