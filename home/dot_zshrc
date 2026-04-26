@@ -202,7 +202,7 @@ function rebase-onto {
   esac
 }
 
-gcof() {
+gcol() {
   local branch
   branch=$(git for-each-ref --format='%(refname:short)' refs/heads/ | fzf --prompt 'branch> ') || return
   git checkout "$branch"
@@ -238,6 +238,20 @@ alias vil-frontend='cd ~/Code/Vilocify/vilocify-frontend'
 alias cpdrive='rclone copy drive:Documents/'Independent Order Of Light Warriors' ~/Code/Misc/prana-power/vault'
 alias syncdrive='rclone sync --interactive ~/Code/Misc/prana-power/vault drive:Documents/'Independent''
 alias synclocal='rclone sync --interactive drive:Documents/'Independent' ~/Code/Misc/prana-power/vault'
+alias claude-review='claude --mcp-config ~/Code/Misc/agentic-channels/code-review/standalone.mcp.json'
+alias claude-forge='claude --mcp-config ~/Code/Misc/agentic-channels/forge/standalone.mcp.json'
+
+# Per-session claude model + reasoning effort (avoids global /model bleed across instances)
+alias clo='claude --model opus'
+alias cls='claude --model sonnet'
+alias clol='claude --model opus --effort low'
+alias clom='claude --model opus --effort medium'
+alias cloh='claude --model opus --effort high'
+alias clox='claude --model opus --effort xhigh'
+alias clsl='claude --model sonnet --effort low'
+alias clsm='claude --model sonnet --effort medium'
+alias clsh='claude --model sonnet --effort high'
+alias clsx='claude --model sonnet --effort xhigh'
 
 export CUCUMBER_PUBLISH_QUIET=true
 export DRIVER="cuprite"

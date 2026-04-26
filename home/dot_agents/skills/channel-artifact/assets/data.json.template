@@ -1,0 +1,8 @@
+{
+  "generatedAt": "REPLACE_WITH_ISO_TIMESTAMP",
+  "windowDays": 30,
+  "source": "REPLACE_WITH_DATA_SOURCE_DESCRIPTION",
+  "funnel": [],
+  "sideEvents": [],
+  "redactedFields": ["revenue", "amount", "mrr", "arpu", "ltv", "stripe_amount"]
+}

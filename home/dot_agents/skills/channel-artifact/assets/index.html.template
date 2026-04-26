@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>__TITLE__</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --panel: #ffffff; --panel2: #f1f3f6; --border: #e4e7ec;
+    --text: #0b0d10; --muted: #6b7280; --accent: #d97706; --accent2: #f59e0b;
+    --green: #16a34a; --red: #dc2626;
+    --shadow: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "SF Pro Text", system-ui, sans-serif; }
+  body { padding: 32px 24px 80px; max-width: 1280px; margin: 0 auto; }
+  header.top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  /* ========== YOUR ARTIFACT CONTENT GOES IN #content ========== */
+  /* Every element you want commentable should have data-node-id="<id>". */
+  /* Elements without data-node-id become "freeform" pins with auto-detected anchor. */
+  #content section { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 18px; box-shadow: var(--shadow); }
+
+  /* Redacted helper (optional - for blurring sensitive fields) */
+  .redacted { display: inline-block; filter: blur(5px); user-select: none; background: #d8dbe2; padding: 2px 8px; border-radius: 4px; color: #888; font-variant-numeric: tabular-nums; }
+
+  /* Pin mode toggle */
+  .pin-toggle { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; box-shadow: var(--shadow); display: inline-flex; align-items: center; gap: 6px; }
+  .pin-toggle:hover { border-color: var(--accent); }
+  .pin-toggle.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pin-toggle::before { content: "📍"; font-size: 14px; }
+  body.pin-mode { cursor: crosshair; }
+  body.pin-mode [data-node-id] { cursor: crosshair !important; }
+
+  /* Floating pin overlay */
+  #pin-overlay { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 50; }
+  .floating-pin { position: absolute; pointer-events: auto; transform: translate(-50%, -100%); cursor: pointer; }
+  .floating-pin .marker { width: 26px; height: 32px; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; color: #fff; font-size: 11px; font-weight: 700; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25)); }
+  .floating-pin .marker svg { position: absolute; top: 0; left: 0; width: 26px; height: 32px; }
+  .floating-pin.pending svg path { fill: #f59e0b; }
+  .floating-pin.addressed svg path { fill: #16a34a; }
+  .floating-pin .marker span { position: relative; z-index: 1; line-height: 1; margin-top: 4px; }
+  .floating-pin:hover { transform: translate(-50%, -100%) scale(1.1); }
+  .floating-pin.active svg path { stroke: var(--text); stroke-width: 1.5; }
+  .floating-pin .delete-btn { position: absolute; top: -10px; right: -14px; width: 22px; height: 22px; border-radius: 50%; background: var(--red); color: #fff; border: 2px solid #fff; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-weight: 700; opacity: 0; transition: opacity 100ms; box-shadow: 0 2px 6px rgba(0,0,0,0.25); z-index: 2; }
+  .floating-pin:hover .delete-btn, .floating-pin.active .delete-btn { opacity: 1; }
+  .floating-pin .delete-btn:hover { transform: scale(1.15); }
+
+  /* Anchored pin badge (on elements with data-node-id that have comments) */
+  [data-node-id] { position: relative; }
+  .anchor-pin { position: absolute; top: 4px; right: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent2); color: #fff; font-size: 10px; font-weight: 700; display: none; align-items: center; justify-content: center; box-shadow: var(--shadow); z-index: 2; }
+  .anchor-pin.show { display: inline-flex; }
+  .anchor-pin.addressed { background: var(--green); }
+
+  /* Comment panel - opens next to click */
+  #panel { position: absolute; width: 380px; max-height: 60vh; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.18); display: none; flex-direction: column; overflow: hidden; z-index: 70; }
+  #panel.open { display: flex; }
+  #panel header { padding: 14px 16px; background: var(--panel2); border-bottom: 1px solid var(--border); display: flex; flex-direction: row; align-items: center; justify-content: space-between; }
+  #panel header .title { font-size: 14px; font-weight: 700; }
+  #panel header .sub { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: ui-monospace, "SF Mono", monospace; }
+  #panel header button { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 22px; line-height: 1; padding: 0 4px; }
+  #panel .body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+  #panel textarea { width: 100%; min-height: 80px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font: inherit; font-size: 13px; resize: vertical; }
+  #panel textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  #panel button.submit { margin-top: 8px; background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+  #panel button.submit:hover { background: #b45309; }
+  #panel button.submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .comments-list { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .comment { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; }
+  .comment .head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .comment .status { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .comment .status.pending { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+  .comment .status.addressed { background: rgba(22, 163, 74, 0.15); color: var(--green); }
+  .comment .text { font-size: 13px; color: var(--text); white-space: pre-wrap; }
+  .comment .response { margin-top: 8px; padding: 8px 10px; background: #fff; border-left: 3px solid var(--green); border-radius: 4px; font-size: 12px; color: var(--text); white-space: pre-wrap; }
+  .comment .response::before { content: "Claude · "; color: var(--green); font-weight: 700; }
+  .comment .delete { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 8px; line-height: 1; min-width: 24px; min-height: 24px; }
+  .comment .delete:hover { color: #fff; background: var(--red); border-color: var(--red); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 200ms; z-index: 100; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>__TITLE__</h1>
+    <div class="meta" id="meta">Loading…</div>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <button class="pin-toggle" id="pin-toggle">Pin mode: off</button>
+  </div>
+</header>
+
+<div id="pin-overlay"></div>
+
+<!--
+  Your artifact content goes inside #content. Any element with
+  data-node-id="<your-id>" becomes a commentable anchor. Clicks on
+  whitespace / unassigned elements become freeform pins anchored to
+  the nearest ancestor with data-node-id (if any).
+-->
+<main id="content">
+  <section>
+    <h2>Your artifact here</h2>
+    <p>Replace this section with your own markup. Every element with
+    <code>data-node-id</code> becomes commentable. Toggle Pin Mode in the
+    header, then click anywhere to drop a pinned comment that routes to
+    Claude over the channel.</p>
+  </section>
+</main>
+
+<aside id="panel">
+  <header>
+    <div>
+      <div class="title" id="panel-title">—</div>
+      <div class="sub" id="panel-sub">—</div>
+    </div>
+    <button id="panel-close">×</button>
+  </header>
+  <div class="body">
+    <textarea id="comment-text" placeholder="Leave a pinned comment. It pushes to Claude over the channel instantly — Claude runs whatever queries it needs and updates the artifact in place. Your comment stays pinned with a status."></textarea>
+    <button class="submit" id="comment-submit">Pin comment</button>
+    <div class="comments-list" id="comments-list"></div>
+  </div>
+</aside>
+
+<div class="toast" id="toast">Comment pinned.</div>
+
+<script>
+let DATA = null;
+let COMMENTS = [];
+let activeNode = null;    // { id, label } when commenting on a data node
+let activePin = null;     // { id } when viewing a freeform pin
+let pendingPin = null;    // { x, y, anchorNodeId, contextSnippet, label }
+let pinMode = false;
+
+async function load() {
+  const [d, c] = await Promise.all([
+    fetch("/data.json", { cache: "no-store" }).then((r) => r.json()),
+    fetch("/comments.json", { cache: "no-store" }).then((r) => r.json()),
+  ]);
+  DATA = d;
+  COMMENTS = c.comments;
+  render();
+}
+
+function commentsFor(nodeId) { return COMMENTS.filter((c) => c.nodeId === nodeId); }
+function pinState(nodeId) {
+  const list = commentsFor(nodeId);
+  if (list.length === 0) return null;
+  return list.every((c) => c.status === "addressed") ? "addressed" : "pending";
+}
+
+function render() {
+  document.getElementById("meta").textContent =
+    DATA.source ? `Source: ${DATA.source}` : "";
+
+  // Hook: call your custom render here to paint the content into #content.
+  // The plumbing below works for any DOM that has [data-node-id] elements.
+  if (typeof window.renderArtifact === "function") {
+    window.renderArtifact(DATA);
+  }
+
+  renderAnchorBadges();
+  renderFloatingPins();
+}
+
+function renderAnchorBadges() {
+  document.querySelectorAll(".anchor-pin").forEach((el) => el.remove());
+  document.querySelectorAll("[data-node-id]").forEach((el) => {
+    const nodeId = el.dataset.nodeId;
+    const list = commentsFor(nodeId);
+    if (list.length === 0) return;
+    const state = pinState(nodeId);
+    const badge = document.createElement("div");
+    badge.className = `anchor-pin show ${state === "addressed" ? "addressed" : ""}`;
+    badge.textContent = String(list.length);
+    el.appendChild(badge);
+  });
+}
+
+function renderFloatingPins() {
+  const overlay = document.getElementById("pin-overlay");
+  overlay.style.height = document.documentElement.scrollHeight + "px";
+  const pins = COMMENTS.filter((c) => typeof c.x === "number" && typeof c.y === "number");
+  overlay.innerHTML = pins.map((c, i) => `
+    <div class="floating-pin ${c.status} ${activePin && activePin.id === c.id ? "active" : ""}"
+         data-pin-id="${c.id}" style="left:${c.x}px; top:${c.y}px;"
+         title="${escapeHtml(c.text).slice(0, 80)}">
+      <div class="marker">
+        <svg viewBox="0 0 26 32"><path d="M13 1c6.6 0 12 5 12 11 0 8-12 19-12 19S1 20 1 12C1 6 6.4 1 13 1z"/></svg>
+        <span>${i + 1}</span>
+      </div>
+      <button class="delete-btn" data-delete-id="${c.id}" title="Delete pin">×</button>
+    </div>
+  `).join("");
+  overlay.querySelectorAll(".floating-pin").forEach((el) => {
+    el.onclick = (e) => {
+      if (e.target.matches(".delete-btn")) {
+        e.stopPropagation();
+        deleteComment(e.target.dataset.deleteId);
+        return;
+      }
+      e.stopPropagation();
+      openPinPanel(el.dataset.pinId);
+    };
+  });
+}
+
+async function deleteComment(id) {
+  const res = await fetch("/comment/" + id, { method: "DELETE" });
+  if (res.ok || res.status === 404) {
+    if (activePin && activePin.id === id) closePanel();
+    await load();
+  }
+}
+
+function positionPanelNear(x, y) {
+  const panel = document.getElementById("panel");
+  panel.style.display = "flex";
+  panel.classList.add("open");
+  const rect = panel.getBoundingClientRect();
+  const w = rect.width || 380;
+  const h = rect.height || 320;
+  const margin = 12;
+  const offset = 20;
+  let left = x + offset;
+  if (left + w + margin > window.scrollX + window.innerWidth) left = x - w - offset;
+  if (left < window.scrollX + margin) left = window.scrollX + margin;
+  let top = y + offset;
+  if (top + h + margin > window.scrollY + window.innerHeight) top = y - h - offset;
+  if (top < window.scrollY + margin) top = window.scrollY + margin;
+  panel.style.left = left + "px";
+  panel.style.top = top + "px";
+}
+
+function openNodePanel(nodeId, label, sub, anchorEl) {
+  activeNode = { id: nodeId, label };
+  activePin = null;
+  pendingPin = null;
+  document.getElementById("panel-title").textContent = label;
+  document.getElementById("panel-sub").textContent = sub;
+  document.getElementById("comment-text").value = "";
+  renderNodeComments();
+  const rect = anchorEl?.getBoundingClientRect?.();
+  const x = rect ? rect.right + window.scrollX : window.scrollX + window.innerWidth / 2;
+  const y = rect ? rect.top + window.scrollY : window.scrollY + window.innerHeight / 2;
+  positionPanelNear(x, y);
+}
+
+function openPinDraftPanel(p) {
+  activePin = null;
+  activeNode = null;
+  pendingPin = p;
+  document.getElementById("panel-title").textContent = "New pin";
+  document.getElementById("panel-sub").textContent =
+    `at (${Math.round(p.x)}, ${Math.round(p.y)})${p.anchorNodeId ? ` · ${p.anchorNodeId}` : ""}`;
+  document.getElementById("comment-text").value = "";
+  document.getElementById("comments-list").innerHTML =
+    `<div style="font-size:12px;color:var(--muted);padding:14px;text-align:center;">${
+      p.contextSnippet ? "Context: <i>" + escapeHtml(p.contextSnippet).slice(0, 200) + "</i>" : "Drop your question."
+    }</div>`;
+  positionPanelNear(p.x, p.y);
+  document.getElementById("comment-text").focus();
+}
+
+function openPinPanel(pinId) {
+  const c = COMMENTS.find((x) => x.id === pinId);
+  if (!c) return;
+  activePin = { id: pinId };
+  activeNode = null;
+  pendingPin = null;
+  document.getElementById("panel-title").textContent = `Pin`;
+  document.getElementById("panel-sub").textContent =
+    c.x != null ? `(${Math.round(c.x)}, ${Math.round(c.y)})${c.anchorNodeId ? ` · ${c.anchorNodeId}` : ""}` : c.nodeLabel;
+  document.getElementById("comment-text").value = "";
+  document.getElementById("comments-list").innerHTML = renderCommentHTML(c);
+  wireDeleteButtons();
+  const x = c.x ?? window.scrollX + window.innerWidth / 2;
+  const y = c.y ?? window.scrollY + window.innerHeight / 2;
+  positionPanelNear(x, y);
+  renderFloatingPins();
+}
+
+function renderNodeComments() {
+  if (!activeNode) return;
+  const list = commentsFor(activeNode.id);
+  const el = document.getElementById("comments-list");
+  el.innerHTML = list.length === 0
+    ? `<div style="font-size:12px;color:var(--muted);padding:14px;text-align:center;">No comments yet.</div>`
+    : list.map(renderCommentHTML).join("");
+  wireDeleteButtons();
+}
+
+function renderCommentHTML(c) {
+  return `
+    <div class="comment">
+      <div class="head">
+        <span>${new Date(c.createdAt).toLocaleString()}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="status ${c.status}">${c.status}</span>
+          <button class="delete" data-delete-id="${c.id}" title="Delete">×</button>
+        </div>
+      </div>
+      <div class="text">${escapeHtml(c.text)}</div>
+      ${c.response ? `<div class="response">${escapeHtml(c.response)}</div>` : ""}
+    </div>`;
+}
+
+function wireDeleteButtons() {
+  document.querySelectorAll("[data-delete-id]").forEach((b) => {
+    b.onclick = () => deleteComment(b.dataset.deleteId);
+  });
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function closePanel() {
+  const p = document.getElementById("panel");
+  p.classList.remove("open");
+  p.style.display = "none";
+  activeNode = null;
+  activePin = null;
+  pendingPin = null;
+  renderFloatingPins();
+}
+
+document.getElementById("panel-close").onclick = closePanel;
+
+document.getElementById("comment-submit").onclick = async () => {
+  const text = document.getElementById("comment-text").value.trim();
+  if (!text) return;
+  const btn = document.getElementById("comment-submit");
+  btn.disabled = true;
+  try {
+    let payload;
+    if (pendingPin) {
+      payload = {
+        nodeId: pendingPin.anchorNodeId || "freeform",
+        nodeLabel: pendingPin.label || pendingPin.anchorNodeId || "Freeform pin",
+        text,
+        x: pendingPin.x,
+        y: pendingPin.y,
+        pageWidth: document.documentElement.scrollWidth,
+        pageHeight: document.documentElement.scrollHeight,
+        anchorNodeId: pendingPin.anchorNodeId,
+        contextSnippet: pendingPin.contextSnippet,
+      };
+    } else if (activeNode) {
+      payload = { nodeId: activeNode.id, nodeLabel: activeNode.label, text };
+    } else {
+      return;
+    }
+    await fetch("/comment", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    document.getElementById("comment-text").value = "";
+    showToast();
+    pendingPin = null;
+    await load();
+    if (activeNode) renderNodeComments();
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+const pinToggleBtn = document.getElementById("pin-toggle");
+pinToggleBtn.onclick = () => {
+  pinMode = !pinMode;
+  document.body.classList.toggle("pin-mode", pinMode);
+  pinToggleBtn.classList.toggle("on", pinMode);
+  pinToggleBtn.textContent = "Pin mode: " + (pinMode ? "on" : "off");
+};
+
+// Document-wide click -> drop a pin (capture phase wins over node handlers)
+document.addEventListener("click", (e) => {
+  if (!pinMode) return;
+  if (e.target.closest("#panel")) return;
+  if (e.target.closest("#pin-toggle")) return;
+  if (e.target.closest(".floating-pin")) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const anchor = e.target.closest("[data-node-id]");
+  const anchorNodeId = anchor?.dataset.nodeId ?? null;
+  const nearText = (e.target.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
+  openPinDraftPanel({
+    x: e.pageX,
+    y: e.pageY,
+    anchorNodeId,
+    contextSnippet: nearText,
+    label: anchor?.textContent?.trim()?.slice(0, 60) ?? null,
+  });
+}, true);
+
+// Optional: wire your own node-click handlers that call openNodePanel()
+// when NOT in pin mode. Example:
+//
+//   document.querySelectorAll("[data-node-id]").forEach((el) => {
+//     el.addEventListener("click", (e) => {
+//       if (pinMode) return;
+//       openNodePanel(el.dataset.nodeId, el.dataset.label ?? "", "", e.currentTarget);
+//     });
+//   });
+
+// Esc closes panel / exits pin mode
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (document.getElementById("panel").classList.contains("open")) closePanel();
+    else if (pinMode) pinToggleBtn.click();
+  }
+});
+
+function showToast() {
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+// Live updates over WebSocket (with reconnect) + polling safety net
+function connectWs() {
+  try {
+    const ws = new WebSocket("ws://" + location.host + "/ws");
+    ws.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data);
+        if (m.type === "data-updated" || m.type === "comments-updated") load();
+      } catch {}
+    };
+    ws.onclose = () => setTimeout(connectWs, 2000);
+  } catch {
+    setTimeout(connectWs, 2000);
+  }
+}
+
+load();
+setInterval(load, 30_000);
+connectWs();
+</script>
+</body>
+</html>
