@@ -275,17 +275,17 @@ function _prompt_terminal_title() {
 }
 
 function codex() {
-  local title status
+  local title
   title="codex $(_project_folder_name)"
   _set_terminal_title "$title"
   command codex "$@"
-  status=$?
+  local rc=$?
   _prompt_terminal_title
-  return $status
+  return $rc
 }
 
 function claude() {
-  local title status
+  local title
   title="claude $(_project_folder_name)"
   _set_terminal_title "$title"
 
@@ -301,10 +301,10 @@ function claude() {
   trap '_claude_cleanup' INT TERM HUP
 
   command claude "$@"
-  status=$?
+  local rc=$?
   trap - INT TERM HUP
   _claude_cleanup
-  return $status
+  return $rc
 }
 
 vilocify() {
