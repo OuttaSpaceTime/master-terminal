@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Wrapper that resolves nvm's default node and execs typescript-language-server.
+# Makes the LSP available regardless of nvm shell state (agents, IDE spawns, etc.).
+set -e
+
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+resolve_alias() {
+  local name="$1"
+  local file="$NVM_DIR/alias/$name"
+  if [[ -f "$file" ]]; then
+    local target
+    target="$(cat "$file")"
+    if [[ "$target" == v* && -d "$NVM_DIR/versions/node/$target" ]]; then
+      printf '%s\n' "$target"
+    else
+      resolve_alias "$target"
+    fi
+  elif [[ -d "$NVM_DIR/versions/node/$name" ]]; then
+    printf '%s\n' "$name"
+  else
+    # Fallback: pick newest installed version
+    ls -1 "$NVM_DIR/versions/node" 2>/dev/null | sort -V | tail -1
+  fi
+}
+
+VERSION="$(resolve_alias default)"
+NODE_BIN="$NVM_DIR/versions/node/$VERSION/bin/node"
+JS="$NVM_DIR/versions/node/$VERSION/lib/node_modules/typescript-language-server/lib/cli.mjs"
+
+if [[ ! -x "$NODE_BIN" || ! -f "$JS" ]]; then
+  echo "typescript-language-server wrapper: cannot locate node or LSP under $NVM_DIR/versions/node/$VERSION" >&2
+  exit 127
+fi
+
+exec "$NODE_BIN" "$JS" "$@"

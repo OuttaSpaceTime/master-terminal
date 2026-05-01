@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Launch Claude Code with only the opt-in Neovim MCP server for this session.
+set -euo pipefail
+
+config="$HOME/.claude/nvim-mcp.json"
+
+if [[ ! -x "$HOME/.cargo/bin/nvim-mcp" ]]; then
+  echo "claude-nvim: nvim-mcp is not installed at $HOME/.cargo/bin/nvim-mcp" >&2
+  exit 1
+fi
+
+if [[ ! -f "$config" ]]; then
+  echo "claude-nvim: missing MCP config: $config" >&2
+  exit 1
+fi
+
+exec claude --strict-mcp-config --mcp-config "$config" --ide "$@"

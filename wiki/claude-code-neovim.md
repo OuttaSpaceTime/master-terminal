@@ -2,7 +2,7 @@
 title: Claude Code + Neovim Integration
 tags: [claude-code, neovim, lazyvim, integration]
 created: 2026-04-21
-updated: 2026-04-21
+updated: 2026-04-30
 ---
 
 # Claude Code + Neovim Integration
@@ -129,6 +129,26 @@ For interactive pair-programming ("sparring partner" — Claude sees edits, sugg
 
 Default stack: **Option 2 + Option 1**. Install `coder/claudecode.nvim` with terminal provider set to external; add a per-project `neovim` skill for RPC. Each layer is independently reversible.
 
+## Current Opt-In Setup
+
+The Nvim agent integration is installed but the Nvim MCP server is **not loaded by default**.
+
+- `coder/claudecode.nvim` is installed in Nvim for selection push and Claude diff review, with terminal provider set to `none`
+- `linw1995/nvim-mcp` and the `nvim-mcp` binary are installed, but the MCP server is only injected by explicit launch commands
+- `claude-nvim` launches Claude Code with `--strict-mcp-config --mcp-config ~/.claude/nvim-mcp.json --ide`
+- `codex-nvim` launches Codex with per-command `mcp_servers.nvim.*` overrides and starts from `mcp_servers={}`
+- Plain `claude` and plain `codex` should not get the Nvim MCP server from this setup
+- Nvim MCP debug logs go to `/tmp/nvim-mcp.log`, not the current project directory
+
+Use `claude-nvim` or `codex-nvim` when the agent should inspect Nvim state. Use normal `claude` or `codex` when no editor MCP access should be available.
+
+The managed files are:
+
+- `home/private_dot_config/nvim/lua/plugins/agent-integrations.lua`
+- `home/dot_claude/nvim-mcp.json`
+- `home/dot_local/bin/executable_claude-nvim`
+- `home/dot_local/bin/executable_codex-nvim`
+
 ## Socket discovery conventions
 
 When Claude runs **inside** nvim's `:terminal`: `$NVIM` is set automatically by nvim. Averpil's pattern:
@@ -141,11 +161,29 @@ nvim --server "$NVIM" --remote-expr '<expr>' 2>/dev/null | grep -v '^Warning: Us
 
 When Claude runs in a **separate kitty pane**: `$NVIM` is not set. Options:
 
-- Set `NVIM_LISTEN_ADDRESS=/run/user/$UID/nvim-$(basename "$PWD").sock` via a shell wrapper around `nvim`.
+- Use the `nvim-listen` shell function in `home/dot_zshrc`; it sets `NVIM_LISTEN_ADDRESS` to nvim-mcp's discoverable socket convention before launching `nvim`.
 - Or: nvim `VimEnter` autocmd writes `v:servername` to a cwd-derived path for the skill to read back.
 - Or: glob `$XDG_RUNTIME_DIR/nvim.*.0` (nvim's default socket location) — works if only one nvim is running.
 
-No convention is deployed yet. Decide when setting up Option 1.
+For `linw1995/nvim-mcp` 0.7.2, discovery is not "any Neovim socket". It looks for sockets named like:
+
+```text
+$XDG_RUNTIME_DIR/nvim-mcp.<escaped-git-root>.<suffix>.sock
+```
+
+with `/tmp` as a fallback search directory. The `<escaped-git-root>` is the absolute git root with `/` replaced by `%`, matching the plugin's `generate_pipe_path()` behavior. `--connect auto` then filters those sockets to the current project root; `get_targets` lists all matching `nvim-mcp.*.sock` sockets in the search dirs.
+
+The `nvim-listen` wrapper is the deployed opt-in convention for this repo. It creates a unique socket with that nvim-mcp naming scheme, so `nvim-mcp --connect auto` can find the current project session. A generic socket such as `/run/user/$UID/nvim-<project>.sock` will work only when passed explicitly to `connect`; it will not appear in `get_targets` or auto-connect.
+
+The Neovim `linw1995/nvim-mcp` plugin also calls `serverstart()` when it loads. Its config reuses `vim.env.NVIM_LISTEN_ADDRESS` when `nvim-listen` provided one; otherwise the plugin would create a second discoverable `nvim-mcp.<escaped-root>.<pid>.sock` for the same live Neovim instance, and Claude would see duplicate active targets.
+
+If `get_targets` still says no targets, inspect the live socket:
+
+```bash
+find "$XDG_RUNTIME_DIR" /tmp -maxdepth 1 \( -type s -o -type l \) -name 'nvim*' -print
+```
+
+If the only socket is a generic old wrapper path such as `/run/user/$UID/nvim-<project>.sock`, the Neovim pane was launched from a stale shell or an old wrapper. Run `source ~/.zshrc` or `exec zsh`, confirm `type nvim-listen` shows the `nvim-mcp.` path logic, restart Neovim with `nvim-listen`, then restart `claude-nvim`. The wrapper prints the socket it selected; it must start with `nvim-mcp.`. For an already-running session, a symlink named with the nvim-mcp convention can temporarily make the old socket discoverable.
 
 ## Kitty-layer bonus
 

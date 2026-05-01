@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "nvim": {
+      "command": "/home/felix/.cargo/bin/nvim-mcp",
+      "args": [
+        "--log-file",
+        "/tmp/nvim-mcp.log",
+        "--log-level",
+        "debug",
+        "--connect",
+        "auto"
+      ]
+    }
+  }
+}

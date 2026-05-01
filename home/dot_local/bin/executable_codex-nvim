@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Launch Codex with the opt-in Neovim MCP server for this session only.
+set -euo pipefail
+
+nvim_mcp="$HOME/.cargo/bin/nvim-mcp"
+
+if [[ ! -x "$nvim_mcp" ]]; then
+  echo "codex-nvim: nvim-mcp is not installed at $nvim_mcp" >&2
+  exit 1
+fi
+
+exec codex \
+  -c 'mcp_servers={}' \
+  -c "mcp_servers.nvim.command=\"$nvim_mcp\"" \
+  -c 'mcp_servers.nvim.args=["--log-file","/tmp/nvim-mcp.log","--log-level","debug","--connect","auto"]' \
+  "$@"

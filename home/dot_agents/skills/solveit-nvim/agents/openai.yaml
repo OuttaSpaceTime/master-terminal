@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solveit Nvim"
+  short_description: "Guide agent-assisted Nvim problem solving"
+  default_prompt: "Use $solveit-nvim to guide this Nvim debugging or exploration session with small probes before any edits."

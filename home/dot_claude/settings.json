@@ -11,54 +11,14 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
   "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/set-tab-icon.sh running"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/set-tab-icon.sh running"
-          }
-        ]
-      },
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/chezmoi-guard.sh"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "permission_prompt|elicitation_dialog",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/set-tab-icon.sh permission"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/set-tab-icon.sh finished"
           }
         ]
       }
@@ -83,6 +43,7 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "verbose": true,
+  "preferredNotifChannel": "kitty",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }

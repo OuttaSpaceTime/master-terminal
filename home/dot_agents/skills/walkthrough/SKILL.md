@@ -47,6 +47,15 @@ The footer is a single line, rendered verbatim, at the very bottom of the messag
 - Ask them to predict behavior before revealing it, explain *why* not just *what*, and spot flaws before you point them out
 - Their engagement reveals their understanding — use it to calibrate depth
 
+### Probe When Possible
+For code-shaped concepts (git, Python, shell, SQL, HTTP, algorithms), ask the developer to actually run a minimal snippet and paste the output — `python -c`, a REPL one-liner, a `git` command, `curl | jq`, a unit test. Compare the output against their prediction. Probes turn Assumed understanding into Known and catch the "I thought I knew this" failure mode that pure dialogue misses. When prediction and output disagree, name the gap explicitly (`predicted X, got Y — what does that say about your model of Z?`) and let it shape the next concept rather than glossing past it. Skip probes for theory-only concepts where no small snippet would demonstrate the point.
+
+### Correction Primitive
+When the developer corrects something said earlier in the walkthrough:
+- Acknowledge in one line and edit the prior statement in place — do not append "actually, X" at the bottom of the thread.
+- If the correction invalidates a later concept already discussed, mark it stale and re-walk it before advancing.
+- Never carry forward a concept the developer flagged as wrong; a wrong explanation in step N poisons every recall question that builds on it.
+
 ## Modes of Invocation
 
 ### Standalone: `/walkthrough <topic>`
@@ -98,6 +107,7 @@ For each concept in the material:
 - Ask the developer to explain the full picture in their own words. "Full picture" means: the core concepts covered, how they connect to each other, and when/why a developer would use this knowledge in practice. They do not need to recite every detail — focus on whether they could apply the knowledge to a new situation.
 - Listen for missing connections, oversimplifications that would cause problems, and shallow understanding where depth matters
 - Surface any remaining gaps; if the synthesis is solid, confirm and wrap up
+- **Look Back** before sign-off: name what the developer can now do or know that they could not before this session, what heuristic generalized, and which probe (if any) became the reliable check. One or two sentences each — this is the part everyone skips and the part that compounds.
 - If chained from a skill, confirm they could act on the skill's output confidently
 - If the developer says "I want to document this for later" or wants a reusable reference, transition to a card skill if available in the current project
 - Suggest related topics if relevant (but don't force it)

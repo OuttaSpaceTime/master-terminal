@@ -44,3 +44,43 @@ vim.api.nvim_create_autocmd("FileChangedShellPost", {
     vim.notify("File changed on disk — buffer reloaded.", vim.log.levels.INFO)
   end,
 })
+
+local agent_socket_group = vim.api.nvim_create_augroup("agent_nvim_socket", { clear = true })
+
+local function agent_socket_registry_path()
+  local root = LazyVim.root.get()
+  local folder = vim.fs.basename(root)
+  local hash = vim.fn.sha256(root):sub(1, 12)
+  local dir = (vim.env.XDG_RUNTIME_DIR or vim.fn.stdpath("run") or "/tmp") .. "/nvim-agent"
+
+  vim.fn.mkdir(dir, "p")
+  return ("%s/%s-%s.sockpath"):format(dir, folder, hash)
+end
+
+local function write_agent_socket_registry()
+  local server = vim.v.servername
+  if server == nil or server == "" then
+    return
+  end
+
+  local path = agent_socket_registry_path()
+  vim.fn.writefile({ server }, path)
+  vim.g.agent_nvim_socket_registry = path
+end
+
+vim.api.nvim_create_autocmd({ "VimEnter", "DirChanged" }, {
+  group = agent_socket_group,
+  callback = write_agent_socket_registry,
+})
+
+vim.api.nvim_create_user_command("AgentNvimSocket", function()
+  write_agent_socket_registry()
+  local path = vim.g.agent_nvim_socket_registry
+  if path == nil or path == "" then
+    vim.notify("No Nvim server socket registered", vim.log.levels.WARN)
+    return
+  end
+
+  vim.fn.setreg("+", path)
+  vim.notify("Copied Nvim socket registry path: " .. path)
+end, {})

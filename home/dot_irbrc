@@ -1,0 +1,245 @@
+# irb history
+# require 'irb/ext/save-history'
+
+# IRB.conf[:SAVE_HISTORY] = 2000
+# IRB.conf[:HISTORY_FILE] = "#{ENV['HOME']}/.irb_history"
+
+# ruby 1.8.7 compatible
+require 'json'
+require 'open3'
+require 'rubygems'
+require 'irb/completion'
+
+# interactive editor: use vim from within irb
+begin
+  require 'interactive_editor'
+  puts "Using interactive_editor (vim for irb)"
+rescue LoadError => err
+end
+
+# awesome print
+begin
+  require 'awesome_print'
+  AwesomePrint.irb!
+rescue LoadError => err
+end
+
+# configure irb
+# IRB.conf[:PROMPT_MODE] = :SIMPLE
+
+# Show the IRB startup banner in Rails console too when supported.
+IRB::StartupMessage.display if defined?(Rails) && defined?(IRB::StartupMessage)
+
+module IRBPromptAgent
+  StatementRecord = Struct.new(:index, :code, :status, :value_preview, :exception_class, :exception_message, keyword_init: true)
+
+  class Recorder
+    DEFAULT_RANGE = 8
+    MAX_STATEMENTS = 200
+    MAX_PREVIEW_LENGTH = 1_200
+
+    def initialize
+      @entries = []
+      @next_index = 1
+    end
+
+    def record_success(code, value)
+      @entries << StatementRecord.new(
+        index: next_index,
+        code: code,
+        status: :ok,
+        value_preview: truncate(safe_inspect(value))
+      )
+      trim!
+    end
+
+    def record_error(code, exception)
+      @entries << StatementRecord.new(
+        index: next_index,
+        code: code,
+        status: :error,
+        exception_class: exception.class.name,
+        exception_message: truncate(exception.message.to_s, 400)
+      )
+      trim!
+    end
+
+    def slice(range = DEFAULT_RANGE)
+      if range.to_i <= 0
+        @entries.dup
+      else
+        @entries.last(range.to_i)
+      end
+    end
+
+    def clear
+      @entries.clear
+    end
+
+    def empty?
+      @entries.empty?
+    end
+
+    private
+
+    def next_index
+      current = @next_index
+      @next_index += 1
+      current
+    end
+
+    def trim!
+      @entries.shift while @entries.length > MAX_STATEMENTS
+    end
+
+    def safe_inspect(value)
+      value.inspect
+    rescue StandardError => err
+      "#<inspect failed: #{err.class}: #{err.message}>"
+    end
+
+    def truncate(text, limit = MAX_PREVIEW_LENGTH)
+      return text if text.length <= limit
+
+      "#{text[0, limit]}..."
+    end
+  end
+
+  class << self
+    def recorder
+      @recorder ||= Recorder.new
+    end
+
+    def trackable_statement?(code)
+      stripped = code.to_s.strip
+      return false if stripped.empty?
+
+      !stripped.match?(/\A(prompt|prompt_history|prompt_history_clear)\b/)
+    end
+
+    def render_transcript(range)
+      entries = recorder.slice(range)
+      return "No REPL statements have been recorded in this session yet." if entries.empty?
+
+      entries.map do |entry|
+        lines = ["[#{entry.index}] input:", entry.code.rstrip]
+        if entry.status == :ok
+          lines << "[#{entry.index}] result:"
+          lines << entry.value_preview.to_s
+        else
+          lines << "[#{entry.index}] exception:"
+          lines << "#{entry.exception_class}: #{entry.exception_message}"
+        end
+        lines.join("\n")
+      end.join("\n\n")
+    end
+
+    def metadata
+      {
+        ruby_version: RUBY_VERSION,
+        irb_version: defined?(IRB::VERSION) ? IRB::VERSION : nil,
+        rails_env: (Rails.env if defined?(Rails) && Rails.respond_to?(:env)),
+        pwd: Dir.pwd
+      }.compact
+    end
+  end
+end
+
+module IRBPromptAgentCapture
+  def eval_input
+    configure_io
+
+    each_top_level_statement do |statement, line_no|
+      signal_status(:IN_EVAL) do
+        begin
+          if @context.with_debugger && statement.should_be_handled_by_debugger?
+            return statement.code
+          end
+
+          @context.evaluate(statement, line_no)
+
+          if statement.respond_to?(:code) && IRBPromptAgent.trackable_statement?(statement.code)
+            IRBPromptAgent.recorder.record_success(statement.code, @context.workspace.local_variable_get(:_))
+          end
+
+          if @context.echo? && !statement.suppresses_echo?
+            if statement.is_assignment?
+              if @context.echo_on_assignment?
+                output_value(@context.echo_on_assignment? == :truncate)
+              end
+            else
+              output_value
+            end
+          end
+        rescue SystemExit, SignalException
+          raise
+        rescue Interrupt, Exception => exc
+          if statement.respond_to?(:code) && IRBPromptAgent.trackable_statement?(statement.code)
+            IRBPromptAgent.recorder.record_error(statement.code, exc)
+          end
+          handle_exception(exc)
+          @context.workspace.local_variable_set(:_, exc)
+        end
+      end
+    end
+  end
+end
+
+IRB::Irb.prepend(IRBPromptAgentCapture) if defined?(IRB::Irb)
+
+# load .irbrc_rails in rails environments
+railsrc_path = File.expand_path('~/.irbrc_rails')
+if ( ENV['RAILS_ENV'] || defined? Rails ) && File.exist?( railsrc_path )
+  begin
+    load railsrc_path
+    puts "Using ~/.irbrc_rails"
+  rescue Exception
+  end
+end
+
+def me
+  User.unscoped.find_by(email: 'escheyfelix@gmail.com')
+end
+
+def set_current(membership_or_id)
+  membership =
+    membership_or_id.is_a?(Membership) ? membership_or_id : Membership.unscoped.find(membership_or_id)
+
+  Current.set_from_membership(membership)
+end
+
+def prompt(text, range = IRBPromptAgent::Recorder::DEFAULT_RANGE, reasoning = :m)
+  question = text.to_s.strip
+  raise ArgumentError, 'prompt(text, range): text must not be empty' if question.empty?
+
+  transcript = IRBPromptAgent.render_transcript(range)
+  payload = {
+    question: question,
+    range: range.to_i,
+    reasoning: reasoning.to_s.strip.downcase,
+    transcript: transcript,
+    metadata: IRBPromptAgent.metadata
+  }
+
+  cmd = [File.expand_path('~/.local/bin/irb-agent-prompt')]
+  stdout, stderr, status = Open3.capture3(*cmd, stdin_data: JSON.generate(payload))
+
+  unless status.success?
+    details = [stderr.strip, stdout.strip].reject(&:empty?).join("\n")
+    details = 'no output from helper script' if details.empty?
+    raise "irb-agent-prompt failed (#{status.exitstatus}): #{details}"
+  end
+
+  puts stdout.strip
+  nil
+end
+
+def prompt_history(range = IRBPromptAgent::Recorder::DEFAULT_RANGE)
+  puts IRBPromptAgent.render_transcript(range)
+  nil
+end
+
+def prompt_history_clear
+  IRBPromptAgent.recorder.clear
+  nil
+end

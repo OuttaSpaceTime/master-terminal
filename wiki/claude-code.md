@@ -2,7 +2,7 @@
 title: Claude Code
 tags: [claude-code, chezmoi, settings, hooks]
 created: 2026-04-11
-updated: 2026-04-24
+updated: 2026-04-30
 ---
 
 # Claude Code
@@ -69,25 +69,25 @@ For the agent-teams flag, the source file should contain:
 
 ## Hooks
 
-`~/.claude/settings.json` configures hooks that fire during a Claude session:
+`~/.claude/settings.json` only keeps the `PostToolUse` chezmoi guard hook now. Kitty tab state is handled by the `claude()` shell wrapper instead of Claude Code hooks:
 
 | Hook event | Action |
 |---|---|
-| `PreToolUse` | `set-tab-icon.sh running` — set ⚡️ icon |
-| `Notification` (`permission_prompt\|elicitation_dialog`) | `set-tab-icon.sh permission` — set ❓️ icon |
-| `Stop` | `notify-send` desktop notification + `set-tab-icon.sh finished` — set ✅ icon |
+| `PostToolUse` (`Edit\|Write\|MultiEdit`) | `chezmoi-guard.sh` — block accidental edits outside `home/` |
 
 ## Tab icons
 
 `set-tab-icon.sh` prepends a state icon to the kitty tab title without overwriting it. Manual tab renames (Ctrl+Shift+Alt+T) are always preserved — the script reads the current title from `kitty @ ls` on every state change and strips/re-applies the icon prefix.
 
+Active use is currently limited to the `claude()` shell wrapper, which sets the running state on start and clears it on exit. The script still supports `permission` and `finished`, but those states are no longer driven by Claude Code hooks in this repo.
+
 ### States
 
 | Icon | State | Trigger |
 |------|-------|---------|
-| ⚡️ | Running | `PreToolUse` hook |
-| ❓️ | Needs permission/input | `Notification` hook |
-| ✅ | Finished | `Stop` hook |
+| ⚡️ | Running | `claude()` wrapper |
+| ❓️ | Needs permission/input | supported by script, not currently hooked |
+| ✅ | Finished | supported by script, not currently hooked |
 
 ### Multi-split behavior
 
@@ -103,10 +103,9 @@ The script discovers sibling windows via the same `kitty @ ls` call it uses to r
 
 1. The `claude()` zsh wrapper calls `set-tab-icon.sh running` on entry
 2. The wrapper runs `direnv allow .` quietly before launching Claude so the current project stays authorized
-3. Claude Code hooks update the icon during the session
-4. Redundant `PreToolUse` calls are skipped (state file comparison, no `kitty @` call)
-5. On exit (normal or signal), the wrapper calls `set-tab-icon.sh clear` which strips the icon prefix and removes the state file
-6. If no state files exist (not in kitty, or session started before the wrapper), the script is a silent no-op
+3. The wrapper is the only place that updates kitty tab state during a normal session
+4. On exit (normal or signal), the wrapper calls `set-tab-icon.sh clear` which strips the icon prefix and removes the state file
+5. If no state files exist (not in kitty, or session started before the wrapper), the script is a silent no-op
 
 ### Testing
 

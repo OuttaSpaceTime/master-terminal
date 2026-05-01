@@ -2,7 +2,7 @@
 title: Workspace Skills
 tags: [skills, agents, chezmoi]
 created: 2026-04-08
-updated: 2026-04-09
+updated: 2026-04-29
 ---
 
 # Workspace Skills
@@ -21,3 +21,9 @@ The canonical workspace-local skill tree lives in `home/dot_agents/skills/`. Bot
 - `home/dot_claude/skills/` and `home/dot_codex/skills/` contain chezmoi `symlink_*` entries
 - This avoids duplicating skill content across clients
 - `dot-manage` is the workspace-local skill for coordinating dotfile, skill, and wiki updates
+
+## Solveit Nvim
+
+- `solveit-nvim` guides ordinary Nvim project work with the Solveit loop: understand, predict, probe, inspect, decide, look back
+- It starts in manual context mode and can use higher Nvim integration levels when available: selection push, ambient pull, guided steering
+- It has an explicit edit lock: investigation and patch contracts first, no file edits until the user approves the exact scope
