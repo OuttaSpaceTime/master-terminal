@@ -55,8 +55,6 @@ stdout, stderr, status = Open3.capture3(
   'Read,Glob,Grep',
   '--effort',
   effort,
-  '--permission-mode',
-  'plan',
   instruction
 )
 

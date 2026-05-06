@@ -6,7 +6,11 @@ module RdbgClaudePrompt
   MAX_LOCALS = 20
   MAX_PREVIEW_LENGTH = 700
 
+  @session_id = nil
+
   class << self
+    attr_accessor :session_id
+
     def register!
       return unless defined?(DEBUGGER__::SESSION)
 
@@ -26,7 +30,8 @@ module RdbgClaudePrompt
         question: question,
         reasoning: 'm',
         debugger_context: render_context,
-        metadata: metadata
+        metadata: metadata,
+        session_id: RdbgClaudePrompt.session_id
       }
 
       stdout, status = run_helper(JSON.generate(payload))
@@ -38,7 +43,13 @@ module RdbgClaudePrompt
         return
       end
 
-      puts stdout.strip
+      begin
+        response = JSON.parse(stdout)
+        RdbgClaudePrompt.session_id = response['session_id'] if response['session_id']
+        puts response['text'].to_s.strip
+      rescue JSON::ParserError
+        puts stdout.strip
+      end
     rescue SystemCallError => err
       puts "claude prompt failed: #{err.class}: #{err.message}"
     end
