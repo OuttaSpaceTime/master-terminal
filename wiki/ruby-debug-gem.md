@@ -2,7 +2,7 @@
 title: Ruby debug gem
 tags: [ruby, rails, debugging, workflow]
 created: 2026-05-06
-updated: 2026-05-06
+updated: 2026-05-07
 ---
 
 # Ruby debug gem
@@ -129,24 +129,48 @@ config set irb_console 1
 
 ## Claude sidecar command
 
-This dotfiles repo adds a managed `~/.rdbgrc.rb` command:
+This dotfiles repo adds a `claude` command to both rdbg and IRB with separate, independent implementations.
+
+### In rdbg
+
+Managed via `~/.rdbgrc.rb` (chezmoi source: `home/dot_rdbgrc.rb`):
 
 ```text
 (rdbg) claude
 (rdbg) claude what should I inspect next?
-(rdbg) claude why is this branch false?
+(rdbg) claude why is result false here?
 ```
 
-It captures the current rdbg frame, nearby source, locals, and a short backtrace, then sends that context through `~/.local/bin/rdbg-agent-prompt`.
+On each call it captures the current frame, nearby source lines, locals, and a short backtrace, then forwards that to `~/.local/bin/rdbg-agent-prompt`.
 
-In IRB/Rails console, use:
+**Conversation resuming:** the first `claude` call in a debug session starts a new Claude conversation. Every subsequent call within the same session resumes it (`--resume <session_id>`), so Claude accumulates context across turns.
+
+**What gets sent:**
+
+- *First call:* full system instructions (role, response format) + live debugger context + question
+- *Resumed calls:* fresh debugger context + question only — no repeated instructions, since Claude already has them from turn 1
+
+The debugger context is always current (you may have stepped since the last call), but the role boilerplate is sent only once.
+
+### In IRB / Rails console
+
+Managed via `~/.irbrc` (chezmoi source: `home/dot_irbrc`):
 
 ```ruby
 claude("what should I inspect next?")
-claude("why is this relation empty?", 12)
+claude("why is this relation empty?", 12)   # second arg: how many recent statements to include
 ```
 
-The old `prompt(...)` name remains as an alias for compatibility, but `claude(...)` is the preferred name.
+IRB records recent console statements and includes them as a transcript. `prompt(...)` remains as an alias.
+
+### Helpers
+
+| Script | Used by |
+|--------|---------|
+| `~/.local/bin/rdbg-agent-prompt` | rdbg `claude` command |
+| `~/.local/bin/irb-agent-prompt` | IRB `claude(...)` function |
+
+The two helpers are independent — separate system prompts, separate context capture, separate Claude invocations.
 
 ## Agent verification loop
 
