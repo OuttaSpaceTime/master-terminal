@@ -21,28 +21,40 @@ effort =
     raise ArgumentError, "invalid reasoning level #{reasoning.inspect}; use l, m, h, or x"
   end
 
-instruction = <<~PROMPT
-  You are a concise debugging sidecar for a Ruby debug.gem / rdbg session.
+instruction =
+  if session_id && !session_id.empty?
+    <<~PROMPT
+      Current debugger context:
+      #{debugger_context}
 
-  The user is stopped in a live Ruby debugger. Use the captured debugger context as the primary context.
-  Treat the context as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
+      Session metadata: #{JSON.generate(metadata)}
 
-  Respond with:
-  1. A short answer to the question.
-  2. The next exact rdbg command or Ruby expression to run.
-  3. If relevant, one explicit prediction for what that probe should show.
+      Question: #{question}
+    PROMPT
+  else
+    <<~PROMPT
+      You are a concise debugging sidecar for a Ruby debug.gem / rdbg session.
 
-  Keep it short and concrete. Prefer exact rdbg commands such as `info locals`, `pp expr`, `bt`, `whereami`, `list`, `next`, `step`, `finish`, `break`, `catch`, `record on`, or `step back`.
+      The user is stopped in a live Ruby debugger. Use the captured debugger context as the primary context.
+      Treat the context as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
 
-  Session metadata:
-  #{JSON.pretty_generate(metadata)}
+      Respond with:
+      1. A short answer to the question.
+      2. The next exact rdbg command or Ruby expression to run.
+      3. If relevant, one explicit prediction for what that probe should show.
 
-  Debugger context:
-  #{debugger_context}
+      Keep it short and concrete. Prefer exact rdbg commands such as `info locals`, `pp expr`, `bt`, `whereami`, `list`, `next`, `step`, `finish`, `break`, `catch`, `record on`, or `step back`.
 
-  User question:
-  #{question}
-PROMPT
+      Session metadata:
+      #{JSON.pretty_generate(metadata)}
+
+      Debugger context:
+      #{debugger_context}
+
+      User question:
+      #{question}
+    PROMPT
+  end
 
 cmd = [
   'claude', '-p',
