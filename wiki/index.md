@@ -1,7 +1,7 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-04-22
+updated: 2026-05-06
 ---
 
 # Wiki Index
@@ -25,3 +25,4 @@ updated: 2026-04-22
 - [Sofle Keyboard](sofle-keyboard.md) — Keebart Sofle Choc Pro, Vial config, layout decisions
 - [Bluetooth Audio Toggle](bluetooth-audio-toggle.md) — Super+Shift+i WH-1000XM5 profile switch, codec ceiling, GNOME grab quirks
 - [Solveit Method](solveit-method.md) — fast.ai/Answer.AI methodology and platform, design vocabulary for our own agent skills
+- [Ruby debug gem](ruby-debug-gem.md) — Rails test/server rdbg workflows, record/replay, IRB inspection, and agent-change verification

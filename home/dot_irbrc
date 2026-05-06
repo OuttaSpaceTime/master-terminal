@@ -30,7 +30,7 @@ end
 # Show the IRB startup banner in Rails console too when supported.
 IRB::StartupMessage.display if defined?(Rails) && defined?(IRB::StartupMessage)
 
-module IRBPromptAgent
+module IRBClaudeAgent
   StatementRecord = Struct.new(:index, :code, :status, :value_preview, :exception_class, :exception_message, keyword_init: true)
 
   class Recorder
@@ -114,7 +114,7 @@ module IRBPromptAgent
       stripped = code.to_s.strip
       return false if stripped.empty?
 
-      !stripped.match?(/\A(prompt|prompt_history|prompt_history_clear)\b/)
+      !stripped.match?(/\A(claude|prompt|prompt_history|prompt_history_clear)\b/)
     end
 
     def render_transcript(range)
@@ -145,47 +145,24 @@ module IRBPromptAgent
   end
 end
 
-module IRBPromptAgentCapture
-  def eval_input
-    configure_io
-
-    each_top_level_statement do |statement, line_no|
-      signal_status(:IN_EVAL) do
-        begin
-          if @context.with_debugger && statement.should_be_handled_by_debugger?
-            return statement.code
-          end
-
-          @context.evaluate(statement, line_no)
-
-          if statement.respond_to?(:code) && IRBPromptAgent.trackable_statement?(statement.code)
-            IRBPromptAgent.recorder.record_success(statement.code, @context.workspace.local_variable_get(:_))
-          end
-
-          if @context.echo? && !statement.suppresses_echo?
-            if statement.is_assignment?
-              if @context.echo_on_assignment?
-                output_value(@context.echo_on_assignment? == :truncate)
-              end
-            else
-              output_value
-            end
-          end
-        rescue SystemExit, SignalException
-          raise
-        rescue Interrupt, Exception => exc
-          if statement.respond_to?(:code) && IRBPromptAgent.trackable_statement?(statement.code)
-            IRBPromptAgent.recorder.record_error(statement.code, exc)
-          end
-          handle_exception(exc)
-          @context.workspace.local_variable_set(:_, exc)
-        end
+module IRBClaudeAgentContextCapture
+  def evaluate(statement, line_no)
+    super.tap do
+      if statement.is_a?(IRB::Statement::Expression) && IRBClaudeAgent.trackable_statement?(statement.code)
+        IRBClaudeAgent.recorder.record_success(statement.code, last_value)
       end
     end
+  rescue SystemExit, SignalException
+    raise
+  rescue Interrupt, Exception => exc
+    if statement.respond_to?(:code) && IRBClaudeAgent.trackable_statement?(statement.code)
+      IRBClaudeAgent.recorder.record_error(statement.code, exc)
+    end
+    raise
   end
 end
 
-IRB::Irb.prepend(IRBPromptAgentCapture) if defined?(IRB::Irb)
+IRB::Context.prepend(IRBClaudeAgentContextCapture) if defined?(IRB::Context)
 
 # load .irbrc_rails in rails environments
 railsrc_path = File.expand_path('~/.irbrc_rails')
@@ -208,17 +185,17 @@ def set_current(membership_or_id)
   Current.set_from_membership(membership)
 end
 
-def prompt(text, range = IRBPromptAgent::Recorder::DEFAULT_RANGE, reasoning = :m)
+def claude(text, range = IRBClaudeAgent::Recorder::DEFAULT_RANGE, reasoning = :m)
   question = text.to_s.strip
-  raise ArgumentError, 'prompt(text, range): text must not be empty' if question.empty?
+  raise ArgumentError, 'claude(text, range): text must not be empty' if question.empty?
 
-  transcript = IRBPromptAgent.render_transcript(range)
+  transcript = IRBClaudeAgent.render_transcript(range)
   payload = {
     question: question,
     range: range.to_i,
     reasoning: reasoning.to_s.strip.downcase,
     transcript: transcript,
-    metadata: IRBPromptAgent.metadata
+    metadata: IRBClaudeAgent.metadata
   }
 
   cmd = [File.expand_path('~/.local/bin/irb-agent-prompt')]
@@ -234,12 +211,14 @@ def prompt(text, range = IRBPromptAgent::Recorder::DEFAULT_RANGE, reasoning = :m
   nil
 end
 
-def prompt_history(range = IRBPromptAgent::Recorder::DEFAULT_RANGE)
-  puts IRBPromptAgent.render_transcript(range)
+alias prompt claude
+
+def prompt_history(range = IRBClaudeAgent::Recorder::DEFAULT_RANGE)
+  puts IRBClaudeAgent.render_transcript(range)
   nil
 end
 
 def prompt_history_clear
-  IRBPromptAgent.recorder.clear
+  IRBClaudeAgent.recorder.clear
   nil
 end

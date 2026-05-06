@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+
+require 'json'
+require 'open3'
+
+payload = JSON.parse($stdin.read)
+
+question = payload.fetch('question')
+reasoning = payload.fetch('reasoning', 'm')
+debugger_context = payload.fetch('debugger_context')
+metadata = payload.fetch('metadata', {})
+
+effort =
+  case reasoning.to_s.strip.downcase
+  when 'l', 'low' then 'low'
+  when 'm', 'medium' then 'medium'
+  when 'h', 'high' then 'high'
+  when 'x', 'xhigh', 'max' then 'xhigh'
+  else
+    raise ArgumentError, "invalid reasoning level #{reasoning.inspect}; use l, m, h, or x"
+  end
+
+instruction = <<~PROMPT
+  You are a concise debugging sidecar for a Ruby debug.gem / rdbg session.
+
+  The user is stopped in a live Ruby debugger. Use the captured debugger context as the primary context.
+  Treat the context as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
+
+  Respond with:
+  1. A short answer to the question.
+  2. The next exact rdbg command or Ruby expression to run.
+  3. If relevant, one explicit prediction for what that probe should show.
+
+  Keep it short and concrete. Prefer exact rdbg commands such as `info locals`, `pp expr`, `bt`, `whereami`, `list`, `next`, `step`, `finish`, `break`, `catch`, `record on`, or `step back`.
+
+  Session metadata:
+  #{JSON.pretty_generate(metadata)}
+
+  Debugger context:
+  #{debugger_context}
+
+  User question:
+  #{question}
+PROMPT
+
+stdout, stderr, status = Open3.capture3(
+  { 'RUBY_DEBUG_ENABLE' => '0', 'RUBY_DEBUG_ADDED_RUBYOPT' => nil },
+  'claude',
+  '-p',
+  '--model',
+  'sonnet',
+  '--allowed-tools',
+  'Read,Glob,Grep',
+  '--effort',
+  effort,
+  '--permission-mode',
+  'plan',
+  instruction
+)
+
+unless status.success?
+  failure_text = [stderr, stdout].map(&:to_s).map(&:strip).reject(&:empty?).join("\n")
+  warn(failure_text.empty? ? 'claude -p failed with no output' : failure_text)
+  exit status.exitstatus || 1
+end
+
+print stdout
