@@ -2,7 +2,7 @@
 title: Ruby debug gem
 tags: [ruby, rails, debugging, workflow]
 created: 2026-05-06
-updated: 2026-05-07
+updated: 2026-05-06
 ---
 
 # Ruby debug gem
@@ -131,6 +131,8 @@ config set irb_console 1
 
 This dotfiles repo adds a `claude` command to both rdbg and IRB with separate, independent implementations.
 
+The sidecars are intentionally verification-first: they should ground answers in the live app, schema, model code, or runtime state and should not guess from memory when that evidence is available.
+
 ### In rdbg
 
 Managed via `~/.rdbgrc.rb` (chezmoi source: `home/dot_rdbgrc.rb`):
@@ -141,14 +143,16 @@ Managed via `~/.rdbgrc.rb` (chezmoi source: `home/dot_rdbgrc.rb`):
 (rdbg) claude why is result false here?
 ```
 
-On each call it captures the current frame, nearby source lines, locals, and a short backtrace, then forwards that to `~/.local/bin/rdbg-agent-prompt`.
+On each call it captures the current frame, selected frame index, nearby source lines, locals, a short backtrace, app/test/lib frames from the current stack, current breakpoints, and a recent rdbg transcript of command inputs plus debugger output/errors, then forwards that to `~/.local/bin/rdbg-agent-prompt`.
+
+The transcript is an in-memory ring buffer for the current rdbg session. It is intentionally short and does not persist across runs.
 
 **Conversation resuming:** the first `claude` call in a debug session starts a new Claude conversation. Every subsequent call within the same session resumes it (`--resume <session_id>`), so Claude accumulates context across turns.
 
 **What gets sent:**
 
-- *First call:* full system instructions (role, response format) + live debugger context + question
-- *Resumed calls:* fresh debugger context + question only — no repeated instructions, since Claude already has them from turn 1
+- *First call:* full system instructions (role, response format) + live debugger context + recent transcript + question
+- *Resumed calls:* fresh debugger context + recent transcript + question only — no repeated instructions, since Claude already has them from turn 1
 
 The debugger context is always current (you may have stepped since the last call), but the role boilerplate is sent only once.
 
@@ -161,7 +165,9 @@ claude("what should I inspect next?")
 claude("why is this relation empty?", 12)   # second arg: how many recent statements to include
 ```
 
-IRB records recent console statements and includes them as a transcript. `prompt(...)` remains as an alias.
+IRB records recent console statements and includes them as a transcript.
+There is also a raw command form, so you can type `claude what should I inspect next?` without quotes.
+Like the rdbg sidecar, the first call starts a Claude conversation and later calls resume it, sending only console statements recorded since the previous `claude` call.
 
 ### Helpers
 

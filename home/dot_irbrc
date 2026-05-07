@@ -8,6 +8,7 @@
 require 'json'
 require 'open3'
 require 'rubygems'
+require 'irb/default_commands'
 require 'irb/completion'
 
 # interactive editor: use vim from within irb
@@ -72,6 +73,17 @@ module IRBClaudeAgent
       end
     end
 
+    def since(index, range = DEFAULT_RANGE)
+      entries = @entries.select { |entry| entry.index > index.to_i }
+      return entries if range.to_i <= 0
+
+      entries.last(range.to_i)
+    end
+
+    def latest_index
+      @entries.last&.index || 0
+    end
+
     def clear
       @entries.clear
     end
@@ -106,20 +118,66 @@ module IRBClaudeAgent
   end
 
   class << self
+    attr_accessor :session_id, :last_sent_index
+
     def recorder
       @recorder ||= Recorder.new
+    end
+
+    def ask(text, range = Recorder::DEFAULT_RANGE, reasoning = :m)
+      question = text.to_s.strip
+      raise ArgumentError, 'claude(text, range): text must not be empty' if question.empty?
+
+      transcript = render_transcript_since(last_sent_index.to_i, range)
+      payload = {
+        question: question,
+        range: range.to_i,
+        reasoning: reasoning.to_s.strip.downcase,
+        transcript: transcript,
+        metadata: metadata,
+        session_id: session_id
+      }
+
+      cmd = [File.expand_path('~/.local/bin/irb-agent-prompt')]
+      stdout, stderr, status = Open3.capture3(*cmd, stdin_data: JSON.generate(payload))
+
+      unless status.success?
+        details = [stderr.strip, stdout.strip].reject(&:empty?).join("\n")
+        details = 'no output from helper script' if details.empty?
+        raise "irb-agent-prompt failed (#{status.exitstatus}): #{details}"
+      end
+
+      begin
+        response = JSON.parse(stdout)
+        self.session_id = response['session_id'] if response['session_id']
+        puts response['text'].to_s.strip
+      rescue JSON::ParserError
+        puts stdout.strip
+      end
+
+      self.last_sent_index = recorder.latest_index
+      nil
     end
 
     def trackable_statement?(code)
       stripped = code.to_s.strip
       return false if stripped.empty?
 
-      !stripped.match?(/\A(claude|prompt|prompt_history|prompt_history_clear)\b/)
+      !stripped.match?(/\A(claude|prompt_history|prompt_history_clear)\b/)
     end
 
     def render_transcript(range)
       entries = recorder.slice(range)
-      return "No REPL statements have been recorded in this session yet." if entries.empty?
+      render_entries(entries, "No REPL statements have been recorded in this session yet.")
+    end
+
+    def render_transcript_since(index, range)
+      entries = recorder.since(index, range)
+      render_entries(entries, "No new REPL statements have been recorded since the last Claude call.")
+    end
+
+    def render_entries(entries, empty_message)
+      return empty_message if entries.empty?
 
       entries.map do |entry|
         lines = ["[#{entry.index}] input:", entry.code.rstrip]
@@ -144,6 +202,8 @@ module IRBClaudeAgent
     end
   end
 end
+
+IRBClaudeAgent.last_sent_index = 0
 
 module IRBClaudeAgentContextCapture
   def evaluate(statement, line_no)
@@ -186,32 +246,19 @@ def set_current(membership_or_id)
 end
 
 def claude(text, range = IRBClaudeAgent::Recorder::DEFAULT_RANGE, reasoning = :m)
-  question = text.to_s.strip
-  raise ArgumentError, 'claude(text, range): text must not be empty' if question.empty?
-
-  transcript = IRBClaudeAgent.render_transcript(range)
-  payload = {
-    question: question,
-    range: range.to_i,
-    reasoning: reasoning.to_s.strip.downcase,
-    transcript: transcript,
-    metadata: IRBClaudeAgent.metadata
-  }
-
-  cmd = [File.expand_path('~/.local/bin/irb-agent-prompt')]
-  stdout, stderr, status = Open3.capture3(*cmd, stdin_data: JSON.generate(payload))
-
-  unless status.success?
-    details = [stderr.strip, stdout.strip].reject(&:empty?).join("\n")
-    details = 'no output from helper script' if details.empty?
-    raise "irb-agent-prompt failed (#{status.exitstatus}): #{details}"
-  end
-
-  puts stdout.strip
-  nil
+  IRBClaudeAgent.ask(text, range, reasoning)
 end
 
-alias prompt claude
+class IRBClaudeCommand < IRB::Command::Base
+  category 'Claude'
+  description 'Send the rest of the line to the IRB Claude sidecar.'
+
+  def execute(arg)
+    IRBClaudeAgent.ask(arg)
+  end
+end
+
+IRB::Command.register(:claude, IRBClaudeCommand)
 
 def prompt_history(range = IRBClaudeAgent::Recorder::DEFAULT_RANGE)
   puts IRBClaudeAgent.render_transcript(range)

@@ -10,6 +10,7 @@ range = payload.fetch('range')
 reasoning = payload.fetch('reasoning', 'm')
 transcript = payload.fetch('transcript')
 metadata = payload.fetch('metadata', {})
+session_id = payload['session_id']
 
 effort =
   case reasoning.to_s.strip.downcase
@@ -21,42 +22,60 @@ effort =
     raise ArgumentError, "invalid reasoning level #{reasoning.inspect}; use l, m, h, or x"
   end
 
-instruction = <<~PROMPT
-  You are a concise debugging sidecar for a Ruby IRB / Rails console session.
+instruction =
+  if session_id && !session_id.empty?
+    <<~PROMPT
+      New console statements since the last Claude call:
+      #{transcript}
 
-  The user is asking a question about their live console work. Use the transcript window as the primary context.
-  Treat the transcript as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
+      Session metadata: #{JSON.generate(metadata)}
 
-  Respond with:
-  1. A short answer to the question.
-  2. The next probe or command to run in the console.
-  3. If relevant, one explicit prediction for what that probe should show.
+      Question: #{question}
+    PROMPT
+  else
+    <<~PROMPT
+      You are a concise debugging sidecar for a Ruby IRB / Rails console session.
 
-  Keep it short and concrete. Prefer executable probes over general advice.
+      The user is asking a question about their live console work. Use the transcript window as the primary context.
+      Treat the transcript as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
+      Before suggesting a diagnosis, anchor it in the actual app state that is visible from the console. If the answer depends on schema, model, source, associations, or runtime data, say exactly what to inspect next instead of guessing.
+      Do not invent behavior from memory or fill gaps with speculation.
 
-  Session metadata:
-  #{JSON.pretty_generate(metadata)}
+      Respond with:
+      1. A short answer to the question.
+      2. The next probe or command to run in the console.
+      3. If relevant, one explicit prediction for what that probe should show.
 
-  Included statement range: #{range == 0 ? 'all recorded statements' : "last #{range} statements"}
+      Keep it short and concrete. Prefer executable probes over general advice. When uncertain, ask for the smallest verification step against the real app.
 
-  Transcript:
-  #{transcript}
+      Session metadata:
+      #{JSON.pretty_generate(metadata)}
 
-  User question:
-  #{question}
-PROMPT
+      Included statement range: #{range == 0 ? 'all new statements' : "last #{range} new statements"}
 
-stdout, stderr, status = Open3.capture3(
-  'claude',
-  '-p',
+      Transcript:
+      #{transcript}
+
+      User question:
+      #{question}
+    PROMPT
+  end
+
+cmd = [
+  'claude', '-p',
+  '--output-format', 'stream-json',
   '--model',
   'sonnet',
   '--allowed-tools',
   'Read,Glob,Grep',
-  '--effort',
-  effort,
-  instruction
-)
+  '--effort', effort,
+]
+
+cmd << '--resume' << session_id if session_id && !session_id.empty?
+
+cmd << instruction
+
+stdout, stderr, status = Open3.capture3(*cmd)
 
 unless status.success?
   failure_text = [stderr, stdout].map(&:to_s).map(&:strip).reject(&:empty?).join("\n")
@@ -64,4 +83,11 @@ unless status.success?
   exit status.exitstatus || 1
 end
 
-print stdout
+result_line = stdout.each_line.filter_map { |l| JSON.parse(l.strip) rescue nil }.find { |obj| obj['type'] == 'result' }
+
+if result_line
+  print JSON.generate({ 'text' => result_line['result'], 'session_id' => result_line['session_id'] })
+else
+  warn 'Could not parse claude response'
+  print JSON.generate({ 'text' => stdout.strip, 'session_id' => nil })
+end
