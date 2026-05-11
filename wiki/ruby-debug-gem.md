@@ -2,7 +2,7 @@
 title: Ruby debug gem
 tags: [ruby, rails, debugging, workflow]
 created: 2026-05-06
-updated: 2026-05-06
+updated: 2026-05-07
 ---
 
 # Ruby debug gem
@@ -133,6 +133,8 @@ This dotfiles repo adds a `claude` command to both rdbg and IRB with separate, i
 
 The sidecars are intentionally verification-first: they should ground answers in the live app, schema, model code, or runtime state and should not guess from memory when that evidence is available.
 
+They also follow a probe-backed-claims rule: they should not state a substantive fact, diagnosis, or behavioral claim unless they also show how to verify the same thing from IRB/rdbg. If the claim is visible in the captured transcript/context, they cite that cue briefly. If it is not visible yet, they should phrase it as a hypothesis and provide the exact console/debugger probe that would confirm or falsify it.
+
 ### In rdbg
 
 Managed via `~/.rdbgrc.rb` (chezmoi source: `home/dot_rdbgrc.rb`):
@@ -152,7 +154,7 @@ The transcript is an in-memory ring buffer for the current rdbg session. It is i
 **What gets sent:**
 
 - *First call:* full system instructions (role, response format) + live debugger context + recent transcript + question
-- *Resumed calls:* fresh debugger context + recent transcript + question only — no repeated instructions, since Claude already has them from turn 1
+- *Resumed calls:* the probe-backed-claims invariant + fresh debugger context + recent transcript + question. The full role boilerplate is not repeated, since Claude already has it from turn 1
 
 The debugger context is always current (you may have stepped since the last call), but the role boilerplate is sent only once.
 
@@ -168,6 +170,7 @@ claude("why is this relation empty?", 12)   # second arg: how many recent statem
 IRB records recent console statements and includes them as a transcript.
 There is also a raw command form, so you can type `claude what should I inspect next?` without quotes.
 Like the rdbg sidecar, the first call starts a Claude conversation and later calls resume it, sending only console statements recorded since the previous `claude` call.
+The resumed-call prompt repeats the probe-backed-claims invariant so the constraint does not depend only on the first turn's system instructions.
 
 ### Helpers
 

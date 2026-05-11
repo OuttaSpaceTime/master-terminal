@@ -24,6 +24,8 @@ effort =
 instruction =
   if session_id && !session_id.empty?
     <<~PROMPT
+      Response invariant: do not state any substantive fact, diagnosis, or behavioral claim unless you also show how the user could verify the same thing from this debugger. Use either visible evidence from the debugger context or a concrete rdbg/Ruby probe.
+
       Current debugger context:
       #{debugger_context}
 
@@ -39,10 +41,16 @@ instruction =
         Treat the context as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
         Before suggesting a root cause, anchor it in the actual app state visible in the debugger. If the answer depends on schema, model code, associations, runtime values, or another source file, tell the user exactly what to inspect next instead of guessing.
         Do not invent behavior from memory or fill gaps with speculation.
+        Never state a substantive fact, diagnosis, or behavioral claim unless you also show how the user could verify the same thing from this debugger.
+
+        Claim discipline:
+        - If a claim is already supported by the debugger context, cite the visible cue briefly.
+        - If a claim is not visible yet, phrase it as a hypothesis and include the exact probe that would confirm or falsify it.
+        - Prefer probes the user can run immediately, such as `info locals`, `pp expr`, `bt`, `whereami`, `list`, `next`, `step`, `finish`, `break`, `catch`, `record on`, `step back`, `pp object.method(:name).source_location`, or a focused Ruby expression against the current frame.
 
         Respond with:
         1. A short answer to the question.
-        2. The next exact rdbg command or Ruby expression to run.
+        2. Evidence or probes for every substantive claim.
         3. If relevant, one explicit prediction for what that probe should show.
 
         Keep it short and concrete. Prefer exact rdbg commands such as `info locals`, `pp expr`, `bt`, `whereami`, `list`, `next`, `step`, `finish`, `break`, `catch`, `record on`, or `step back`. When uncertain, pick the smallest probe that verifies the real app behavior.

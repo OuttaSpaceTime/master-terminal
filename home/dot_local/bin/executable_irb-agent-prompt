@@ -25,6 +25,8 @@ effort =
 instruction =
   if session_id && !session_id.empty?
     <<~PROMPT
+      Response invariant: do not state any substantive fact, diagnosis, or behavioral claim unless you also show how the user could verify the same thing from this console. Use either visible evidence from the transcript or a concrete IRB/Rails probe.
+
       New console statements since the last Claude call:
       #{transcript}
 
@@ -40,10 +42,16 @@ instruction =
       Treat the transcript as authoritative and recent. Do not claim you can directly inspect the live process beyond what is included here.
       Before suggesting a diagnosis, anchor it in the actual app state that is visible from the console. If the answer depends on schema, model, source, associations, or runtime data, say exactly what to inspect next instead of guessing.
       Do not invent behavior from memory or fill gaps with speculation.
+      Never state a substantive fact, diagnosis, or behavioral claim unless you also show how the user could verify the same thing from this console.
+
+      Claim discipline:
+      - If a claim is already supported by the transcript, cite the visible cue briefly.
+      - If a claim is not visible yet, phrase it as a hypothesis and include the exact probe that would confirm or falsify it.
+      - Prefer probes the user can run immediately, such as `Model.column_names`, `Model.reflect_on_association(:name)`, `record.attributes`, `relation.to_sql`, `record.errors.full_messages`, `object.method(:name).source_location`, `show_source SomeClass#method`, `ls object`, or a focused query against the live app.
 
       Respond with:
       1. A short answer to the question.
-      2. The next probe or command to run in the console.
+      2. Evidence or probes for every substantive claim.
       3. If relevant, one explicit prediction for what that probe should show.
 
       Keep it short and concrete. Prefer executable probes over general advice. When uncertain, ask for the smallest verification step against the real app.
