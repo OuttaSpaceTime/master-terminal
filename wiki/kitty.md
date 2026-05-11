@@ -2,7 +2,7 @@
 title: Kitty
 tags: [kitty, terminal]
 created: 2026-04-07
-updated: 2026-04-23
+updated: 2026-05-07
 ---
 
 # Kitty
@@ -41,6 +41,7 @@ Kitty default scroll bindings use `kitty_mod` (`Ctrl+Shift` by default):
 
 - `Ctrl+Shift+↑` / `Ctrl+Shift+↓` — scroll by line
 - `Ctrl+Shift+PageUp` / `Ctrl+Shift+PageDown` — scroll by page
+- `Shift+Alt+Up` / `Shift+Alt+Down` — scroll by half a page
 - `Ctrl+Shift+Home` / `Ctrl+Shift+End` — scroll to top / bottom
 - `Ctrl+Shift+Z` / `Ctrl+Shift+X` — jump to previous / next shell prompt (requires shell integration)
 
