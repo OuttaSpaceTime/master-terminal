@@ -7,6 +7,8 @@ return {
           mason = false,
           cmd = { "rbenv", "exec", "ruby-lsp" },
           init_options = {
+            formatter = "rubocop",
+            linters = { "rubocop" },
             enabledFeatures = {
               "documentHighlights",
               "documentSymbols",
@@ -26,15 +28,6 @@ return {
               "references",
             },
           },
-          capabilities = {
-            general = {
-              positionEncodings = { "utf-16" },
-            },
-          },
-        },
-        rubocop = {
-          mason = false,
-          cmd = { "rbenv", "exec", "bundle", "exec", "rubocop", "--lsp", "--no-server" },
           capabilities = {
             general = {
               positionEncodings = { "utf-16" },

@@ -2,7 +2,7 @@
 title: Neovim and LazyVim
 tags: [neovim, lazyvim, editor]
 created: 2026-04-07
-updated: 2026-04-14
+updated: 2026-05-07
 ---
 
 # Neovim and LazyVim
@@ -46,10 +46,11 @@ updated: 2026-04-14
 ## Ruby / RuboCop
 
 - RuboCop is not Mason-managed in this config; `mason = false` is set for the Ruby servers
-- The RuboCop LSP is launched with `rbenv exec bundle exec rubocop --lsp --no-server`
+- Ruby LSP owns RuboCop in this config with `formatter = "rubocop"` and `linters = { "rubocop" }`
 - That means the project’s `Gemfile` / `Gemfile.lock` decides the RuboCop version, not a global Mason install
-- After changing RuboCop in the bundle, restart the LSP or Neovim to avoid stale server processes
-- `ruby_lsp` is also started via `rbenv exec ruby-lsp`, so it follows the Ruby version selected by `rbenv`
+- Ruby LSP’s RuboCop integration runs in-process, so it avoids RuboCop server mode
+- After changing RuboCop in the bundle, restart the LSP or Neovim to avoid stale LSP processes
+- `ruby_lsp` is started via `rbenv exec ruby-lsp`, so it follows the Ruby version selected by `rbenv`
 
 ## Indentation
 
