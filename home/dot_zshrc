@@ -4,6 +4,9 @@
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
+# Allow deeper zsh function nesting before hitting recursion limits.
+typeset -gi FUNCNEST=100
+
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
@@ -308,18 +311,9 @@ function claude() {
   # Keep the current project authorized before starting Claude.
   direnv allow . >/dev/null 2>&1 || true
 
-  ~/.claude/set-tab-icon.sh running
-
-  _claude_cleanup() {
-    ~/.claude/set-tab-icon.sh clear
-    _prompt_terminal_title
-  }
-  trap '_claude_cleanup' INT TERM HUP
-
   command claude "$@"
   local rc=$?
-  trap - INT TERM HUP
-  _claude_cleanup
+  _prompt_terminal_title
   return $rc
 }
 

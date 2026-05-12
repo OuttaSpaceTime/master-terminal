@@ -2,7 +2,7 @@
 title: Kitty
 tags: [kitty, terminal]
 created: 2026-04-07
-updated: 2026-05-07
+updated: 2026-05-12
 ---
 
 # Kitty
@@ -70,8 +70,6 @@ This repo also binds kitty-scrollback.nvim for vim-style browsing:
 
 - `kitty @ set-tab-title` is what the shell uses to rename the active tab
 - `home/dot_zshrc` auto-updates kitty tab and window titles from the prompt and from `codex`/`claude` command wrappers
-- The `claude()` wrapper also drives `set-tab-icon.sh` to prepend state icons (⚡️/❓️/✅) — see [Claude Code](claude-code.md#tab-icons)
-- A manual tab title can be replaced by later shell activity, but `set-tab-icon.sh` always reads the current title before updating so manual renames via Ctrl+Shift+Alt+T are preserved
 - `shell_integration enabled no-title` prevents kitty shell integration from changing titles based on the running foreground command
 - `tab_title_template "{title}"` lets the tab bar show restored/manual tab titles from sessions instead of forcing a numeric index
 
