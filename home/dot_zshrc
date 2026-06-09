@@ -240,7 +240,7 @@ alias dewt='docker compose exec web rails test'
 alias dewts='docker compose exec web rails test:system'
 alias vil-portal='cd ~/Code/Vilocify/vilocify-portal'
 alias vil-frontend='cd ~/Code/Vilocify/vilocify-frontend'
-alias vil-db-reset='docker exec vilocifyportal-postgres-1 psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '"'"'vilocify_portal_dev'"'"' AND pid <> pg_backend_pid();" && git restore --source main db/schema.rb && bin/rails db:drop db:create db:schema:load db:migrate db:fixtures:load'
+export PATH="$HOME/Code/Vilocify/.bin:$PATH"
 alias cpdrive='rclone copy drive:Documents/'Independent Order Of Light Warriors' ~/Code/Misc/prana-power/vault'
 alias syncdrive='rclone sync --interactive ~/Code/Misc/prana-power/vault drive:Documents/'Independent''
 alias synclocal='rclone sync --interactive drive:Documents/'Independent' ~/Code/Misc/prana-power/vault'

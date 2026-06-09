@@ -71,6 +71,7 @@ instruction =
 
 cmd = [
   'claude', '-p',
+  '--verbose',
   '--output-format', 'stream-json',
   '--model',
   'sonnet',

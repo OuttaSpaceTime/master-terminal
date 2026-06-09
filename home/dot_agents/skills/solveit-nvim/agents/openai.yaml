@@ -1,4 +1,4 @@
 interface:
   display_name: "Solveit Nvim"
-  short_description: "Guide agent-assisted Nvim problem solving"
-  default_prompt: "Use $solveit-nvim to guide this Nvim debugging or exploration session with small probes before any edits."
+  short_description: "Create a scratch note and guide Nvim work in small Polya steps"
+  default_prompt: "Use $solveit-nvim for this task. First create a .claude/notes dated scratch markdown file with Polya headings, initialize/commit its private notes Git baseline, give me the nvim-listen command for it, then guide me in strict Socratic Learning Mode. Keep each turn capped to a few lines. Stop after at most 8 changed lines before presenting changes. Ask questions along the way and do not suggest direct probes, code, or edits unless I ask."

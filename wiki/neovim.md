@@ -11,6 +11,9 @@ updated: 2026-05-07
 
 - `Ctrl+W h/j/k/l` — move between splits
 - `Ctrl+W =` — equalize split sizes
+- `Ctrl+O` — jump back to the previous cursor position, such as after `gd`/go-to-definition
+- `Ctrl+I` — jump forward again
+- `Ctrl+U` — scroll up half a page; it does not undo cursor jumps
 - `Space+F+F` — find files
 - `Space+S+G` — grep text
 - `Space+S+B` — grep current buffer (picker)
@@ -18,6 +21,17 @@ updated: 2026-05-07
 - `Space+S+R` — resume last picker state
 - `Space+G+S` — open changed files
 - `Space+G+D` — grouped git diff picker
+- `Space+G+M` — open Diffview against `origin/main...HEAD` (falls back to `origin/master`)
+- In Diffview:
+  - `<Tab>` / `<S-Tab>` — move to next/previous changed file
+  - `gf` — open the file in the previous tabpage as a normal buffer
+  - `<C-w>gf` — open the file in a new tabpage
+  - `<C-w><C-f>` — open the file in a new split
+  - `:DiffviewToggleFiles` or `<leader>gt` — toggle the file panel
+  - `:DiffviewFocusFiles` or `<leader>gF` — focus the file panel
+  - `:DiffviewClose` — close the view
+  - The commit-log panel opened from `L` does not have a default `q` mapping
+  - If `q` does nothing there, use `:close` or `:DiffviewClose`
 - `]f` / `[f` — jump to next/previous function start
 - `]F` / `[F` — jump to next/previous function end
 - `]c` / `[c` — jump to next/previous class start

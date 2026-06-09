@@ -2,7 +2,7 @@
 title: Solveit Method
 tags: [methodology, agents, skills, ai, learning]
 created: 2026-04-21
-updated: 2026-04-29
+updated: 2026-06-08
 ---
 
 # Solveit Method
@@ -22,6 +22,7 @@ AI-assisted literate programming: a single document combines executable code, no
 - **Reproduce before fixing.** No patch without a reliable, minimal failure first. For bug fixes, write the failing test before the fix and confirm it fails for the right reason.
 - **JRY before DRY.** Just Repeat Yourself until the duplication actually hurts — then extract. Premature abstraction freezes a design before its shape is known. Adjacent cleanup is logged, not bundled.
 - **Human is the agent.** Interface choices resist automation — code doesn't auto-execute, completions require explicit triggering, Learning mode gives tiny suggestions instead of full solutions.
+- **Learning Mode is Socratic.** Selecting `learning` from the mode dropdown shifts the AI toward clarifying questions, step-by-step explanation, and guided understanding rather than direct answers. Ghost text is disabled by default in this mode. The internal implementation is not publicly documented and should not be treated as a simple system prompt.
 - **Dialog is editable state, not a log.** You rewrite past AI turns, hide irrelevant history, pin critical context. Counters the auto-regressive failure mode where one AI mistake makes the next more likely. Edit, don't re-prompt.
 - **Context engineering over agentic autonomy.** Manual context curation (pinned notes, scraped docs, summary hierarchies, handoff notes between sessions) consistently outperforms long unattended agent loops. Most users under-invest in context by an order of magnitude.
 - **Shared context.** The AI sees exactly what the human sees — notes, code, outputs, prompts, in one document.

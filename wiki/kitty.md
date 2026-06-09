@@ -2,10 +2,21 @@
 title: Kitty
 tags: [kitty, terminal]
 created: 2026-04-07
-updated: 2026-05-12
+updated: 2026-05-20
 ---
 
 # Kitty
+
+## Update
+
+- This machine uses the official binary install: `kitty 0.46.0` at `~/.local/kitty.app`
+- Update it by re-running the installer:
+
+```bash
+curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin
+```
+
+- Kitty’s own update check only applies to official binary builds; distro packages do not use it
 
 ## Shortcuts
 

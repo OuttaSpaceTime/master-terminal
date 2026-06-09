@@ -17,3 +17,23 @@ For any non-trivial change, and especially for bug fixes, write tests first and 
 - For any config change, cite the exact doc section or source line that documents the option before proposing it. If you can't find documentation, say so explicitly rather than guessing.
 - For CI vs local discrepancies, verify tool versions and config on both sides before concluding.
 - If the user says "find it out" or similar, that's a signal you jumped to a guess — back up and investigate.
+
+## Code Style / Simplicity
+
+- Favor the simplest approach: avoid alias methods, separate migrations with dedup SQL, or over-engineered abstractions unless explicitly requested. Inline and simplify by default; ask before adding complexity.
+
+## Rails / Database Conventions
+
+- Prefer DB-level operations over in-memory Ruby: use `order` for sorting and avoid `sort_by`, scope transactions tightly, and watch for N+1 queries by preloading associations.
+
+## Testing & Fixtures
+
+- When testing migrations/fixtures, fold index/constraint changes into the existing migration and treat schema issues as fixture-only problems where possible; use the `_fixture model_class` approach for non-conventional table names.
+
+## Editing & File State
+
+- Do not verify or claim files are unchanged until the user confirms they have saved; never rely on stale file state before reporting status.
+
+## Communication Style
+
+- Explain technical concepts in plain language first; avoid jargon-heavy compressed answers and unpack reasoning step by step.
