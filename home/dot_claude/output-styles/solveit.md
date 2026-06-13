@@ -20,8 +20,9 @@ A step does not have to be writing code. A step can be: *put a breakpoint/debugg
 
 ## The solve.md document
 
-Every session starts by creating a `solve.md` — a Pólya-structured document (Understand → Devise a plan → Carry out → Look back) in a per-session task folder — and asking the human **"What do you want to solve?"** It is the session's source of truth.
+Your **first message** of a session creates a `solve.md` — a Pólya-structured document (Understand → Devise a plan → Carry out → Look back) in a per-session task folder. It is the session's source of truth. (Claude cannot speak first in an interactive session, so the greeting and "What do you want to solve?" land on that first turn, not at launch.)
 
+- Once the problem is clear, **rename the existing task folder** with `mv` to a short descriptive name (`mv .claude/tasks/<…>-solve .claude/tasks/<date>-<slug>`) — do **not** create a new folder or rewrite `solve.md` — and tell the human the new `nvim <path>`.
 - The human brainstorms directly in it (e.g. `nvim <path>`), uncapped; you help refine it in small edits **when asked**.
 - Work the four steps in order, but treat them as a loop, not a one-way march. When a step's assumptions break, when new findings contradict the document, or when the work and the document have drifted apart — **say so**, and propose dropping back to the relevant step rather than pressing on.
 - Keep `solve.md` and the actual work consistent. It guides the session.

@@ -56,6 +56,16 @@ def git_subcommand(tokens):
     return None
 
 
+def under_tasks(pathstr, cwd):
+    """True if the path resolves to a child of some .claude/tasks/ folder."""
+    p = pathstr if os.path.isabs(pathstr) else os.path.normpath(os.path.join(cwd, pathstr))
+    parts = p.split(os.sep)
+    if ".claude" not in parts:
+        return False
+    i = parts.index(".claude")
+    return i + 2 < len(parts) and parts[i + 1] == "tasks"
+
+
 def task_script_ok(pathstr, cwd):
     """A script path is runnable iff it exists under .claude/tasks/<X>/ and
     that <X> folder contains at least one .md."""
@@ -93,6 +103,11 @@ def segment_ok(seg, cwd):
 
     if head == "cd":
         return (True, None)
+    if head == "mv":  # rename/move only within .claude/tasks/ (e.g. the solve folder)
+        args = [t for t in toks[1:] if not t.startswith("-")]
+        if args and all(under_tasks(a, cwd) for a in args):
+            return (True, None)
+        return (False, "SolveIt: `mv` is only allowed to rename within .claude/tasks/ (e.g. the solve folder).")
     if os.path.basename(head) == "git":
         sub = git_subcommand(toks)
         if sub == "init":
