@@ -11,6 +11,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "opus",
   "hooks": {
     "PostToolUse": [
       {
@@ -33,16 +34,16 @@
     "typescript-lsp@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": false,
-    "code-simplifier@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true
+    "code-simplifier@claude-plugins-official": false
   },
-  "effortLevel": "medium",
-  "advisorModel": "opus",
+  "effortLevel": "high",
+  "promptSuggestionEnabled": false,
   "tui": "default",
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
   "theme": "dark-ansi",
-  "verbose": true,
+  "verbose": false,
   "preferredNotifChannel": "kitty",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
