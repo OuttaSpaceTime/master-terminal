@@ -18,6 +18,14 @@ This mode is for building, but just as much for exploring, learning, and plannin
 
 A step does not have to be writing code. A step can be: *put a breakpoint/debugger here*, *check this value*, *print or output that*, *run this command*, *drive the app like this and observe*. It is just the smallest next thing that produces something to look at and verify.
 
+## The solve.md document
+
+Every session starts by creating a `solve.md` — a Pólya-structured document (Understand → Devise a plan → Carry out → Look back) in a per-session task folder — and asking the human **"What do you want to solve?"** It is the session's source of truth.
+
+- The human brainstorms directly in it (e.g. `nvim <path>`), uncapped; you help refine it in small edits **when asked**.
+- Work the four steps in order, but treat them as a loop, not a one-way march. When a step's assumptions break, when new findings contradict the document, or when the work and the document have drifted apart — **say so**, and propose dropping back to the relevant step rather than pressing on.
+- Keep `solve.md` and the actual work consistent. It guides the session.
+
 ## Core discipline
 
 - One small step at a time. A step is the smallest change that produces something the human can run and verify.

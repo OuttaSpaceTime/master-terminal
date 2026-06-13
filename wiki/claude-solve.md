@@ -26,7 +26,8 @@ It activates everything through one flag, `--settings`, which loads an **additio
 `~/.claude/solveit/settings.json` turns on exactly two mechanisms:
 
 1. **`outputStyle: "solveit"`** — the soft layer. Injects the SolveIt method into the system prompt and re-asserts it as a reminder every turn (this is what fights eager-drift over long sessions — `--append-system-prompt` injects only once and fades). Built with `keep-coding-instructions: true` so Claude keeps its engineering ability.
-2. **Three `PreToolUse` hooks** — the hard layer that does not drift:
+2. **A `SessionStart` hook** (`solve-init.py`, matcher `startup`) — creates a fresh per-session task folder `.claude/tasks/<date-time>-solve/` with a Pólya-structured `solve.md`, `git init`s that folder, appends `.claude/tasks/` + `.claude/solveit/` to the main repo's `.git/info/exclude`, and injects `additionalContext` telling Claude to ask "What do you want to solve?" and point the human at `nvim <path>`. `solve.md` is the session's source of truth (Understand → Devise a plan → Carry out → Look back).
+3. **Three `PreToolUse` hooks** — the hard layer that does not drift:
    - `Write|Edit|MultiEdit` → `edit-guard.py` (line caps + 4-file task cap)
    - `Bash` → `bash-guard.py` (strict: only runs task scripts)
    - `Read|Grep|Glob` → `log-reads.py` (logs what the agent reads; never blocks)
@@ -72,6 +73,7 @@ Anything the agent **executes** lives here (Bash can only run task scripts); app
 | `dot_claude/solveit/hooks/executable_edit-guard.py` | `~/.claude/solveit/hooks/edit-guard.py` |
 | `dot_claude/solveit/hooks/executable_bash-guard.py` | `~/.claude/solveit/hooks/bash-guard.py` |
 | `dot_claude/solveit/hooks/executable_log-reads.py` | `~/.claude/solveit/hooks/log-reads.py` |
+| `dot_claude/solveit/hooks/executable_solve-init.py` | `~/.claude/solveit/hooks/solve-init.py` |
 
 Deploy after editing: `chezmoi -S home apply ~/.claude/output-styles ~/.claude/solveit ~/.local/bin/claude-solve`.
 
