@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# claude-solve: run Claude Code in SolveIt mode.
+#
+# The human is the agent and sets direction; Claude moves in small, verifiable
+# steps. Enforcement is scoped to THIS invocation via --settings (the solveit
+# output style + PreToolUse hooks) — nothing in your global config changes, so
+# a plain `claude` session is unaffected.
+#
+# Hard limits enforced by the hooks:
+#   - <=20 added lines per edit, and <20 uncommitted lines per repo (checkpoint)
+#   - <=4 numbered work files per .claude/tasks/<name>/ folder
+#   - Bash only runs task scripts under .claude/tasks/ (plus `git init`); the
+#     agent never commits; Read/Grep/Glob are logged to .claude/solveit/reads.log
+set -euo pipefail
+
+settings="$HOME/.claude/solveit/settings.json"
+if [[ ! -f "$settings" ]]; then
+  echo "claude-solve: missing $settings" >&2
+  echo "Deploy it first:  chezmoi -S <master-terminal>/home apply" >&2
+  exit 1
+fi
+
+exec claude --settings "$settings" --name solveit "$@"
