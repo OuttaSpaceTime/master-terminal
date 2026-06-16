@@ -4,9 +4,12 @@
 Blocks (exit 2, message to stderr) when:
   1. a single edit adds more than 20 lines  -> split into a smaller step;
   2. a 5th numbered work file (NN-*) is added to a .claude/tasks/<name>/ folder
-     -> checkpoint due, commit the folder and start a new one;
+     -> checkpoint due, commit the folder (the agent's own repo) and start a new
+     one;
   3. 20+ added lines are already uncommitted in the file's enclosing git repo
-     -> checkpoint due, the human commits before more is written.
+     -> checkpoint due. Same 20-line cap for the main repo and for a .claude/tasks/
+     scratch repo; either way the agent never commits — it stops and the human
+     commits before more is written.
 
 20 lines is a hard ceiling, not a target. Fails open: any internal error
 allows the tool call so a bug here never wedges a session.
@@ -34,6 +37,16 @@ def git(repo, *args):
 def deny(msg):
     sys.stderr.write(msg)
     sys.exit(2)
+
+
+def is_task_repo(repo):
+    """True if `repo` is itself a .claude/tasks/<name> folder (the agent's own
+    scratch repo, which it may commit) rather than the main project repo."""
+    parts = repo.split(os.sep)
+    if ".claude" not in parts:
+        return False
+    i = parts.index(".claude")
+    return i + 2 < len(parts) and parts[i + 1] == "tasks"
 
 
 def main():
@@ -87,9 +100,8 @@ def main():
                 if len(existing) >= 4:
                     deny(
                         "SolveIt: this task folder already holds 4 work files (01-04). "
-                        "Checkpoint due - ask the human to commit this task folder "
-                        "(its own repo), then start a new dated folder under "
-                        ".claude/tasks/ for the next steps."
+                        "Start a new dated folder under .claude/tasks/ for the next "
+                        "steps. You never commit — scratch just rolls into a fresh folder."
                     )
 
     # 3. cumulative uncommitted added lines in the enclosing repo
@@ -114,10 +126,17 @@ def main():
             pass
 
     if total >= CAP:
+        if is_task_repo(repo):
+            deny(
+                f"SolveIt: {total} lines are uncommitted in your task/scratch repo "
+                f"{repo} — the same 20-line cap as the main repo. Stop and tell the "
+                f"human what this scratch step did so THEY commit it (you never "
+                f"commit). Then continue."
+            )
         deny(
             f"SolveIt: {total} lines are already uncommitted in {repo}. "
-            f"Checkpoint due before writing more - tell the human what to commit "
-            f"and why, then stop. You do not commit; the human does."
+            f"Checkpoint due before writing more — tell the human what changed and "
+            f"why, then stop. You never commit; the human verifies and commits."
         )
 
 

@@ -118,7 +118,6 @@ DISABLE_AUTO_TITLE="true"
 # Add wisely, as too many plugins slow down shell startup.
 # fzf-tab keeps directory completion lighter than zsh-autocomplete.
 plugins=(
-  git 
   fzf-tab
   zsh-autosuggestions 
   fast-syntax-highlighting 
@@ -231,6 +230,15 @@ alias gpo='git push origin'
 alias gpod='git push origin -d'
 alias gcmsge='git commit --allow-empty -m'
 alias gcmsgem='git commit --allow-empty-message -m'
+unalias gcam 2>/dev/null
+gcam() {
+  if [[ "$1" == "-m" ]]; then
+    shift
+    git commit --amend -m "$*"
+  else
+    git commit --amend --no-edit
+  fi
+}
 alias killrails='lsof -t -i :3000 -s TCP:LISTEN | xargs kill -9'
 alias fixup='git log --oneline | fzf | awk '\''{print $1}'\'' | xargs -I '\''{}'\'' git commit --fixup {}'
 alias merge-conflicts='git diff --name-status --diff-filter=U'
