@@ -228,6 +228,8 @@ gcor() {
 
 alias gpo='git push origin'
 alias gpod='git push origin -d'
+alias ga='git add'
+alias gcmsg='git commit -m'
 alias gcmsge='git commit --allow-empty -m'
 alias gcmsgem='git commit --allow-empty-message -m'
 unalias gcam 2>/dev/null
