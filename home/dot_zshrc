@@ -250,6 +250,7 @@ alias dewt='docker compose exec web rails test'
 alias dewts='docker compose exec web rails test:system'
 alias vil-portal='cd ~/Code/Vilocify/vilocify-portal'
 alias vil-frontend='cd ~/Code/Vilocify/vilocify-frontend'
+alias vil-worktree='cd ~/Code/Vilocify/worktrees'
 export PATH="$HOME/Code/Vilocify/.bin:$PATH"
 alias cpdrive='rclone copy drive:Documents/'Independent Order Of Light Warriors' ~/Code/Misc/prana-power/vault'
 alias syncdrive='rclone sync --interactive ~/Code/Misc/prana-power/vault drive:Documents/'Independent''
@@ -284,7 +285,7 @@ function nvim-listen() {
 
 export CUCUMBER_PUBLISH_QUIET=true
 export DRIVER="cuprite"
-export EDITOR="vim"
+export EDITOR="nvim"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
