@@ -3,3 +3,19 @@
 -- Add any additional options here
 vim.g.python3_host_prog = vim.fn.expand('~/.venvs/pynvim/bin/python')
 vim.g.ruby_host_prog = vim.fn.expand('~/.rbenv/versions/4.0.1/bin/neovim-ruby-host')
+
+-- Root detection: when inside an installed gem (.../gems/<name>-<version>/...),
+-- scope the root to that single gem dir. Otherwise rbenv's own .git would make
+-- the `.git` detector resolve root to ~/.rbenv, breaking search in gem code.
+vim.g.root_spec = {
+  function(buf)
+    local name = vim.api.nvim_buf_get_name(buf or 0)
+    local gem_root = name:match('^(.*/gems/[^/]+)/')
+    if gem_root and vim.fn.isdirectory(gem_root) == 1 then
+      return { gem_root }
+    end
+  end,
+  'lsp',
+  { '.git', 'lua' },
+  'cwd',
+}

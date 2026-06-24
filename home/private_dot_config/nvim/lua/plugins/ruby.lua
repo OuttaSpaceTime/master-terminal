@@ -6,6 +6,20 @@ return {
         ruby_lsp = {
           mason = false,
           cmd = { "rbenv", "exec", "ruby-lsp" },
+          -- When opening a file inside an installed gem, attach to the project's
+          -- already-running ruby-lsp client (which has the whole bundle indexed)
+          -- instead of spawning a new server rooted at the gem dir or ~/.rbenv.
+          -- Without this, go-to-definition/hover stop working once inside gem code.
+          root_dir = function(bufnr, on_dir)
+            local fname = vim.api.nvim_buf_get_name(bufnr)
+            if fname:match("/gems/[^/]+/") then
+              local clients = vim.lsp.get_clients({ name = "ruby_lsp" })
+              if clients[1] and clients[1].config.root_dir then
+                return on_dir(clients[1].config.root_dir)
+              end
+            end
+            on_dir(vim.fs.root(bufnr, { "Gemfile", ".git" }) or vim.fn.getcwd())
+          end,
           init_options = {
             formatter = "rubocop",
             linters = { "rubocop" },
