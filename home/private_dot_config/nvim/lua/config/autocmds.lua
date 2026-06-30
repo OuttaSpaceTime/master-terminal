@@ -10,12 +10,21 @@
 local title_group = vim.api.nvim_create_augroup("kitty_project_title", { clear = true })
 
 local function update_project_title()
-  local root = LazyVim.root.get()
-  local folder = vim.fs.basename(root)
+  local root = vim.fs.normalize(LazyVim.root.get())
   local file = vim.api.nvim_buf_get_name(0)
-  local filename = file ~= "" and vim.fn.fnamemodify(file, ":t") or "[No Name]"
+  local path
+  if file == "" then
+    path = "[No Name]"
+  else
+    local abs = vim.fs.normalize(file)
+    if abs:sub(1, #root + 1) == root .. "/" then
+      path = abs:sub(#root + 2) -- path relative to the project root
+    else
+      path = vim.fn.fnamemodify(file, ":t") -- outside root: fall back to filename
+    end
+  end
   vim.opt.title = true
-  vim.opt.titlestring = ("nvim %s %s"):format(folder, filename)
+  vim.opt.titlestring = ("nvim %s"):format(path)
 end
 
 vim.api.nvim_create_autocmd({ "VimEnter", "DirChanged", "BufEnter" }, {

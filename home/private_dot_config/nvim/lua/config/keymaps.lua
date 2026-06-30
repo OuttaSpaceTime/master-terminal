@@ -54,3 +54,7 @@ end, { desc = "Lazygit (cwd)" })
 -- Trackball tab-switch gesture (BTN_EXTRA + ball left/right)
 vim.keymap.set({ "n", "i", "t" }, "<C-Tab>", "<Cmd>bnext<CR>", { desc = "Next Buffer" })
 vim.keymap.set({ "n", "i", "t" }, "<C-S-Tab>", "<Cmd>bprevious<CR>", { desc = "Prev Buffer" })
+
+-- Switch tabpage (same as gt/gT): Ctrl+Alt+Shift+H/L
+vim.keymap.set("n", "<C-A-S-h>", "<Cmd>tabprevious<CR>", { desc = "Prev Tab" })
+vim.keymap.set("n", "<C-A-S-l>", "<Cmd>tabnext<CR>", { desc = "Next Tab" })

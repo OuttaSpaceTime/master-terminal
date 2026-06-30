@@ -21,6 +21,7 @@ For any non-trivial change, and especially for bug fixes, write tests first and 
 ## Code Style / Simplicity
 
 - Favor the simplest approach: avoid alias methods, separate migrations with dedup SQL, or over-engineered abstractions unless explicitly requested. Inline and simplify by default; ask before adding complexity.
+- When introducing a new API or method, keep it as minimal as possible and never abstract prematurely. The final shape depends on the developer's taste — I will give the direction on how to structure it. Minimal, literal code helps me and reviewers understand and verify how it works. Favor JRY (Just Repeat Yourself) over DRY here: prefer repetition over speculative abstraction.
 
 ## Rails / Database Conventions
 

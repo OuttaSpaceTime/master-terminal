@@ -4,6 +4,38 @@ return {
     cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewToggleFiles", "DiffviewFocusFiles", "DiffviewRefresh" },
     keys = {
       { "<leader>gv", "<cmd>DiffviewOpen<cr>", desc = "Git Diffview" },
+      -- Close via <cmd> (not `:`) so noice's cmdline popup buffer never flashes
+      -- into the tab — typing `:DiffviewClose` triggers E445 (the modified noice
+      -- buffer blocks tabclose). See sindrets/diffview.nvim#302.
+      { "<leader>gc", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
+      {
+        "<leader>gj",
+        function()
+          local views = require("diffview.lib").views
+          local tabs = {}
+          for _, view in ipairs(views) do
+            if view.tabpage and vim.api.nvim_tabpage_is_valid(view.tabpage) then
+              tabs[#tabs + 1] = view.tabpage
+            end
+          end
+          if #tabs == 0 then
+            vim.notify("No open Diffview", vim.log.levels.INFO)
+            return
+          end
+          local cur = vim.api.nvim_get_current_tabpage()
+          local idx
+          for i, tab in ipairs(tabs) do
+            if tab == cur then
+              idx = i
+              break
+            end
+          end
+          -- On a diffview: go to the next one. Otherwise: go to the first.
+          local target = idx and tabs[(idx % #tabs) + 1] or tabs[1]
+          vim.api.nvim_set_current_tabpage(target)
+        end,
+        desc = "Go to open Diffview",
+      },
       {
         "<leader>gM",
         function()

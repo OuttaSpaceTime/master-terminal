@@ -51,6 +51,7 @@ This repository has three responsibilities:
 - Keep durable repo-specific workflow knowledge in the local `wiki/`
 - Do not use a separate repo-local `.agents/skills/wiki-*` layer in this repository
 - Skills that are no longer in regular use can be archived with `agent-skills-archive <name>` — the source is moved to `home/dot_agents/skills-archive/` and the Claude/Codex symlinks plus deployed copies are removed. Restore with `agent-skills-archive --restore <name>`. Archived skills are preserved in the repo, just not deployed.
+- **`home/dot_agents/skills-archive/` is preserved-but-inactive: never edit a skill there.** Nothing under it deploys, so editing it has no live effect and the content must stay a faithful snapshot of when it was archived. If an archived skill needs changes, restore it first (`agent-skills-archive --restore <name>`), edit the now-active source under `home/dot_agents/skills/`, then re-archive if desired. A `PreToolUse` hook (`.claude/hooks/no-edit-archive.py`) blocks `Edit`/`Write`/`MultiEdit` on `skills-archive/` paths to enforce this.
 
 ## Working With The Local Wiki
 

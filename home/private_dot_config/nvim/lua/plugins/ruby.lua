@@ -21,8 +21,18 @@ return {
             on_dir(vim.fs.root(bufnr, { "Gemfile", ".git" }) or vim.fn.getcwd())
           end,
           init_options = {
-            formatter = "rubocop",
+            -- "auto" lets ruby-lsp detect rubocop vs. standard per project from
+            -- the bundle, instead of forcing rubocop everywhere.
+            formatter = "auto",
             linters = { "rubocop" },
+            -- Inlay hints are listed in enabledFeatures, but ruby-lsp only emits
+            -- the hint content when these are turned on.
+            featuresConfiguration = {
+              inlayHint = {
+                implicitHashValue = true, -- { name: } -> { name: name }
+                implicitRescue = true, -- bare `rescue` -> StandardError
+              },
+            },
             enabledFeatures = {
               "documentHighlights",
               "documentSymbols",
