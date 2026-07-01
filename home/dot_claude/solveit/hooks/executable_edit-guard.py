@@ -6,13 +6,18 @@ Blocks (exit 2, message to stderr) when:
   2. a 5th numbered work file (NN-*) is added to a .claude/tasks/<name>/ folder
      -> checkpoint due, commit the folder (the agent's own repo) and start a new
      one;
-  3. 20+ added lines are already uncommitted in the file's enclosing git repo
-     -> checkpoint due. Same 20-line cap for the main repo and for a .claude/tasks/
-     scratch repo; either way the agent never commits — it stops and the human
-     commits before more is written.
+  3. uncommitted work in the file's enclosing git repo crosses a cap. Two tiers:
+       - DIRTY_CAP (20): unstaged + untracked added lines -> checkpoint due. The
+         human stages what they accept (staged lines don't count here, so work
+         continues) OR commits. Staging is the "accepted, keep going" signal.
+       - TOTAL_CAP (60): staged + unstaged + untracked added lines -> the human
+         must commit; staging no longer helps. This forces a real commit from
+         time to time.
+     Same caps for the main repo and a .claude/tasks/ scratch repo; either way
+     the agent never commits — it stops and the human commits.
 
-20 lines is a hard ceiling, not a target. Fails open: any internal error
-allows the tool call so a bug here never wedges a session.
+20 lines is a hard ceiling per step, not a target. Fails open: any internal
+error allows the tool call so a bug here never wedges a session.
 """
 import json
 import os
@@ -20,7 +25,9 @@ import re
 import subprocess
 import sys
 
-CAP = 20
+CAP = 20  # per single edit/write
+DIRTY_CAP = 20  # unstaged + untracked added lines
+TOTAL_CAP = 60  # staged + unstaged + untracked added lines
 NUMBERED = re.compile(r"^\d{2}[-_.]")
 
 
@@ -104,39 +111,47 @@ def main():
                         "steps. You never commit — scratch just rolls into a fresh folder."
                     )
 
-    # 3. cumulative uncommitted added lines in the enclosing repo
+    # 3. cumulative uncommitted added lines in the enclosing repo (see docstring)
     d = os.path.dirname(fp) or cwd
     top = git(d, "rev-parse", "--show-toplevel")
     if top.returncode != 0:
         return
     repo = top.stdout.strip()
 
-    total = 0
-    if git(repo, "rev-parse", "--verify", "-q", "HEAD").returncode == 0:
-        for line in git(repo, "diff", "--numstat", "HEAD").stdout.splitlines():
+    def added_lines(*diff_args):
+        n = 0
+        for line in git(repo, "diff", "--numstat", *diff_args).stdout.splitlines():
             col = line.split("\t", 1)[0]
             if col.isdigit():
-                total += int(col)
+                n += int(col)
+        return n
+
+    dirty = added_lines()  # unstaged: working tree vs index
     others = git(repo, "ls-files", "--others", "--exclude-standard", "-z").stdout
     for rel in filter(None, others.split("\0")):
         try:
             with open(os.path.join(repo, rel), "r", errors="ignore") as fh:
-                total += sum(1 for _ in fh)
+                dirty += sum(1 for _ in fh)  # untracked files are unstaged too
         except OSError:
             pass
+    staged = added_lines("--cached")  # staged: index vs HEAD
+    total = dirty + staged
 
-    if total >= CAP:
-        if is_task_repo(repo):
-            deny(
-                f"SolveIt: {total} lines are uncommitted in your task/scratch repo "
-                f"{repo} — the same 20-line cap as the main repo. Stop and tell the "
-                f"human what this scratch step did so THEY commit it (you never "
-                f"commit). Then continue."
-            )
+    where = "your task/scratch repo " + repo if is_task_repo(repo) else repo
+    if total >= TOTAL_CAP:
         deny(
-            f"SolveIt: {total} lines are already uncommitted in {repo}. "
-            f"Checkpoint due before writing more — tell the human what changed and "
-            f"why, then stop. You never commit; the human verifies and commits."
+            f"SolveIt: {total} lines uncommitted in {where} (staged {staged} + "
+            f"dirty {dirty}) — the {TOTAL_CAP}-line total cap is reached. Staging "
+            f"won't help now; the human must commit before more is written. Tell "
+            f"them what changed and why, then stop. You never commit."
+        )
+
+    if dirty >= DIRTY_CAP:
+        deny(
+            f"SolveIt: {dirty} unstaged lines in {where} (cap {DIRTY_CAP}; staged "
+            f"lines don't count). Checkpoint due — tell the human what changed and "
+            f"why, then stop. They stage what they accept (then work continues) or "
+            f"commit. You never commit."
         )
 
 
