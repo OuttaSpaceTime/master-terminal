@@ -4,7 +4,7 @@
 Bash is reserved for running task scripts and for read-only search/inspection.
 A command is allowed only if every segment is one of:
   - running a task script: an interpreter (python, sh, ruby, ...) whose first
-    non-flag argument is a file under .claude/tasks/<X>/ that EXISTS, in a
+    non-flag argument is a file under .solve/tasks/<X>/ that EXISTS, in a
     folder <X> that also contains a .md; a direct ./path execution of such a
     file; or any non-destructive runner (bin/rails runner, bundle exec ruby,
     npx tsx, rake, ...) that has such a task-script file among its arguments.
@@ -18,14 +18,12 @@ A command is allowed only if every segment is one of:
     Each such command is appended to reads.log so the human sees what was read;
   - read-only git inspection: git diff/status/log/show/blame/ls-files/... — for
     looking at changes; no output redirection; also appended to reads.log;
-  - `git init` of a task folder — to make it its own scratch repo so the 20-line
-    cap counts it; `init` commits NOTHING;
-  - `cd <path>` (navigation); `mv` within .claude/tasks/ (renaming the folder).
-The agent NEVER commits — not the main repo, not its own task folders; the same
-20-line checkpoint cap applies to both and the human commits everything, leaving
-the tree DIRTY for review. Anything else is blocked: ad-hoc mutating commands,
-test runners, installs, and git that writes other than init (add/commit/--amend/
-checkout/reset/...). Fails open on any error.
+  - `git init` of a task folder — to make it its own scratch repo; commits NOTHING;
+  - `cd <path>` (navigation); `mv` within .solve/tasks/ (renaming the folder).
+The agent NEVER commits — not the main repo, not its own task folders; the
+human commits everything, leaving the tree DIRTY for review. Anything else is
+blocked: ad-hoc mutating commands, test runners, installs, and git that writes
+other than init (add/commit/--amend/checkout/reset/...). Fails open on any error.
 """
 import datetime
 import json
@@ -98,8 +96,8 @@ COMMIT_MSG = (
 )
 GENERIC_MSG = (
     "SolveIt: Bash runs task scripts and read-only search/inspection only. To RUN "
-    "something, write it as a script under .claude/tasks/<folder>/ (with a .md "
-    "describing it), then run it as e.g. `python .claude/tasks/<folder>/01-name.py`. "
+    "something, write it as a script under .solve/tasks/<folder>/ (with a .md "
+    "describing it), then run it as e.g. `python .solve/tasks/<folder>/01-name.py`. "
     "To LOOK at code, use read-only commands (grep, rg, find, ls, cat, head, awk, "
     "loops over them, ...) or the Read/Grep/Glob tools. You never commit anything — "
     "leave changes dirty for the human."
@@ -107,11 +105,11 @@ GENERIC_MSG = (
 REDIR_MSG = (
     "SolveIt: a read-only search command may not redirect output to a file (>, >>). "
     "Searching is for looking, not producing artifacts — write files with the "
-    "Edit/Write tool, or run a task script under .claude/tasks/<folder>/."
+    "Edit/Write tool, or run a task script under .solve/tasks/<folder>/."
 )
 FIND_MSG = (
     "SolveIt: `find` is allowed for search only — not -exec/-execdir/-delete/-ok. "
-    "Run anything that executes or mutates as a task script under .claude/tasks/<folder>/."
+    "Run anything that executes or mutates as a task script under .solve/tasks/<folder>/."
 )
 ARGS_MSG = (
     "SolveIt: don't pass arguments (or redirects) to a task script at run time — the "
@@ -122,16 +120,16 @@ ARGS_MSG = (
 )
 NOCODE_MSG = (
     "SolveIt: a runner may only point at a task-script FILE — it may not run an inline "
-    "code string (`-e`/`-c`/`-p`/`--eval`/...). e.g. `bin/rails runner .claude/tasks/<f>/"
+    "code string (`-e`/`-c`/`-p`/`--eval`/...). e.g. `bin/rails runner .solve/tasks/<f>/"
     "01-foo.rb` is fine; `bin/rails runner -e \"...\"` is not. Put the code in a file under "
-    ".claude/tasks/<folder>/ (where the human reviews it) and run that file."
+    ".solve/tasks/<folder>/ (where the human reviews it) and run that file."
 )
 GIT_MSG = (
     "SolveIt: that git subcommand isn't allowed. You may only use git to LOOK — "
     "`git diff`/`status`/`log`/`show`/`blame`/`ls-files`/`rev-parse`/... (read-only, logged) — "
     "plus `git init` for a task folder. You never stage, commit, or mutate the repo (add/"
     "commit/--amend/checkout/reset/stash/apply/...): leave changes DIRTY so the human verifies "
-    "and commits. Run anything that must mutate as a task script under .claude/tasks/<folder>/."
+    "and commits. Run anything that must mutate as a task script under .solve/tasks/<folder>/."
 )
 
 
@@ -167,23 +165,23 @@ def git_target_dir(tokens, cwd):
 
 
 def under_tasks(pathstr, cwd):
-    """True if the path resolves to a child of some .claude/tasks/ folder."""
+    """True if the path resolves to a child of some .solve/tasks/ folder."""
     p = pathstr if os.path.isabs(pathstr) else os.path.normpath(os.path.join(cwd, pathstr))
     parts = p.split(os.sep)
-    if ".claude" not in parts:
+    if ".solve" not in parts:
         return False
-    i = parts.index(".claude")
+    i = parts.index(".solve")
     return i + 2 < len(parts) and parts[i + 1] == "tasks"
 
 
 def task_script_ok(pathstr, cwd):
-    """A script path is runnable iff it exists under .claude/tasks/<X>/ and
+    """A script path is runnable iff it exists under .solve/tasks/<X>/ and
     that <X> folder contains at least one .md."""
     p = pathstr if os.path.isabs(pathstr) else os.path.normpath(os.path.join(cwd, pathstr))
     parts = p.split(os.sep)
-    if ".claude" not in parts:
+    if ".solve" not in parts:
         return (False, GENERIC_MSG)
-    i = parts.index(".claude")
+    i = parts.index(".solve")
     if not (i + 2 < len(parts) and parts[i + 1] == "tasks"):
         return (False, GENERIC_MSG)
     task_dir = os.sep.join(parts[: i + 3])
@@ -233,11 +231,11 @@ def segment_ok(toks, cwd):
         args = [t for t in toks[1:] if not t.startswith("-")]
         if args and all(under_tasks(a, cwd) for a in args):
             return (True, None, False)
-        return (False, "SolveIt: `mv` is only allowed to rename within .claude/tasks/ (e.g. the solve folder).", False)
+        return (False, "SolveIt: `mv` is only allowed to rename within .solve/tasks/ (e.g. a task folder).", False)
     if base == "git":
         sub = git_subcommand(toks)
-        if sub == "init":  # make a task folder its own scratch repo so the 20-line
-            return (True, None, False)  # cap counts it; `init` commits NOTHING
+        if sub == "init":  # optionally make a task folder its own scratch repo;
+            return (True, None, False)  # `init` commits NOTHING
         if sub in GIT_READONLY:  # inspect the repo (diff/status/log/...) — logged, never mutates
             if any(t in REDIRECTS for t in toks):
                 return (False, REDIR_MSG, False)
@@ -296,62 +294,23 @@ def repo_root(cwd):
     return r.stdout.strip() if r.returncode == 0 else cwd
 
 
-def marker_path(session_id):
-    return (
-        os.path.expanduser(f"~/.claude/solveit/state/{session_id}.solve")
-        if session_id else None
-    )
+def solve_dir(cwd):
+    """<repo-root>/.solve — where reads.log lives (git-excluded)."""
+    return os.path.join(repo_root(cwd), ".solve")
 
 
-def solve_dir(session_id, cwd):
-    """The session's scratch/solve folder (where reads.log lives), read from the
-    marker and tracked across renames. Falls back to <repo-root>/.claude/solveit."""
-    m = marker_path(session_id)
-    if m:
-        try:
-            lines = open(m).read().strip().splitlines()
-            folder = lines[0] if lines else ""
-            if folder and os.path.isdir(folder):
-                return folder
-        except OSError:
-            pass
-    return os.path.join(repo_root(cwd), ".claude", "solveit")
-
-
-def log_search(cmd, cwd, session_id):
-    """Append a read-only Bash search to reads.log in the session's scratch folder
-    (mirrors log-reads.py) so the human sees shell searches alongside Read/Grep/
-    Glob. Never blocks the command."""
+def log_search(cmd, cwd):
+    """Append a read-only Bash search to <repo>/.solve/reads.log (mirrors
+    log-reads.py) so the human sees shell searches alongside Read/Grep/Glob.
+    Never blocks the command."""
     try:
-        d = solve_dir(session_id, cwd)
+        d = solve_dir(cwd)
         os.makedirs(d, exist_ok=True)
         ts = datetime.datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
         with open(os.path.join(d, "reads.log"), "a") as f:
             f.write(f"{ts}\tBash\t{cmd.strip()}\n")
     except OSError:
         pass
-
-
-def track_rename(cmd, cwd, session_id):
-    """If `cmd` renames the tracked scratch folder, repoint the marker at the new
-    path so reads.log follows the rename. Best-effort; never raises."""
-    m = marker_path(session_id)
-    if not m:
-        return
-    try:
-        cur = open(m).read().strip().splitlines()[0]
-    except (OSError, IndexError):
-        return
-    for toks in split_segments(cmd):
-        if toks and toks[0] == "mv":
-            args = [t for t in toks[1:] if not t.startswith("-")]
-            if len(args) >= 2 and os.path.realpath(os.path.join(cwd, args[0])) == os.path.realpath(cur):
-                try:
-                    with open(m, "w") as f:
-                        f.write(os.path.abspath(os.path.join(cwd, args[-1])) + "\n")
-                except OSError:
-                    pass
-            return
 
 
 CONTROL_OPS = {"|", "||", "&&", ";", ";;", "&", "|&"}
@@ -393,7 +352,6 @@ def main():
     data = json.load(sys.stdin)
     cmd = (data.get("tool_input") or {}).get("command", "")
     cwd = data.get("cwd") or os.getcwd()
-    session_id = data.get("session_id")
     if not cmd:
         return
     is_search = False
@@ -403,9 +361,8 @@ def main():
             sys.stderr.write(msg)
             sys.exit(2)
         is_search = is_search or search
-    track_rename(cmd, cwd, session_id)  # keep reads.log following a folder rename
     if is_search:  # log the whole command once, like a Grep/Glob entry
-        log_search(cmd, cwd, session_id)
+        log_search(cmd, cwd)
 
 
 if __name__ == "__main__":

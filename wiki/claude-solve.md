@@ -1,32 +1,20 @@
 ---
-title: claude-solve
-tags: [claude-code, solveit, output-styles, hooks, wrapper]
+title: SolveIt default mode
+tags: [claude-code, solveit, output-styles, hooks]
 created: 2026-06-13
-updated: 2026-06-15
+updated: 2026-07-04
 ---
 
-# claude-solve
+# SolveIt default mode
 
-A wrapper that runs Claude Code in **SolveIt mode** — incremental, human-as-agent work with hard guardrails against agent eagerness. See [Solveit Method](solveit-method.md) for the underlying philosophy.
+Claude Code runs in **SolveIt mode by default** in every session — incremental, human-as-agent work with hard guardrails against agent eagerness, wired into the global `~/.claude/settings.json`. The old `claude-solve` wrapper that scoped this per-invocation has been **retired**: it's the default now, so plain `claude` is already constrained. See [Solveit Method](solveit-method.md) for the underlying philosophy.
 
-## What it is
+## How it's wired
 
-`claude-solve` is a thin wrapper. The whole command is:
+`~/.claude/settings.json` turns on the mechanisms globally:
 
-```bash
-claude --settings ~/.claude/solveit/settings.json --name solveit "$@"
-```
-
-It activates everything through one flag, `--settings`, which loads an **additional** settings layer for that invocation only. It is additive (your normal user settings, plugins, statusline, and existing hooks still apply), ephemeral (nothing global changes; plain `claude` is unaffected), and hooks accumulate across sources rather than replacing each other.
-
-`--name solveit` is cosmetic — it labels the session so you can see you are in the constrained mode.
-
-## What it activates
-
-`~/.claude/solveit/settings.json` turns on exactly two mechanisms:
-
-1. **`outputStyle: "solveit"`** — the soft layer. Injects the SolveIt method into the system prompt and re-asserts it as a reminder every turn (this is what fights eager-drift over long sessions — `--append-system-prompt` injects only once and fades). Built with `keep-coding-instructions: true` so Claude keeps its engineering ability.
-2. **A `UserPromptSubmit` hook** (`solve-init.py`) — on your **first message** of a session (guarded once-per-session by a marker in `~/.claude/solveit/state/<session_id>.solve`, so idle launches leave no clutter), creates a per-session task folder `.claude/tasks/<date-time>-solve/` with a Pólya-structured `solve.md`, `git init`s that folder **and commits the scaffold** (so the folder's own repo starts at a clean baseline and the first write doesn't immediately trip the uncommitted-line cap), appends `.claude/tasks/` + `.claude/solveit/` to the main repo's `.git/info/exclude`, and injects context telling Claude to greet, treat the message as the problem, **rename the folder in place** (`mv …-solve <date>-<slug>`) once the problem is clear, and in that first answer hand the human the commands to open it themselves (`cd .claude/tasks/<date>-<slug>` and `nvim .../solve.md`). `solve.md` is the **human's** document and the session's source of truth (Understand → Devise a plan → Carry out → Look back) — Claude does **not** write findings/plans into it on its own; it edits `solve.md` only when explicitly asked, and reports findings in chat otherwise. Note: interactive Claude can't speak first, so the greeting lands on that first turn, not at launch.
+1. **`outputStyle: "solveit"`** — the soft layer. Injects the SolveIt method into the system prompt and re-asserts it as a reminder every turn (this is what fights eager-drift over long sessions — `--append-system-prompt` injects only once and fades). Built with `keep-coding-instructions: true` so Claude keeps its engineering ability. Reinforced by a short **"SolveIt is the default mode"** section in `~/.claude/CLAUDE.md`.
+2. **A `UserPromptSubmit` hook** (`solve-init.py`) — once per session (guarded by a marker in `~/.claude/solveit/state/<session_id>.solve`), adds `.solve/` to the repo's `.git/info/exclude` (so scratch and `reads.log` never dirty the tree) and injects a short reminder of how the Bash/edit guards work. There is **no `solve.md`** and no auto-created folder anymore — the human keeps any task document they want, and task scratch lives under `.solve/tasks/` created on demand.
 3. **Three `PreToolUse` hooks** — the hard layer that does not drift:
    - `Write|Edit|MultiEdit` → `edit-guard.py` (line caps + 4-file task cap)
    - `Bash` → `bash-guard.py` (strict: only runs task scripts)

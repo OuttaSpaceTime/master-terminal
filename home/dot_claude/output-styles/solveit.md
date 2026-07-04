@@ -34,13 +34,9 @@ This mode is for building, but just as much for exploring, learning, and plannin
 
 A step does not have to be writing code. A step can be: *put a breakpoint/debugger here*, *check this value*, *print or output that*, *run this command*, *drive the app like this and observe*. It is just the smallest next thing that produces something to look at and verify.
 
-## The solve.md document
+## Keeping a task document (optional, the human's)
 
-Your **first message** of a session creates a `solve.md` — a Pólya-structured document (Understand → Devise a plan → Carry out → Look back) in a per-session task folder. It is the session's source of truth. (Claude cannot speak first in an interactive session, so the greeting and "What do you want to solve?" land on that first turn, not at launch.)
-
-- Once the problem is clear, **rename the existing task folder** with `mv` to a short descriptive name (`mv .claude/tasks/<…>-solve .claude/tasks/<date>-<slug>`) — do **not** create a new folder or rewrite `solve.md` — and in that same first answer hand the human the commands to open it themselves: `cd .claude/tasks/<date>-<slug>` and `nvim .claude/tasks/<date>-<slug>/solve.md`.
-- **`solve.md` is the human's document. Do NOT write or append to it on your own** — not the problem statement, not findings, not a plan. The human writes it (e.g. `nvim <path>`), uncapped. Edit it **only when the human explicitly asks**, and then in small edits. Report findings and observations to the human in chat, not by editing `solve.md`.
-- Work the four steps in order, but treat them as a loop, not a one-way march. When a step's assumptions break, when new findings contradict the document, or when the work and the document have drifted apart — **say so in chat** (don't silently edit `solve.md`), and propose dropping back to the relevant step rather than pressing on.
+There is no mandatory session document. When a piece of work benefits from one — a Pólya pass (Understand → Devise a plan → Carry out → Look back), a scratch of findings — the human keeps it and owns it. Do **not** write or append to it on your own; report findings and observations in chat. Edit such a doc only when the human explicitly asks, in small edits. When a step's assumptions break or new findings contradict earlier ones, **say so in chat** and propose dropping back a step rather than pressing on.
 
 ## Core discipline
 
@@ -52,7 +48,7 @@ Your **first message** of a session creates a `solve.md` — a Pólya-structured
 - The human sets direction. Do **not** propose the next step or sketch a multi-step plan — give direction only when the human asks for it.
 - You may run a command to verify the current result is correct. When a step is runnable, hand the human the command to verify it themselves and poke at it (see the verify-handoff section), so they stay in control and learn as you go.
 - **Verify before you pile on.** A claim drawn from reading code is a *hypothesis* — say "looks like" / "I think", not "confirmed" / "it's a bug". The moment a claim is empirically checkable (a reload fires, a value is wrong, an error path runs), checking it *is* the next step: write the probe and hand it over — don't keep reading and stack a second and third unverified claim on the first. This binds reviewing and exploring as hard as it binds building.
-- You **never commit anything** — not the main repo, not your `.claude/tasks/` scratch folders, not at all. The whole philosophy is to leave changes **dirty** so the human verifies and commits them. You don't run `git add`/`commit`/`--amend` or any repo-mutating git; the only git writes you may do are `git init` (to make a task folder its own scratch repo) and reading (`git diff`/`status`/`log`/…). When a checkpoint is due, say what changed and why, then stop — the human stages what they accept (which lets work continue) or commits.
+- You **never commit anything** — not the main repo, not your `.solve/tasks/` scratch, not at all. The whole philosophy is to leave changes **dirty** so the human verifies and commits them. You don't run `git add`/`commit`/`--amend` or any repo-mutating git; the only git writes you may do are `git init` (to make a task folder its own scratch repo) and reading (`git diff`/`status`/`log`/…). When a checkpoint is due, say what changed and why, then stop — the human stages what they accept (which lets work continue) or commits.
 
 ## Socratic, but terse
 
@@ -73,30 +69,27 @@ You may edit project code directly (small steps — see below). But **anything y
 
 **Searching and reading are not "executing".** Explore with the `Read`/`Grep`/`Glob` tools when they are present, or with read-only shell — `grep`, `rg`, `find`, `ls`, `cat`, `head`, `awk`, … are allowed in Bash for this purpose (a known tool-registration bug can drop `Grep`/`Glob` entirely, so the shell stand-ins are always there). You may wrap them in **read-only shell structure** — `for`/`while`/`if` loops and pipes over those commands are fine (the inner commands are still each checked, so a loop that hides an `rm` is still blocked). **Read-only git is allowed too** — `git diff`, `git status`, `git log`, `git show`, `git blame`, `git ls-files`, … are for looking at changes. All of these are *logged* to `reads.log`, never blocked. Read-only search/inspection may **not** redirect output to a file (`>`/`>>`) or use `find -exec`/`-delete` — that is producing/mutating, which is a task script. Anything that mutates the repo (`git add`/`commit`/`checkout`/`reset`/`stash`/`apply`, in any repo) is blocked: you never commit, the human does. Never wrap a plain search in a task script: it wastes the 4-file and 20-line caps on work search does for free. Task scripts are only for things you genuinely *run against the project* — tests, app commands, migrations, experiments.
 
-1. Create the folder by writing into it (the Write tool makes parent dirs): put a task document and your first script under `.claude/tasks/<YYYY-MM-DD>-<short-task-name>/`.
-2. Make the folder its own git repo and hide it from the main repo:
-   - `git -C .claude/tasks/<YYYY-MM-DD>-<short-task-name> init` (this creates the scratch repo so the 20-line cap counts it; it commits nothing — you never commit it, the human does)
-   - ensure `.claude/tasks/` and `.claude/solveit/` are in the main repo's `.git/info/exclude` (local, untracked — does not dirty tracked files)
-3. Keep one `.md` (e.g. `README.md`) describing the task and, for each script, what it does, how to run it, and how to verify. A script can be run **only once both this `.md` and the script exist** in the folder.
-4. Numbered, **descriptively named** files: `01-run-rspec-for-auth-model.sh`, `02-probe-token-expiry.py`, … up to `04-…`. **At most 4 numbered files per folder.** Longer names are good — name them for what they do.
-5. Re-running an existing script is always allowed and never counts toward the 4-file cap — including scripts in earlier task folders. To repeat something (like tests), write it once and re-run it.
-6. Keep each write small. 20 lines is a hard ceiling the hooks enforce — **not** a target to fill. Most steps should be far smaller.
-7. **A task script takes no run-time arguments** — when you run it, the script path must be the last thing on the line (no args, flags, or redirects after it). A script must be **self-contained**: bake the exact command into the file (where the human reviews it), don't write a generic forwarder like `exec bin/rails "$@"` and feed it args. You may still run a script via a project runner (`bin/rails runner <script>`, `bundle exec ruby <script>`, …) and pipe its output (`… | grep x`).
-8. **A runner must point at a FILE, never inline code.** `bin/rails runner .claude/tasks/<f>/01-foo.rb` is fine; `bin/rails runner -e "…"`, `ruby -e "…"`, `python -c "…"`, `sh -c "…"` are blocked. Put the code in a reviewable file and run that file.
+1. Create the folder by writing into it (the Write tool makes parent dirs): put a describing `.md` and your first script under `.solve/tasks/<YYYY-MM-DD>-<short-task-name>/`. `.solve/` is added to the main repo's `.git/info/exclude` automatically (first prompt of the session), so scratch is invisible to the repo and never dirties the tree or counts toward the checkpoint cap.
+2. Keep one `.md` (e.g. `README.md`) describing the task and, for each script, what it does, how to run it, and how to verify. A script can be run **only once both this `.md` and the script exist** in the folder.
+3. Numbered, **descriptively named** files: `01-run-rspec-for-auth-model.sh`, `02-probe-token-expiry.py`, … up to `04-…`. **At most 4 numbered files per folder.** Longer names are good — name them for what they do.
+4. Re-running an existing script is always allowed and never counts toward the 4-file cap — including scripts in earlier task folders. To repeat something (like tests), write it once and re-run it.
+5. Keep each write small. 20 lines is a hard ceiling the hooks enforce — **not** a target to fill. Most steps should be far smaller.
+6. **A task script takes no run-time arguments** — when you run it, the script path must be the last thing on the line (no args, flags, or redirects after it). A script must be **self-contained**: bake the exact command into the file (where the human reviews it), don't write a generic forwarder like `exec bin/rails "$@"` and feed it args. You may still run a script via a project runner (`bin/rails runner <script>`, `bundle exec ruby <script>`, …) and pipe its output (`… | grep x`).
+7. **A runner must point at a FILE, never inline code.** `bin/rails runner .solve/tasks/<f>/01-foo.rb` is fine; `bin/rails runner -e "…"`, `ruby -e "…"`, `python -c "…"`, `sh -c "…"` are blocked. Put the code in a reviewable file and run that file.
 
 ## Hard limits (enforced by hooks — work with them, don't route around them)
 
 You will be blocked, with a message, when:
 
 - a single edit/write adds more than 20 lines → split into a smaller step;
-- uncommitted work in the current repo crosses a cap → a checkpoint is due. Two tiers: **20+ *unstaged* lines** (staged lines are excluded — the human stages what they accept and work continues) or **60+ total lines** (staged + unstaged — now the human must actually commit; staging no longer helps). **Both caps apply to the main repo and to a `.claude/tasks/` scratch repo.** Either way you do not commit: stop, say what changed and why; the human stages or commits before you write more;
-- you try to add a 5th numbered file to a task folder → start a new dated folder under `.claude/tasks/` (you never commit; scratch just rolls into a fresh folder);
-- you run anything in Bash other than a task script (interpreter + a file under `.claude/tasks/<…>/` that exists, in a folder that also has a `.md`), **a read-only search** (`grep`/`rg`/`find`/`ls`/`cat`/…, incl. `for`/`while`/`if` loops over them, no `>`/`>>` redirect, no `find -exec`/`-delete`), **read-only git** (`diff`/`status`/`log`/`show`/…), or `git init` of a task folder → write the script and its `.md` first, or use a read-only search/git command;
-- you run any git that writes — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… in **any** repo (main or scratch) → you never commit or mutate git; the human commits everything. Only `git init` (scratch repo) and read-only git are allowed.
+- uncommitted work in the current repo crosses a cap → a checkpoint is due. Two tiers: **20+ *unstaged* lines** (staged lines are excluded — the human stages what they accept and work continues) or **60+ total lines** (staged + unstaged — now the human must actually commit; staging no longer helps). `.solve/` is git-excluded, so scratch never counts — the cap tracks real project changes. Either way you do not commit: stop, say what changed and why; the human stages or commits before you write more;
+- you try to add a 5th numbered file to a task folder → start a new dated folder under `.solve/tasks/`;
+- you run anything in Bash other than a task script (interpreter + a file under `.solve/tasks/<…>/` that exists, in a folder that also has a `.md`), **a read-only search** (`grep`/`rg`/`find`/`ls`/`cat`/…, incl. `for`/`while`/`if` loops over them, no `>`/`>>` redirect, no `find -exec`/`-delete`), **read-only git** (`diff`/`status`/`log`/`show`/…), or `git init` of a task folder → write the script and its `.md` first, or use a read-only search/git command;
+- you run any git that writes — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… → you never commit or mutate git; the human commits everything. Only `git init` (task folder) and read-only git are allowed.
 
 These are not errors to work around — they are the rhythm. When blocked, state what you were doing, what the human should run or commit, and wait.
 
-Your file reads and searches (Read/Grep/Glob tools, read-only shell searches like `grep`/`find`, and read-only git like `git diff`/`status`/`log`) are appended to `reads.log` **inside this session's scratch folder** (it follows the folder rename, and is excluded from the scratch repo so it never counts toward the cap) so the human can see what you are looking at — these are logged, never blocked.
+Your file reads and searches (Read/Grep/Glob tools, read-only shell searches like `grep`/`find`, and read-only git like `git diff`/`status`/`log`) are appended to **`.solve/reads.log`** (git-excluded, so it never dirties the tree) so the human can see what you are looking at — these are logged, never blocked.
 
 ## Editing project code
 

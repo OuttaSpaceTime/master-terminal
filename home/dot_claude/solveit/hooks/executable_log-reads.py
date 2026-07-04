@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """SolveIt PreToolUse logger for Read / Grep / Glob.
 
-Appends one line per read/search to reads.log inside the session's scratch/solve
-folder (falling back to <repo-root>/.claude/solveit) so the human can see what the
-agent is looking at and manage context. Never blocks (always exits 0); fails
-silently on any error.
+Appends one line per read/search to <repo-root>/.solve/reads.log (git-excluded)
+so the human can see what the agent is looking at and manage context. Never
+blocks (always exits 0); fails silently on any error.
 """
 import datetime
 import json
@@ -21,19 +20,9 @@ def repo_root(cwd):
     return r.stdout.strip() if r.returncode == 0 else cwd
 
 
-def solve_dir(session_id, cwd):
-    """The session's scratch/solve folder (where reads.log lives), read from the
-    marker bash-guard keeps in sync across renames. Falls back to the repo root."""
-    if session_id:
-        m = os.path.expanduser(f"~/.claude/solveit/state/{session_id}.solve")
-        try:
-            lines = open(m).read().strip().splitlines()
-            folder = lines[0] if lines else ""
-            if folder and os.path.isdir(folder):
-                return folder
-        except OSError:
-            pass
-    return os.path.join(repo_root(cwd), ".claude", "solveit")
+def solve_dir(cwd):
+    """<repo-root>/.solve — where reads.log lives (git-excluded)."""
+    return os.path.join(repo_root(cwd), ".solve")
 
 
 def target_for(tool, ti):
@@ -62,7 +51,7 @@ def main():
     cwd = data.get("cwd") or os.getcwd()
     target = target_for(tool, ti)
 
-    logdir = solve_dir(data.get("session_id"), cwd)
+    logdir = solve_dir(cwd)
     os.makedirs(logdir, exist_ok=True)
     ts = datetime.datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
     with open(os.path.join(logdir, "reads.log"), "a") as f:

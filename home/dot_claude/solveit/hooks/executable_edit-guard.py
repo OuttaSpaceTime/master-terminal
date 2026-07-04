@@ -3,9 +3,8 @@
 
 Blocks (exit 2, message to stderr) when:
   1. a single edit adds more than 20 lines  -> split into a smaller step;
-  2. a 5th numbered work file (NN-*) is added to a .claude/tasks/<name>/ folder
-     -> checkpoint due, commit the folder (the agent's own repo) and start a new
-     one;
+  2. a 5th numbered work file (NN-*) is added to a .solve/tasks/<name>/ folder
+     -> checkpoint due, start a new dated folder;
   3. uncommitted work in the file's enclosing git repo crosses a cap. Two tiers:
        - DIRTY_CAP (20): unstaged + untracked added lines -> checkpoint due. The
          human stages what they accept (staged lines don't count here, so work
@@ -13,8 +12,9 @@ Blocks (exit 2, message to stderr) when:
        - TOTAL_CAP (60): staged + unstaged + untracked added lines -> the human
          must commit; staging no longer helps. This forces a real commit from
          time to time.
-     Same caps for the main repo and a .claude/tasks/ scratch repo; either way
-     the agent never commits — it stops and the human commits.
+     .solve/ is git-excluded, so task-folder scripts never inflate this count —
+     it tracks real project changes. Either way the agent never commits — it
+     stops and the human commits.
 
 20 lines is a hard ceiling per step, not a target. Fails open: any internal
 error allows the tool call so a bug here never wedges a session.
@@ -44,16 +44,6 @@ def git(repo, *args):
 def deny(msg):
     sys.stderr.write(msg)
     sys.exit(2)
-
-
-def is_task_repo(repo):
-    """True if `repo` is itself a .claude/tasks/<name> folder (the agent's own
-    scratch repo, which it may commit) rather than the main project repo."""
-    parts = repo.split(os.sep)
-    if ".claude" not in parts:
-        return False
-    i = parts.index(".claude")
-    return i + 2 < len(parts) and parts[i + 1] == "tasks"
 
 
 def main():
@@ -89,8 +79,8 @@ def main():
 
     # 2. four-file cap inside a task folder
     parts = fp.split(os.sep)
-    if ".claude" in parts:
-        i = parts.index(".claude")
+    if ".solve" in parts:
+        i = parts.index(".solve")
         if i + 2 < len(parts) and parts[i + 1] == "tasks":
             task_dir = os.sep.join(parts[: i + 3])
             base = os.path.basename(fp)
@@ -107,7 +97,7 @@ def main():
                 if len(existing) >= 4:
                     deny(
                         "SolveIt: this task folder already holds 4 work files (01-04). "
-                        "Start a new dated folder under .claude/tasks/ for the next "
+                        "Start a new dated folder under .solve/tasks/ for the next "
                         "steps. You never commit — scratch just rolls into a fresh folder."
                     )
 
@@ -137,10 +127,9 @@ def main():
     staged = added_lines("--cached")  # staged: index vs HEAD
     total = dirty + staged
 
-    where = "your task/scratch repo " + repo if is_task_repo(repo) else repo
     if total >= TOTAL_CAP:
         deny(
-            f"SolveIt: {total} lines uncommitted in {where} (staged {staged} + "
+            f"SolveIt: {total} lines uncommitted in {repo} (staged {staged} + "
             f"dirty {dirty}) — the {TOTAL_CAP}-line total cap is reached. Staging "
             f"won't help now; the human must commit before more is written. Tell "
             f"them what changed and why, then stop. You never commit."
@@ -148,7 +137,7 @@ def main():
 
     if dirty >= DIRTY_CAP:
         deny(
-            f"SolveIt: {dirty} unstaged lines in {where} (cap {DIRTY_CAP}; staged "
+            f"SolveIt: {dirty} unstaged lines in {repo} (cap {DIRTY_CAP}; staged "
             f"lines don't count). Checkpoint due — tell the human what changed and "
             f"why, then stop. They stage what they accept (then work continues) or "
             f"commit. You never commit."
