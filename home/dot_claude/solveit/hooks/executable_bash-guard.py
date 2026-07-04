@@ -26,6 +26,7 @@ blocked: ad-hoc mutating commands, test runners, installs, and git that writes
 other than init (add/commit/--amend/checkout/reset/...). Fails open on any error.
 """
 import datetime
+import fnmatch
 import json
 import os
 import re
@@ -294,6 +295,22 @@ def repo_root(cwd):
     return r.stdout.strip() if r.returncode == 0 else cwd
 
 
+def allow_patterns(cwd):
+    """Bash(...) globs from permissions.allow (global + project settings) — the human allowlist."""
+    pats = []
+    for fp in (
+        os.path.expanduser("~/.claude/settings.json"),
+        os.path.join(repo_root(cwd), ".claude", "settings.json"),
+        os.path.join(repo_root(cwd), ".claude", "settings.local.json"),
+    ):
+        try:
+            allow = json.load(open(fp)).get("permissions", {}).get("allow", [])
+        except (OSError, ValueError, AttributeError):
+            continue
+        pats += [e[5:-1] for e in allow if isinstance(e, str) and e.startswith("Bash(") and e.endswith(")")]
+    return pats
+
+
 def solve_dir(cwd):
     """<repo-root>/.solve — where reads.log lives (git-excluded)."""
     return os.path.join(repo_root(cwd), ".solve")
@@ -354,9 +371,14 @@ def main():
     cwd = data.get("cwd") or os.getcwd()
     if not cmd:
         return
+    patterns = allow_patterns(cwd)
     is_search = False
     for toks in split_segments(cmd):
         ok, msg, search = segment_ok(toks, cwd)
+        if not ok:
+            seg = " ".join(toks).strip()
+            if seg and any(fnmatch.fnmatchcase(seg, p) for p in patterns):
+                ok, search = True, False
         if not ok:
             sys.stderr.write(msg)
             sys.exit(2)
