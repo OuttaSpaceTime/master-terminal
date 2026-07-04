@@ -3,6 +3,7 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
+        rubocop = { enabled = false },
         ruby_lsp = {
           mason = false,
           cmd = { "rbenv", "exec", "ruby-lsp" },
@@ -60,5 +61,13 @@ return {
         },
       },
     },
+  },
+  {
+    "stevearc/conform.nvim",
+    opts = function(_, opts)
+      opts.formatters_by_ft = opts.formatters_by_ft or {}
+      opts.formatters_by_ft.ruby = nil
+      return opts
+    end,
   },
 }

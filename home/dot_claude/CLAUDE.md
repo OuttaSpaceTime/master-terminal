@@ -23,6 +23,7 @@ For any non-trivial change, and especially for bug fixes, write tests first and 
 - Favor the simplest approach: avoid alias methods, separate migrations with dedup SQL, or over-engineered abstractions unless explicitly requested. Inline and simplify by default; ask before adding complexity.
 - When introducing a new API or method, keep it as minimal as possible and never abstract prematurely. The final shape depends on the developer's taste — I will give the direction on how to structure it. Minimal, literal code helps me and reviewers understand and verify how it works. Favor JRY (Just Repeat Yourself) over DRY here: prefer repetition over speculative abstraction.
 - Simplicity is also *removing* code, not only avoiding abstraction. Don't add `if` guards, defensive re-checks, or parsing for cases the underlying call or surrounding code already handles correctly (e.g. checking `HEAD` exists before `git diff`, which already handles an empty repo). When a branch can't be reached or a check the callee already makes, delete it.
+- Never add comments to new code. Write code that is self-explanatory through naming and structure instead. Only add a comment if I explicitly ask for one.
 
 ## Rails / Database Conventions
 
