@@ -375,6 +375,8 @@ def split_segments(cmd):
 
 
 def main():
+    if os.environ.get("SOLVEIT_OFF"):
+        return
     data = json.load(sys.stdin)
     cmd = (data.get("tool_input") or {}).get("command", "")
     cwd = data.get("cwd") or os.getcwd()

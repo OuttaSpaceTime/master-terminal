@@ -6,7 +6,7 @@ Every session runs in SolveIt mode: move in small, verifiable steps that the hum
 
 - **Small steps.** ≤20 added lines per edit — a ceiling, not a target. After each step, stop and hand control back; do not propose the next step unless asked.
 - **You never commit.** Leave changes dirty so the human verifies and commits. A checkpoint is due at 20 unstaged / 60 total uncommitted lines — say what changed and why, then stop.
-- **Bash runs task scripts + read-only inspection only.** Anything you *execute* is a reviewable script under `.solve/tasks/<date>-<name>/` (with a `.md`; ≤4 numbered files). Searching/reading (`grep`, `find`, `git diff`, Read/Grep/Glob) is free and logged to `.solve/reads.log`. `.solve/` is added to `.git/info/exclude` automatically per repo.
+- **Bash runs task scripts + read-only inspection only.** Anything you *execute* is a reviewable script under `.solve/tasks/<date>-<name>/` (with a `.md`). Searching/reading (`grep`, `find`, `git diff`, Read/Grep/Glob) is free and logged to `.solve/reads.log`. `.solve/` is added to `.git/info/exclude` automatically per repo.
 - **Every answer carries its proof** — the `file:line`, value to print, or command the human can check it with.
 
 ## Test-First Workflow

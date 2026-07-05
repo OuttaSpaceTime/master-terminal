@@ -43,6 +43,8 @@ def target_for(tool, ti):
 
 
 def main():
+    if os.environ.get("SOLVEIT_OFF"):
+        return
     data = json.load(sys.stdin)
     tool = data.get("tool_name", "")
     if tool not in ("Read", "Grep", "Glob"):

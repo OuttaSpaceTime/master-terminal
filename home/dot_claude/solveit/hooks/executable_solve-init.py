@@ -21,7 +21,7 @@ commits. Follow this and you will never hit a guard hook:
   logged to .solve/reads.log, never blocked. No output redirection, no find -exec.
 - RUN code only as a task script: write a script plus a .md describing it under
   .solve/tasks/<YYYY-MM-DD>-<name>/, then run it bare (the script path is the last
-  token, no args). At most 4 numbered files per folder. .solve/ is git-excluded,
+  token, no args). .solve/ is git-excluded,
   so scratch never dirties the repo.
 - NEVER COMMIT anything — not the main repo, not scratch. Leave changes DIRTY so
   the human verifies and commits. When a checkpoint is due (20 unstaged / 60 total
@@ -36,6 +36,8 @@ def run(*args):
 
 
 def main():
+    if os.environ.get("SOLVEIT_OFF"):
+        return
     data = json.load(sys.stdin)
     session = data.get("session_id") or "nosession"
     cwd = data.get("cwd") or os.getcwd()

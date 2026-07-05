@@ -3,9 +3,7 @@
 
 Blocks (exit 2, message to stderr) when:
   1. a single edit adds more than 20 lines  -> split into a smaller step;
-  2. a 5th numbered work file (NN-*) is added to a .solve/tasks/<name>/ folder
-     -> checkpoint due, start a new dated folder;
-  3. uncommitted work in the file's enclosing git repo crosses a cap. Two tiers:
+  2. uncommitted work in the file's enclosing git repo crosses a cap. Two tiers:
        - DIRTY_CAP (20): unstaged + untracked added lines -> checkpoint due. The
          human stages what they accept (staged lines don't count here, so work
          continues) OR commits. Staging is the "accepted, keep going" signal.
@@ -21,14 +19,12 @@ error allows the tool call so a bug here never wedges a session.
 """
 import json
 import os
-import re
 import subprocess
 import sys
 
 CAP = 20  # per single edit/write
 DIRTY_CAP = 20  # unstaged + untracked added lines
 TOTAL_CAP = 60  # staged + unstaged + untracked added lines
-NUMBERED = re.compile(r"^\d{2}[-_.]")
 
 
 def nlines(s):
@@ -47,6 +43,8 @@ def deny(msg):
 
 
 def main():
+    if os.environ.get("SOLVEIT_OFF"):
+        return
     data = json.load(sys.stdin)
     tool = data.get("tool_name", "")
     ti = data.get("tool_input") or {}
@@ -77,31 +75,7 @@ def main():
             f"one idea at a time, and hand it back to verify."
         )
 
-    # 2. four-file cap inside a task folder
-    parts = fp.split(os.sep)
-    if ".solve" in parts:
-        i = parts.index(".solve")
-        if i + 2 < len(parts) and parts[i + 1] == "tasks":
-            task_dir = os.sep.join(parts[: i + 3])
-            base = os.path.basename(fp)
-            if NUMBERED.match(base) and not os.path.exists(fp):
-                try:
-                    existing = [
-                        f
-                        for f in os.listdir(task_dir)
-                        if NUMBERED.match(f)
-                        and os.path.isfile(os.path.join(task_dir, f))
-                    ]
-                except FileNotFoundError:
-                    existing = []
-                if len(existing) >= 4:
-                    deny(
-                        "SolveIt: this task folder already holds 4 work files (01-04). "
-                        "Start a new dated folder under .solve/tasks/ for the next "
-                        "steps. You never commit — scratch just rolls into a fresh folder."
-                    )
-
-    # 3. cumulative uncommitted added lines in the enclosing repo (see docstring)
+    # 2. cumulative uncommitted added lines in the enclosing repo (see docstring)
     d = os.path.dirname(fp) or cwd
     top = git(d, "rev-parse", "--show-toplevel")
     if top.returncode != 0:
