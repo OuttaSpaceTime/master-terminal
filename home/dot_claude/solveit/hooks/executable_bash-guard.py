@@ -206,6 +206,15 @@ def has_inline_code_flag(toks):
     return False
 
 
+def redirects_to_file(toks):
+    """True if a redirect writes a real file. Redirects to /dev/null (discard)
+    and fd-dups like 2>&1 (>& is not in REDIRECTS) write no file and are fine."""
+    for i, t in enumerate(toks):
+        if t in REDIRECTS and (i + 1 >= len(toks) or toks[i + 1] != "/dev/null"):
+            return True
+    return False
+
+
 def segment_ok(toks, cwd):
     """Return (allowed, deny_msg, is_search) for one already-tokenized command
     segment. is_search marks a read-only search/inspection command, which the
@@ -238,7 +247,7 @@ def segment_ok(toks, cwd):
         if sub == "init":  # optionally make a task folder its own scratch repo;
             return (True, None, False)  # `init` commits NOTHING
         if sub in GIT_READONLY:  # inspect the repo (diff/status/log/...) — logged, never mutates
-            if any(t in REDIRECTS for t in toks):
+            if redirects_to_file(toks):
                 return (False, REDIR_MSG, False)
             return (True, None, True)
         # Everything else is a mutation. The agent never commits or stages —
@@ -247,7 +256,7 @@ def segment_ok(toks, cwd):
             return (False, COMMIT_MSG, False)
         return (False, GIT_MSG, False)
     if base in READONLY:  # read-only search/inspection — the Read/Grep/Glob stand-ins
-        if any(t in REDIRECTS for t in toks):
+        if redirects_to_file(toks):
             return (False, REDIR_MSG, False)
         if base == "find" and any(t in FIND_DANGEROUS for t in toks):
             return (False, FIND_MSG, False)
