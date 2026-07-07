@@ -13,6 +13,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from solve_allow import allow_patterns
+
 CONTEXT = """\
 SolveIt is on (the default). Work in small, verifiable steps; the human runs and
 commits. Follow this and you will never hit a guard hook:
@@ -28,6 +31,9 @@ commits. Follow this and you will never hit a guard hook:
   uncommitted lines), say what changed and why, then stop.
 - KEEP STEPS SMALL: at most 20 added lines per edit; after each step, hand control
   back to the human. Do not propose the next step unless asked.
+- The allowlist below can change mid-session — run `solve-allow list` any time to
+  see the current one. Use the solve-allow skill to add an allowance, solve-baseline
+  to curate a repo's baseline validation commands.
 """
 
 
@@ -66,10 +72,19 @@ def main():
     with open(marker, "w") as f:
         f.write("1\n")
 
+    context = CONTEXT
+    patterns = allow_patterns(cwd)
+    if patterns:
+        allowed = ", ".join(f"`{p}`" for p in patterns)
+        context += (
+            "\nALLOWLISTED for this repo — you may run these directly (they "
+            f"bypass the Bash jail): {allowed}\n"
+        )
+
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "UserPromptSubmit",
-            "additionalContext": CONTEXT,
+            "additionalContext": context,
         }
     }))
 

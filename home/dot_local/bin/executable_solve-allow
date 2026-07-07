@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Thin PATH wrapper around the SolveIt allowlist primitive.
+# Subcommands: list | add <glob> [--file F] | remove <glob> [--file F]
+exec python3 "$HOME/.claude/solveit/hooks/solve_allow.py" "$@"

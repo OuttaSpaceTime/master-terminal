@@ -61,8 +61,12 @@ Anything the agent **executes** lives here (Bash can only run task scripts); app
 | `dot_claude/solveit/hooks/executable_bash-guard.py` | `~/.claude/solveit/hooks/bash-guard.py` |
 | `dot_claude/solveit/hooks/executable_log-reads.py` | `~/.claude/solveit/hooks/log-reads.py` |
 | `dot_claude/solveit/hooks/executable_solve-init.py` | `~/.claude/solveit/hooks/solve-init.py` |
+| `dot_claude/solveit/hooks/solve_allow.py` | `~/.claude/solveit/hooks/solve_allow.py` (shared allowlist module + CLI) |
+| `dot_local/bin/executable_solve-allow` | `~/.local/bin/solve-allow` (PATH wrapper) |
+| `dot_agents/skills/solve-baseline/` | `~/.agents/skills/solve-baseline/` (+ claude/codex symlinks) |
+| `dot_agents/skills/solve-allow/` | `~/.agents/skills/solve-allow/` (+ claude/codex symlinks) |
 
-Deploy after editing: `chezmoi -S home apply ~/.claude/settings.json ~/.claude/CLAUDE.md ~/.claude/output-styles ~/.claude/solveit`.
+Deploy after editing: `chezmoi -S home apply ~/.claude/settings.json ~/.claude/CLAUDE.md ~/.claude/output-styles ~/.claude/solveit ~/.local/bin ~/.agents/skills ~/.claude/skills ~/.codex/skills`.
 
 ## Escape hatch: `claude-all`
 
@@ -77,3 +81,22 @@ alias claude-all='SOLVEIT_OFF=1 claude --settings '\''{"outputStyle":"default"}'
 ## Allowlisting specific commands
 
 Commands you explicitly permit bypass the Bash jail. `bash-guard.py` reads `permissions.allow` from your global `~/.claude/settings.json` and the project's `.claude/settings.json` / `.claude/settings.local.json`; any segment matching a `Bash(...)` glob (e.g. `Bash(scripts/anki-sync*)`, mirroring the native permission syntax) is let through. Matching is per-segment, so an allow can't leak into a chained `rm`, and the same entry doubles as Claude's own auto-approve. Separately, read-only searches may redirect to `/dev/null` or use fd-dups (`2>&1`); only redirects to a **real file** are blocked.
+
+### The allowlist primitive (`solve_allow.py`) and the agent knowing it
+
+The allowlist is now a **single source of truth** shared by everything that touches it — the module `~/.claude/solveit/hooks/solve_allow.py`:
+
+- `allow_patterns(cwd)` merges the `Bash(...)` globs from the three settings files. **`bash-guard.py` imports it to decide what passes; `solve-init.py` imports it to *announce* what's allowed.** Because both call the same function, what the agent is *told* it can run can never drift from what the guard actually *allows*.
+- `add_pattern` / `remove_pattern` do safe JSON read-modify-write (dedup, `indent=2`) so nothing hand-edits the settings JSON.
+- A CLI wraps all three — deployed to PATH as `solve-allow`:
+  - `solve-allow list` — print the merged allowlist for the cwd (this one glob, `Bash(solve-allow list)`, is itself globally allowlisted so the agent can run it inside the jail).
+  - `solve-allow add "<glob>" [--file F]` / `solve-allow remove "<glob>" [--file F]` — default `--file` is `.claude/settings.local.json`.
+
+**How the agent learns the allowlist.** On the first prompt of a session, `solve-init.py` injects an `ALLOWLISTED for this repo — …` line (the current globs) plus a pointer to `solve-allow list` into context via `additionalContext`. That injection happens **once per session** (marker-gated), so it reflects settings as of the first prompt. The *enforcer* re-reads on every call, so to see a mid-session change run `solve-allow list` — that's always live.
+
+### Curating and extending the allowlist (skills)
+
+Two agent skills sit on top of the primitive:
+
+- **`solve-baseline`** — for the current repo, explores build/test config (`package.json`, `Gemfile`, `tsconfig`, CI) to discover the barebones validation commands (lint, test, typecheck, db setup), proposes a KEEP/DROP plan, and after approval writes the baseline to the committed `.claude/settings.json`. Everything else stays in the task-script jail.
+- **`solve-allow`** — adds one in-between allowance from a literal command or a natural-language description ("frontend tests"); resolves it to a narrow glob, confirms, and writes it (local by default). Also the front door for "what am I allowed to run?" via `solve-allow list`.

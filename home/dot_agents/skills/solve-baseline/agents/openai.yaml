@@ -1,0 +1,4 @@
+interface:
+  display_name: "SolveIt Baseline"
+  short_description: "Curate the repo's SolveIt Bash allowlist down to a barebones validation baseline"
+  default_prompt: "Use $solve-baseline to discover this repo's barebones validation commands (lint, test, typecheck, db setup), propose a KEEP/DROP plan against the current allowlist, and after approval write the baseline to .claude/settings.json via the solve-allow primitive."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SolveIt Allow"
+  short_description: "Allow one in-between command through the SolveIt Bash jail, or list what's allowed"
+  default_prompt: "Use $solve-allow to resolve a command or natural-language description to a narrow Bash(...) glob, confirm it, and add it to the repo allowlist via the solve-allow primitive. Run 'solve-allow list' to see what is currently allowed."

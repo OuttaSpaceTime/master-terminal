@@ -34,6 +34,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from solve_allow import allow_patterns, repo_root
+
 INTERPRETERS = {
     "python", "python3", "python2", "sh", "bash", "zsh", "fish", "ruby",
     "node", "deno", "bun", "perl", "php", "Rscript", "ts-node", "tsx", "pwsh",
@@ -294,30 +297,6 @@ def segment_ok(toks, cwd):
             return (False, ARGS_MSG, False)
         return (ok, msg, False)
     return (False, GENERIC_MSG, False)
-
-
-def repo_root(cwd):
-    r = subprocess.run(
-        ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True,
-    )
-    return r.stdout.strip() if r.returncode == 0 else cwd
-
-
-def allow_patterns(cwd):
-    """Bash(...) globs from permissions.allow (global + project settings) — the human allowlist."""
-    pats = []
-    for fp in (
-        os.path.expanduser("~/.claude/settings.json"),
-        os.path.join(repo_root(cwd), ".claude", "settings.json"),
-        os.path.join(repo_root(cwd), ".claude", "settings.local.json"),
-    ):
-        try:
-            allow = json.load(open(fp)).get("permissions", {}).get("allow", [])
-        except (OSError, ValueError, AttributeError):
-            continue
-        pats += [e[5:-1] for e in allow if isinstance(e, str) and e.startswith("Bash(") and e.endswith(")")]
-    return pats
 
 
 def solve_dir(cwd):
