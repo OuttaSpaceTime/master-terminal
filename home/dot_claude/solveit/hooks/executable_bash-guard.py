@@ -26,7 +26,6 @@ blocked: ad-hoc mutating commands, test runners, installs, and git that writes
 other than init (add/commit/--amend/checkout/reset/...). Fails open on any error.
 """
 import datetime
-import fnmatch
 import json
 import os
 import re
@@ -353,6 +352,21 @@ def split_segments(cmd):
     return segs
 
 
+def allowlisted(seg, patterns):
+    """Match a segment against Claude Code Bash(...) allow rules. `prefix:*` is a
+    PREFIX rule (the prefix plus any args); a rule with no `:*` is exact. fnmatch
+    can't express this — it reads the `:` literally, so `bundle exec rubocop:*`
+    never matches `bundle exec rubocop -A x`."""
+    for p in patterns:
+        if p.endswith(":*"):
+            prefix = p[:-2]
+            if seg == prefix or seg.startswith(prefix + " "):
+                return True
+        elif seg == p:
+            return True
+    return False
+
+
 def main():
     if os.environ.get("SOLVEIT_OFF"):
         return
@@ -367,7 +381,7 @@ def main():
         ok, msg, search = segment_ok(toks, cwd)
         if not ok:
             seg = " ".join(toks).strip()
-            if seg and any(fnmatch.fnmatchcase(seg, p) for p in patterns):
+            if seg and allowlisted(seg, patterns):
                 ok, search = True, False
         if not ok:
             sys.stderr.write(msg)

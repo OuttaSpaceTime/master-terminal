@@ -11,7 +11,8 @@ vim.g.lazyvim_prettier_needs_config = true
 vim.g.root_spec = {
   function(buf)
     local name = vim.api.nvim_buf_get_name(buf or 0)
-    local gem_root = name:match('^(.*/gems/[^/]+)/')
+    local gem_root = name:match('^(.*/gems/[^/]+)/?')
+      or vim.fn.getcwd():match('^(.*/gems/[^/]+)/?')
     if gem_root and vim.fn.isdirectory(gem_root) == 1 then
       return { gem_root }
     end
