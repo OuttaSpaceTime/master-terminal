@@ -8,7 +8,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "outputStyle": "solveit",
   "hooks": {
     "UserPromptSubmit": [
@@ -73,7 +73,7 @@
     "frontend-design@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false
   },
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "promptSuggestionEnabled": false,
   "tui": "default",
   "autoDreamEnabled": true,

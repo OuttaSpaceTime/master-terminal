@@ -10,9 +10,10 @@ Blocks (exit 2, message to stderr) when:
        - TOTAL_CAP (60): staged + unstaged + untracked added lines -> the human
          must commit; staging no longer helps. This forces a real commit from
          time to time.
-     .solve/ is git-excluded, so task-folder scripts never inflate this count —
-     it tracks real project changes. Either way the agent never commits — it
-     stops and the human commits.
+     .solve/ is git-excluded, so task-folder scripts never inflate the main
+     repo's count — it tracks real project changes. A task folder that was
+     git-init'd is its own repo, so it gets its own separate dirty limit. Either
+     way the agent never commits — it stops and the human commits.
 
 20 lines is a hard ceiling per step, not a target. Fails open: any internal
 error allows the tool call so a bug here never wedges a session.
@@ -40,6 +41,17 @@ def git(repo, *args):
 def deny(msg):
     sys.stderr.write(msg)
     sys.exit(2)
+
+
+def is_task_repo(repo):
+    """True if `repo` is itself a .solve/tasks/<name> folder (the agent's own
+    scratch repo) rather than the main project repo. The agent still never
+    commits it — the human does — but it gets its own dirty limit."""
+    parts = repo.split(os.sep)
+    if ".solve" not in parts:
+        return False
+    i = parts.index(".solve")
+    return i + 2 < len(parts) and parts[i + 1] == "tasks"
 
 
 def main():
@@ -101,9 +113,10 @@ def main():
     staged = added_lines("--cached")  # staged: index vs HEAD
     total = dirty + staged
 
+    where = "your task/scratch repo " + repo if is_task_repo(repo) else repo
     if total >= TOTAL_CAP:
         deny(
-            f"SolveIt: {total} lines uncommitted in {repo} (staged {staged} + "
+            f"SolveIt: {total} lines uncommitted in {where} (staged {staged} + "
             f"dirty {dirty}) — the {TOTAL_CAP}-line total cap is reached. Staging "
             f"won't help now; the human must commit before more is written. Tell "
             f"them what changed and why, then stop. You never commit."
@@ -111,7 +124,7 @@ def main():
 
     if dirty >= DIRTY_CAP:
         deny(
-            f"SolveIt: {dirty} unstaged lines in {repo} (cap {DIRTY_CAP}; staged "
+            f"SolveIt: {dirty} unstaged lines in {where} (cap {DIRTY_CAP}; staged "
             f"lines don't count). Checkpoint due — tell the human what changed and "
             f"why, then stop. They stage what they accept (then work continues) or "
             f"commit. You never commit."

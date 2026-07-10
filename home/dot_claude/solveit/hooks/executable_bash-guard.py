@@ -353,14 +353,19 @@ def split_segments(cmd):
 
 
 def allowlisted(seg, patterns):
-    """Match a segment against Claude Code Bash(...) allow rules. `prefix:*` is a
-    PREFIX rule (the prefix plus any args); a rule with no `:*` is exact. fnmatch
-    can't express this — it reads the `:` literally, so `bundle exec rubocop:*`
-    never matches `bundle exec rubocop -A x`."""
+    """Match a segment against Claude Code Bash(...) allow rules, mirroring its
+    native matching so the hook never blocks a command the human already allowed:
+    `prefix:*` is a prefix rule (the prefix plus any args); a trailing `*` is a
+    glob (`chezmoi ... diff*` matches `chezmoi ... diff`, `ls*` matches `lsof`);
+    no wildcard is exact. fnmatch can't express `:*` — it reads the `:` literally,
+    so `bundle exec rubocop:*` never matches `bundle exec rubocop -A x`."""
     for p in patterns:
         if p.endswith(":*"):
             prefix = p[:-2]
             if seg == prefix or seg.startswith(prefix + " "):
+                return True
+        elif p.endswith("*"):
+            if seg.startswith(p[:-1]):
                 return True
         elif seg == p:
             return True
