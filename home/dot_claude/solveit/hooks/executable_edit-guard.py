@@ -11,9 +11,9 @@ Blocks (exit 2, message to stderr) when:
          must commit; staging no longer helps. This forces a real commit from
          time to time.
      .solve/ is git-excluded, so task-folder scripts never inflate the main
-     repo's count — it tracks real project changes. A task folder that was
-     git-init'd is its own repo, so it gets its own separate dirty limit. Either
-     way the agent never commits — it stops and the human commits.
+     repo's count — it tracks real project changes. Each .solve/tasks/<X> folder
+     is auto-git-init'd on first write, so it's its own repo with its own separate
+     dirty limit. Either way the agent never commits — it stops and the human commits.
 
 20 lines is a hard ceiling per step, not a target. Fails open: any internal
 error allows the tool call so a bug here never wedges a session.
@@ -54,6 +54,17 @@ def is_task_repo(repo):
     return i + 2 < len(parts) and parts[i + 1] == "tasks"
 
 
+def task_folder_root(fp):
+    """The .solve/tasks/<X> folder a path lives under, or None."""
+    parts = fp.split(os.sep)
+    if ".solve" not in parts:
+        return None
+    i = parts.index(".solve")
+    if i + 2 < len(parts) and parts[i + 1] == "tasks":
+        return os.sep.join(parts[: i + 3])
+    return None
+
+
 def main():
     if os.environ.get("SOLVEIT_OFF"):
         return
@@ -86,6 +97,14 @@ def main():
             f"That ceiling is not a target — make a genuinely small change, "
             f"one idea at a time, and hand it back to verify."
         )
+
+    # Make each .solve/tasks/<X> folder its own scratch repo so the caps below
+    # scope to it (else it resolves up to the git-excluded main repo and never
+    # counts). The human still commits it; the agent never does.
+    task_root = task_folder_root(fp)
+    if task_root and not os.path.isdir(os.path.join(task_root, ".git")):
+        os.makedirs(task_root, exist_ok=True)
+        git(task_root, "init", "-q")
 
     # 2. cumulative uncommitted added lines in the enclosing repo (see docstring)
     d = os.path.dirname(fp) or cwd

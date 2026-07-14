@@ -90,6 +90,10 @@ GIT_READONLY = {
     "diff-tree", "diff-index", "diff-files", "whatchanged", "show-branch",
     "name-rev", "count-objects",
 }
+BUNDLE_READONLY = {
+    "show", "info", "list", "env", "platform", "check", "outdated",
+    "doctor", "version",
+}
 
 COMMIT_MSG = (
     "SolveIt: you never commit — not the main repo, not your task/scratch folders, "
@@ -257,6 +261,12 @@ def segment_ok(toks, cwd):
         if sub in ("commit", "merge", "rebase", "cherry-pick", "revert"):
             return (False, COMMIT_MSG, False)
         return (False, GIT_MSG, False)
+    if base == "bundle":
+        sub = next((t for t in toks[1:] if not t.startswith("-")), None)
+        if sub in BUNDLE_READONLY:
+            if redirects_to_file(toks):
+                return (False, REDIR_MSG, False)
+            return (True, None, True)
     if base in READONLY:  # read-only search/inspection — the Read/Grep/Glob stand-ins
         if redirects_to_file(toks):
             return (False, REDIR_MSG, False)
