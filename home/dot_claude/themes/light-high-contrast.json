@@ -1,0 +1,12 @@
+{
+  "name": "Light High Contrast",
+  "base": "light",
+  "overrides": {
+    "diffAdded": "#b8e6c4",
+    "diffRemoved": "#f4bcc3",
+    "diffAddedWord": "#7bd79b",
+    "diffRemovedWord": "#ef95a2",
+    "diffAddedDimmed": "#e6f4ea",
+    "diffRemovedDimmed": "#fbe9eb"
+  }
+}

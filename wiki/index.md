@@ -28,3 +28,4 @@ updated: 2026-06-19
 - [Bluetooth Audio Toggle](bluetooth-audio-toggle.md) — Super+Shift+i WH-1000XM5 profile switch, codec ceiling, GNOME grab quirks
 - [Solveit Method](solveit-method.md) — fast.ai/Answer.AI methodology and platform, design vocabulary for our own agent skills
 - [Ruby debug gem](ruby-debug-gem.md) — Rails test/server rdbg workflows, record/replay, IRB inspection, and agent-change verification
+- [Light Theme Palette](light-theme-palette.md) — the soft-white high-contrast theme: font, core hex palette, where every color lives (kitty/nvim/Claude Code/fzf), and the viewport-border/backdrop gotchas
