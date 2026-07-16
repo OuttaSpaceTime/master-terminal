@@ -33,8 +33,8 @@ Installed to `~/.local/share/fonts/JetBrainsMonoNF/`
 | `#3c3f54` | tertiary text (subtext0) |
 | `#0a4fd0` | blue — cursor, url, links, keywords, fzf `hl` |
 | `#bd0026` | red — errors, diff-removed, fzf `pointer` |
-| `#0f6e2a` | green (forest) — strings, diff-added, fzf `marker`, p10k branch/versions |
-| `#9a6700` | yellow / amber |
+| `#00702a` | green (vivid forest) — strings, diff-added, fzf `marker`, p10k branch/versions |
+| `#b84a00` | orange (warm accent) — kitty `color3`, statusline, nvim `yellow`, p10k (via ANSI 3) |
 | `#0c6e74` | teal |
 | `#c81f9e` | pink / magenta |
 | `#9333ea` | mauve — nvim keywords |

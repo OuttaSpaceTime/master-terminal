@@ -13,9 +13,9 @@ fi
 
 # Colors
 CYAN=$'\033[38;2;12;110;116m'    # teal    #0c6e74
-GREEN=$'\033[38;2;15;110;42m'    # green   #0f6e2a
+GREEN=$'\033[38;2;0;112;42m'     # green   #00702a
 BLUE=$'\033[38;2;10;79;208m'     # blue    #0a4fd0
-YELLOW=$'\033[38;2;154;103;0m'   # amber   #9a6700
+YELLOW=$'\033[38;2;184;74;0m'    # orange  #b84a00
 RED=$'\033[38;2;189;0;38m'       # red     #bd0026
 WHITE=$'\033[38;2;28;30;42m'     # text    #1c1e2a
 MAGENTA=$'\033[38;2;200;31;158m' # pink    #c81f9e

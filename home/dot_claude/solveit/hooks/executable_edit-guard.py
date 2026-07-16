@@ -14,6 +14,10 @@ Blocks (exit 2, message to stderr) when:
      repo's count — it tracks real project changes. Each .solve/tasks/<X> folder
      is auto-git-init'd on first write, so it's its own repo with its own separate
      dirty limit. Either way the agent never commits — it stops and the human commits.
+  3. a write would create a SECOND .solve/tasks/<X> folder in one session. The
+     first task folder written to is recorded per session_id (state file
+     ~/.claude/solveit/state/<session>.taskdir); later writes must target that
+     same folder — add more scripts there rather than opening a new folder.
 
 20 lines is a hard ceiling per step, not a target. Fails open: any internal
 error allows the tool call so a bug here never wedges a session.
@@ -102,6 +106,19 @@ def main():
     # scope to it (else it resolves up to the git-excluded main repo and never
     # counts). The human still commits it; the agent never does.
     task_root = task_folder_root(fp)
+    if task_root:
+        session = data.get("session_id") or "nosession"
+        marker = os.path.expanduser(f"~/.claude/solveit/state/{session}.taskdir")
+        recorded = open(marker).read().strip() if os.path.exists(marker) else ""
+        if recorded and recorded != task_root:
+            deny(
+                f"SolveIt: this session already has one task folder:\n  {recorded}\n"
+                f"Add more scripts there — don't create a second one ({task_root}). "
+                f"One task folder per Claude Code session."
+            )
+        if not recorded:
+            os.makedirs(os.path.dirname(marker), exist_ok=True)
+            open(marker, "w").write(task_root + "\n")
     if task_root and not os.path.isdir(os.path.join(task_root, ".git")):
         os.makedirs(task_root, exist_ok=True)
         git(task_root, "init", "-q")

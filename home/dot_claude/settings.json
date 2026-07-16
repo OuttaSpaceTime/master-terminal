@@ -79,7 +79,7 @@
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
-  "theme": "dark-ansi",
+  "theme": "custom:light-high-contrast",
   "verbose": false,
   "preferredNotifChannel": "kitty",
   "skipAutoPermissionPrompt": true,
