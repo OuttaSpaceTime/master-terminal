@@ -173,6 +173,7 @@ def git_target_dir(tokens, cwd):
 
 def under_tasks(pathstr, cwd):
     """True if the path resolves to a child of some .solve/tasks/ folder."""
+    pathstr = os.path.expanduser(pathstr)
     p = pathstr if os.path.isabs(pathstr) else os.path.normpath(os.path.join(cwd, pathstr))
     parts = p.split(os.sep)
     if ".solve" not in parts:
@@ -184,6 +185,7 @@ def under_tasks(pathstr, cwd):
 def task_script_ok(pathstr, cwd):
     """A script path is runnable iff it exists under .solve/tasks/<X>/ and
     that <X> folder contains at least one .md."""
+    pathstr = os.path.expanduser(pathstr)
     p = pathstr if os.path.isabs(pathstr) else os.path.normpath(os.path.join(cwd, pathstr))
     parts = p.split(os.sep)
     if ".solve" not in parts:
@@ -382,6 +384,16 @@ def allowlisted(seg, patterns):
     return False
 
 
+def cd_target(toks, cwd):
+    """If toks is a plain `cd <dir>`, the directory it moves to — so later
+    segments in the same command resolve paths against it, not the original
+    cwd. `cd` alone or `cd -` aren't tracked (ambiguous without shell state)."""
+    if toks[:1] != ["cd"] or len(toks) != 2:
+        return None
+    d = os.path.expanduser(toks[1])
+    return d if os.path.isabs(d) else os.path.normpath(os.path.join(cwd, d))
+
+
 def main():
     if os.environ.get("SOLVEIT_OFF"):
         return
@@ -402,6 +414,9 @@ def main():
             sys.stderr.write(msg)
             sys.exit(2)
         is_search = is_search or search
+        target = cd_target(toks, cwd)
+        if target is not None:
+            cwd = target
     if is_search:  # log the whole command once, like a Grep/Glob entry
         log_search(cmd, cwd)
 

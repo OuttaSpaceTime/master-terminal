@@ -16,7 +16,7 @@ return {
           maroon = "#a11d3a",
           peach = "#c25400",
           yellow = "#b84a00",
-          green = "#00702a",
+          green = "#006336",
           teal = "#0c6e74",
           sky = "#0284b0",
           sapphire = "#0d7d94",

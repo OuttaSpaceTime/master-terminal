@@ -1,8 +1,8 @@
 ---
 title: Light Theme Color Palette
-tags: [kitty, neovim, catppuccin, fzf, fonts, colors, theme]
+tags: [kitty, neovim, catppuccin, fzf, fonts, colors, theme, lazygit]
 created: 2026-07-15
-updated: 2026-07-15
+updated: 2026-07-16
 ---
 
 # Light Theme Color Palette
@@ -33,7 +33,7 @@ Installed to `~/.local/share/fonts/JetBrainsMonoNF/`
 | `#3c3f54` | tertiary text (subtext0) |
 | `#0a4fd0` | blue — cursor, url, links, keywords, fzf `hl` |
 | `#bd0026` | red — errors, diff-removed, fzf `pointer` |
-| `#00702a` | green (vivid forest) — strings, diff-added, fzf `marker`, p10k branch/versions |
+| `#006336` | green (deep emerald, AAA 7.09:1 on `#fafafa`) — strings, diff-added, fzf `marker`, p10k branch/versions |
 | `#b84a00` | orange (warm accent) — kitty `color3`, statusline, nvim `yellow`, p10k (via ANSI 3) |
 | `#0c6e74` | teal |
 | `#c81f9e` | pink / magenta |
@@ -73,6 +73,19 @@ Edit the chezmoi **source**, then `chezmoi -S home apply <target>`.
   inherits the kitty ANSI palette (`color1-6`) automatically — no per-color theming
   needed. Icons: set to **few** (branch icon + VCS/exec-time visual identifiers
   emptied); `p10k configure`'s "many icons" re-adds them.
+
+### lazygit
+- `home/private_dot_config/lazygit/config.yml` — `gui.theme` (lazygit ships with a
+  dark-only default theme, has no light/dark auto-detection). Colors are hex, reused
+  from existing roles rather than picked fresh: `activeBorderColor`/
+  `inactiveBorderColor` mirror kitty's own `active_border_color`/
+  `inactive_border_color`; `selectedLineBgColor` mirrors kitty `selection_background`
+  (`#ccd0da`); `cherryPickedCommitFgColor`/`BgColor` reuse the sky+near-black pairing
+  (`#74c7ec` / `#11131a`); `markedBaseCommitBgColor` reuses the orange accent
+  (`#b84a00`) with light text on top. Option names/hex support verified via
+  `lazygit -c` (prints the default config) and upstream `docs/Config.md`. Also uses
+  `delta --light` for pagers (`git.pagers`). Deploy with
+  `chezmoi -S home apply ~/.config/lazygit/config.yml`.
 
 ## Gotchas (hard-won)
 
