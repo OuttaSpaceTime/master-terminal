@@ -22,6 +22,7 @@ updated: 2026-06-19
 - [Workspace Skills](workspace-skills.md) — skill sync, shared symlinks, dot-manage
 - [Claude Code](claude-code.md) — managed files, settings.json drift constraints, notification hooks
 - [SolveIt default mode](claude-solve.md) — SolveIt as the global default: outputStyle + CLAUDE.md + PreToolUse guard hooks (small steps, two-tier commit cap, task scripts under `.solve/`, no agent commits, settings-based command allowlist)
+- [claude-read](claude-read.md) — read-mode wrapper: launches Nvim + connects over MCP, Claude manages navigation, strictly read-only close reading in small verified steps
 - [Claude Code + Neovim](claude-code-neovim.md) — autoread/checktime fix, RPC skill vs. bridge plugin vs. MCP server trade-offs
 - [Agent File Access](agent-file-access.md) — deny rules, ignore files, sandbox boundaries, secret-handling patterns
 - [Sofle Keyboard](sofle-keyboard.md) — Keebart Sofle Choc Pro, Vial config, layout decisions

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# nvim-open: open file(s) in the project's already-running Neovim — the instance
+# `nvim-listen` started, whose msgpack-RPC socket is named nvim-mcp.<root>.*.sock.
+#
+# Used as $BUNDLER_EDITOR so `bundle open <gem>` lands in that window instead of
+# spawning a fresh editor; also usable directly:  nvim-open path/to/file
+#
+# It targets nvim over its --listen socket with --remote, so it works whether or
+# not the nvim-mcp MCP bridge is connected (the socket exists from nvim --listen).
+set -euo pipefail
+
+# Prefer the exact socket claude-read exported; otherwise discover the newest one
+# matching this git root (nvim-listen's / claude-read's naming convention).
+socket="${CLAUDE_READ_NVIM_SOCKET:-}"
+if [[ -z "$socket" || ! -S "$socket" ]]; then
+  root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  [[ -n "$root" ]] || root="$PWD"
+  escaped="${root//\//%}"
+  sockdir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+  sockdir="${sockdir%/}"
+  socket=$(ls -t "$sockdir"/nvim-mcp."$escaped".*.sock /tmp/nvim-mcp."$escaped".*.sock 2>/dev/null | head -n1 || true)
+fi
+if [[ -z "$socket" || ! -S "$socket" ]]; then
+  echo "nvim-open: no running Neovim socket found." >&2
+  echo "           Is the project's Neovim up via claude-read / nvim --listen?" >&2
+  exit 1
+fi
+
+# --remote-tab-silent: open in a new tab in the running instance, don't error if
+# already open, and return immediately (non-blocking) so the caller doesn't hang.
+exec nvim --server "$socket" --remote-tab-silent "$@"
