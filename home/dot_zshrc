@@ -142,7 +142,7 @@ typeset -g _ZSH_AUTOSUGGEST_DISABLED=1
 
 # User configuration
 
-export FZF_DEFAULT_OPTS="--color=fg:#3c3f54,fg+:#1c1e2a,bg+:#e2e4ea,hl:#0a4fd0,hl+:#0a4fd0,pointer:#bd0026,marker:#006336,prompt:#0a4fd0,info:#6c7086,border:#ccd0da,spinner:#0c6e74"
+export FZF_DEFAULT_OPTS="--color=fg:#3c3f54,fg+:#1c1e2a,bg+:#e2e4ea,hl:#3277f5,hl+:#3277f5,pointer:#fa0032,marker:#0da04d,prompt:#3277f5,info:#6c7086,border:#ccd0da,spinner:#0f898f"
 
 # export MANPATH="/usr/local/man:$MANPATH"
 

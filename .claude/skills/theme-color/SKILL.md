@@ -3,14 +3,15 @@ name: theme-color
 description: >
   Pick and apply a new theme color for master-terminal's light dotfiles theme by building
   a live HTML artifact that renders real candidates against the actual kitty background and
-  font, with WCAG contrast ratios computed live — never eyeballed or guessed from a
-  screenshot. Trigger whenever the user says a terminal/diff/syntax color is "hard to
-  read", asks to "suggest a different green/color/accent", wants to "check contrast" for
-  the kitty/nvim/statusline theme, says "I don't like these options" or "any other
-  options" while reviewing color candidates, or wants a chosen color applied everywhere
-  it's used (kitty, nvim, fzf, statusline, p10k) via chezmoi. Also covers "is our font
-  good/bad for light mode" and "can we use a bolder font" questions that come up during
-  the same readability discussion.
+  font, with WCAG contrast ratios computed live against both the background and the body
+  text color — never eyeballed or guessed from a screenshot. Trigger whenever the user says
+  a terminal/diff/syntax color is "hard to read", "doesn't differentiate well", or "looks
+  almost black/white" next to text, asks to "suggest a different green/color/accent", wants
+  to "check contrast" for the kitty/nvim/statusline theme, says "I don't like these options"
+  or "any other options" while reviewing color candidates, or wants a chosen color applied
+  everywhere it's used (kitty, nvim, fzf, statusline, p10k, lazygit) via chezmoi. Also
+  covers "is our font good/bad for light mode" and "can we use a bolder font" questions that
+  come up during the same readability discussion.
 ---
 
 # Theme Color
@@ -49,14 +50,35 @@ directory) and publish it with the Artifact tool:
   diff hunk for diff colors, a prompt segment for p10k, etc.) using the real font-family
   and font-weight — match the *actual* rendering (don't bold a "+" line if the real diff
   pager doesn't bold it; verify against a screenshot if the user provides one).
-- Compute WCAG contrast ratio live in JS (relative luminance formula) against the pinned
-  background for every candidate, and show a AA (>=4.5:1) / AAA (>=7:1) / FAIL badge — this
-  is the actual proof, not a claim.
+- Compute WCAG contrast ratio live in JS (relative luminance formula) **against both the
+  background and the primary foreground text color** (`#1c1e2a`), and show a badge for
+  each. A color scoring AAA against the background can still be the complaint — "hard to
+  read" often really means "too dark to tell apart from body text," which only the
+  vs-foreground ratio catches. Don't stop at the background check.
 - Always include the current value(s) as a baseline card so the user can compare
   candidates against what they already have.
 - Iterate in place: when the user reacts ("don't love these", "any other options", "what
   about X"), add more candidate cards to the SAME array and republish to the SAME file
   path so the URL stays stable — don't start a new artifact per round.
+
+### The background/foreground ceiling
+
+Before proposing candidates, check whether hitting a target ratio (AAA, or even AA) against
+*both* anchors is mathematically possible at all. For a candidate luminance `Lc` to reach
+ratio `R` against both `L_bg` and `L_fg`:  `Lc <= (L_bg+0.05)/R - 0.05` and
+`Lc >= R*(L_fg+0.05) - 0.05`. If the lower bound exceeds the upper bound, no hex clears `R`
+on both — say so with the actual numbers instead of chasing candidates that can't exist.
+With this theme's anchors (`#fafafa` / `#1c1e2a`), AAA-both and even AA-both are both
+unreachable; the best balanced point is `sqrt((L_bg+0.05)/(L_fg+0.05))`, around 4:1 on both.
+Present a spread (e.g. Medium / Medium+ / Brighter) that trades background headroom for
+foreground separation around that ceiling, and let the user pick by eye.
+
+**Don't "fix" this by lightening the foreground text color instead.** It's the intuitive
+move but it's backwards: bringing `L_fg` closer to `L_bg` shrinks the whole luminance range
+available, so the achievable ratio-on-both gets *worse*, not better (verify with the same
+formula before suggesting it). It's also a much bigger blast radius — that color is every
+line of body text everywhere, not one accent — so it needs its own independent
+justification, not "it'll help this accent pop."
 
 ## Step 3 — Verify numbers, don't eyeball them
 
@@ -88,6 +110,12 @@ Once the user picks a hex:
 
 ## Notes
 
+- Once one accent color fails the vs-foreground check, rank the *rest* of the palette
+  (every `color0`-`color15` accent, not just text-scale colors) by contrast against
+  `#1c1e2a` and surface the worst offenders unprompted — the flagged color is rarely the
+  only one, and the same lighten-and-verify treatment applies to each. Exclude colors whose
+  role isn't foreground-on-white text (e.g. a tab *background* like the sky `#74c7ec`, or
+  `color0`/subtext tones that are themselves part of the text scale).
 - Don't touch `color10`/"bright" variants unless asked — normal and bright ANSI slots are
   separate colors serving separate purposes; fixing one doesn't imply fixing the other.
   Flag it if it also fails contrast, but let the user decide whether it's in scope.

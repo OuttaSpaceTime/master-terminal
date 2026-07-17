@@ -11,15 +11,18 @@ if [ "$waiting" = "true" ] || [ -n "$waiting" ]; then
   waiting_icon="󰑐 "  # Thinking icon from nerd font
 fi
 
-# Colors
-CYAN=$'\033[38;2;12;110;116m'    # teal    #0c6e74
-GREEN=$'\033[38;2;0;99;54m'      # green   #006336
-BLUE=$'\033[38;2;10;79;208m'     # blue    #0a4fd0
-YELLOW=$'\033[38;2;184;74;0m'    # orange  #b84a00
-RED=$'\033[38;2;189;0;38m'       # red     #bd0026
-WHITE=$'\033[38;2;28;30;42m'     # text    #1c1e2a
-MAGENTA=$'\033[38;2;200;31;158m' # pink    #c81f9e
-DIM=$'\033[38;2;140;144;160m'    # gray    #8c90a0
+# Colors — bold SGR (kitty bold_font/ExtraBold) on status values; plain weight
+# (kitty font_family/SemiBold) on labels: model tier, folder name, branch name
+CYAN=$'\033[38;2;15;137;143m'      # teal    #0f898f (model tier)
+GREEN=$'\033[1;38;2;13;160;77m'    # green   #0da04d
+GREEN_L=$'\033[38;2;13;160;77m'    # green, plain weight (model tier: Haiku)
+BLUE=$'\033[38;2;50;119;245m'      # blue    #3277f5 (branch name)
+YELLOW=$'\033[1;38;2;224;97;0m'    # orange  #e06100
+RED=$'\033[1;38;2;250;0;50m'       # red     #fa0032
+WHITE=$'\033[1;38;2;28;30;42m'     # text    #1c1e2a
+WHITE_L=$'\033[38;2;28;30;42m'     # text, plain weight (folder name)
+MAGENTA=$'\033[38;2;221;34;174m'   # pink    #dd22ae (model tier: Opus)
+DIM=$'\033[1;38;2;140;144;160m'    # gray    #8c90a0
 RESET=$'\033[00m'
 
 # Debug: log full raw input for field inspection
@@ -160,7 +163,7 @@ out=""
 if [ -n "$model_id" ]; then
   # Tier color: Haiku=GREEN, Sonnet=CYAN, Opus=MAGENTA
   case "$model_tier" in
-    Haiku)  tier_color="$GREEN"   ;;
+    Haiku)  tier_color="$GREEN_L" ;;
     Sonnet) tier_color="$CYAN"    ;;
     Opus)   tier_color="$MAGENTA" ;;
     *)      tier_color="$CYAN"    ;;
@@ -194,6 +197,6 @@ if [ -n "$branch" ]; then
   [ -n "$git_flags" ] && flags_str="${YELLOW}${git_flags}${RESET}"
   folder=$(basename "$dir")
   branch_sym=$(printf '\ue0a0')
-  out="${out}${DIM}|${RESET}${WHITE}${folder}${RESET} ${BLUE}${branch_sym} ${branch}${RESET}${flags_str}"
+  out="${out}${DIM}|${RESET}${WHITE_L}${folder}${RESET} ${BLUE}${branch_sym} ${branch}${RESET}${flags_str}"
 fi
 printf "%s" "$out"

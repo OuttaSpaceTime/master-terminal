@@ -2,7 +2,7 @@
 title: Light Theme Color Palette
 tags: [kitty, neovim, catppuccin, fzf, fonts, colors, theme, lazygit]
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-07-17
 ---
 
 # Light Theme Color Palette
@@ -31,13 +31,13 @@ Installed to `~/.local/share/fonts/JetBrainsMonoNF/`
 | `#1c1e2a` | primary text (near-black) |
 | `#2c2e40` | secondary text / ANSI color0 |
 | `#3c3f54` | tertiary text (subtext0) |
-| `#0a4fd0` | blue — cursor, url, links, keywords, fzf `hl` |
-| `#bd0026` | red — errors, diff-removed, fzf `pointer` |
-| `#006336` | green (deep emerald, AAA 7.09:1 on `#fafafa`) — strings, diff-added, fzf `marker`, p10k branch/versions |
-| `#b84a00` | orange (warm accent) — kitty `color3`, statusline, nvim `yellow`, p10k (via ANSI 3) |
-| `#0c6e74` | teal |
-| `#c81f9e` | pink / magenta |
-| `#9333ea` | mauve — nvim keywords |
+| `#3277f5` | blue (AA-large 3.95:1 on `#fafafa`, 4.01:1 vs `#1c1e2a` text) — cursor, url, links, keywords, fzf `hl` |
+| `#fa0032` | red (AA-large 3.94:1 on `#fafafa`, 4.03:1 vs `#1c1e2a` text) — errors, diff-removed, fzf `pointer` |
+| `#0da04d` | green (AA-large 3.27:1 on `#fafafa`, 4.85:1 vs `#1c1e2a` text) — strings, diff-added, fzf `marker`, p10k branch/versions |
+| `#e06100` | orange (AA-large 3.42:1 on `#fafafa`, 4.63:1 vs `#1c1e2a` text) — kitty `color3`, statusline, nvim `yellow`, lazygit `markedBaseCommitBgColor`, p10k (via ANSI 3) |
+| `#0f898f` | teal (AA-large 4.03:1 on `#fafafa`, 3.94:1 vs `#1c1e2a` text) — fzf `spinner`, lazygit `searchingActiveBorderColor`, statusline cyan |
+| `#dd22ae` | pink / magenta (AA-large 4.09:1 on `#fafafa`, 3.87:1 vs `#1c1e2a` text) — kitty `color5`, statusline magenta |
+| `#9e4bec` | mauve (AA-large 4.31:1 on `#fafafa`, 3.68:1 vs `#1c1e2a` text) — nvim keywords |
 | `#74c7ec` | sky — kitty active tab bg (pair with black text `#11131a`) |
 
 ## Where each color lives
@@ -82,7 +82,7 @@ Edit the chezmoi **source**, then `chezmoi -S home apply <target>`.
   `inactive_border_color`; `selectedLineBgColor` mirrors kitty `selection_background`
   (`#ccd0da`); `cherryPickedCommitFgColor`/`BgColor` reuse the sky+near-black pairing
   (`#74c7ec` / `#11131a`); `markedBaseCommitBgColor` reuses the orange accent
-  (`#b84a00`) with light text on top. Option names/hex support verified via
+  (`#e06100`) with light text on top. Option names/hex support verified via
   `lazygit -c` (prints the default config) and upstream `docs/Config.md`. Also uses
   `delta --light` for pagers (`git.pagers`). Deploy with
   `chezmoi -S home apply ~/.config/lazygit/config.yml`.
