@@ -146,6 +146,18 @@ Chezmoi source filenames encode target attributes:
 - `executable_` prefix → file gets +x after deploy
 - `symlink_` prefix → chezmoi creates a symlink whose target is the file's content
 
+### SolveIt hooks
+
+The SolveIt PreToolUse guards live under `home/dot_claude/solveit/hooks/` and deploy via chezmoi to `~/.claude/solveit/hooks/`. We work on these frequently.
+
+- `executable_bash-guard.py` — allows Bash only for task scripts + read-only search/git inspection; blocks everything else (command recognition lives in `segment_ok`/`split_segments`)
+- `executable_edit-guard.py` — enforces the 20-line-per-edit ceiling and the dirty (20) / total (60) uncommitted caps
+- `executable_log-reads.py` — mirrors Read/Grep/Glob into `.solve/reads.log`
+- `executable_solve-init.py` — session bootstrap
+- `solve_allow.py` — shared allowlist reader for bash-guard + solve-init
+
+Tests live in `tests/` (pytest, `uv run pytest`). The `executable_`/hyphen source names aren't importable normally — load a hook in a test via `importlib.util.spec_from_file_location` from its source path.
+
 ## Validation
 
 - There is no application build or test pipeline in this repository snapshot

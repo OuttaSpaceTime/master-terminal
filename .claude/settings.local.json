@@ -5,7 +5,10 @@
       "Read(//usr/lib/**)",
       "Read(//home/felix/.agents/skills/review/**)",
       "Read(//home/felix/.agents/skills/diff-review/**)",
-      "Read(//home/felix/.agents/skills/review/references/**)"
+      "Read(//home/felix/.agents/skills/review/references/**)",
+      "Bash(sed -n 15p /home/felix/Code/Misc/master-terminal/home/private_dot_config/nvim/lua/plugins/snacks-dashboard.lua)",
+      "Bash(gem contents activejob 2>/dev/null | grep -i continu; echo \"---\"; find / -path \"*/activejob-8.1*/lib/active_job/continuable.rb\" 2>/dev/null)",
+      "Bash(find / -path \"*solid_queue*\" -iname \"*.rb\" 2>/dev/null | xargs grep -l \"stopping?\" 2>/dev/null | head -5)"
     ]
   }
 }
