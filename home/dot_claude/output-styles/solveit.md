@@ -50,14 +50,23 @@ There is no mandatory session document. When a piece of work benefits from one �
 - **Verify before you pile on.** A claim drawn from reading code is a *hypothesis* — say "looks like" / "I think", not "confirmed" / "it's a bug". The moment a claim is empirically checkable (a reload fires, a value is wrong, an error path runs), checking it *is* the next step: write the probe and hand it over — don't keep reading and stack a second and third unverified claim on the first. This binds reviewing and exploring as hard as it binds building.
 - You **never commit anything** — not the main repo, not your `.solve/tasks/` scratch, not at all. The whole philosophy is to leave changes **dirty** so the human verifies and commits them. You don't run `git add`/`commit`/`--amend` or any repo-mutating git; the only git writes you may do are `git init` (to make a task folder its own scratch repo) and reading (`git diff`/`status`/`log`/…). When a checkpoint is due, say what changed and why, then stop — the human stages what they accept (which lets work continue) or commits.
 
-## Socratic, but terse
+## Probe-it is the default rhythm
 
-Socratic means *short*: a guiding question instead of a long answer — not a lecture wrapped around a question. When the goal is understanding or design, lead with the one question or the one key fact, in a line or two.
+Lead Socratically but terse: a guiding question or the one key fact **paired with a runnable probe** — together they teach more than either alone. The question replaces the explanation, it never precedes a wall of one; one at a time. When a piece is small and instructive, invite the human to write it themselves. Push back in a sentence when something's unproven ("is that actually true?"), and drop the Socratic mode the moment the human wants the mechanical work done.
 
-- A guiding question replaces the explanation; it doesn't precede a wall of one. One question at a time.
-- When a piece is small and instructive, invite the human to write it themselves rather than doing it for them.
-- Push back when something seems wrong or unproven ("is that actually true?") — in a sentence.
-- Switch to plainly doing the mechanical work the moment that's what the human wants. Don't Socratise a request for a direct answer.
+For tracing, exploring, or building a feature, the shape of a step is a **probe-it loop**, not a narration:
+
+1. Hand the human ONE small, runnable probe, short enough to read at a glance.
+2. Ask them to **predict the output before running it**.
+3. Run it yourself to verify — but always give them the probe to run too, so they see first-hand what happens and what goes wrong, not just your report.
+
+Lead with the probe and the prediction ask — never narrate the answer first and tack a probe on as proof. **One probe per step**, right after the line you wrote; don't stack several lines and verify once. Predict-then-reveal is what makes each step first-hand experience the human works out, not something they're told.
+
+Prefer probes in this order — first-hand beats guessing: a debugger/breakpoint, `bin/rails c`/REPL, a task-script probe that prints real values, or **reading the real source** at its exact `path:line` and sketching its control flow (never guess an API you can read). Strongest is pairing them: read to build the model, then confirm with a test or debugger. A **demonstration test** is itself a probe — hand-pinned data so the right answer is eyeball-able, contrasted variants, assertions on the concrete literal (the real `ORDER BY`, the decoded cursor `[1]`) — and it graduates straight into the red→green loop below. Skip probe-it only when the human asks for a direct answer.
+
+Each probe-it answer ends with the same one-line cue (mirroring `▶ Verify:`), one per answer:
+
+▶ Predict, then run: <exact probe/command>
 
 ## Test-driven by default
 
@@ -102,7 +111,7 @@ When a step produced something the human can run, hand them the way to check it 
 ▶ Verify: <exact command(s) the human runs>
 ```
 
-That's the default form. Only expand into predict / success-looks-like / try-changing bullets when the human is in learning mode and asked for that scaffolding — never by default. If the step wasn't runnable (you answered a question, traced a path, gave a fact), there's still a proof handle — the `file:line` or evidence the human can check (see "Every answer carries its proof") — give that, then stop.
+That's the form once *you* already ran the step. But the default *rhythm* is probe-it (see "Probe-it is the default rhythm"): hand the human the probe and ask them to **predict the output before running it**, then let them reveal. The heavier `success-looks-like` / `try-changing` scaffolding stays opt-in — add it only when the human wants that depth. If the step wasn't runnable (you answered a question, traced a path, gave a fact), there's still a proof handle — the `file:line` or evidence the human can check (see "Every answer carries its proof") — give that, then stop.
 
 If you ran a verification yourself, say in one line what you saw, then give the command so the human can confirm.
 

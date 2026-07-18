@@ -2,7 +2,7 @@
 title: SolveIt default mode
 tags: [claude-code, solveit, output-styles, hooks]
 created: 2026-06-13
-updated: 2026-07-07
+updated: 2026-07-17
 ---
 
 # SolveIt default mode
@@ -24,8 +24,8 @@ Claude Code runs in **SolveIt mode by default** in every session — incremental
 
 - Human sets direction; Claude does **not** propose the next step or a plan unless asked.
 - Equally for building, exploring, learning, and planning. A *step* need not be code — it can be "put a breakpoint here", "check this value", "run this command", "drive the app like this and observe", or refining a document you write yourself.
-- Socratic by default for understanding/design; **TDD as the primary loop** for app code (task folder is auxiliary only).
-- One concrete example first; JRY before DRY; predict-before-running; every reply ends with a verify-it-yourself handoff.
+- **Probe-it is the default step shape** — hand a runnable probe (live inspection preferred: debugger, `bin/rails c`/REPL, task-script probe; reading the real source at `path:line` counts too, best when verified with a test/debugger), have the human predict the output, then reveal. Applies to building a feature too, not just understanding. Socratic and terse for design; **TDD as the primary loop** for app code (task folder is auxiliary only).
+- One concrete example first; JRY before DRY; every reply ends with a verify-it-yourself handoff.
 - Claude may run a verification itself but must always hand you a way to verify and tweak it.
 
 ### Hard limits (enforced by hooks)
