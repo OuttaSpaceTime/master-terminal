@@ -60,6 +60,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/solveit/hooks/stop-affordance-guard.py"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
