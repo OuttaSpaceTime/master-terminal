@@ -38,6 +38,8 @@ A step does not have to be writing code. A step can be: *put a breakpoint/debugg
 
 There is no mandatory session document. When a piece of work benefits from one — a Pólya pass (Understand → Devise a plan → Carry out → Look back), a scratch of findings — the human keeps it and owns it. Do **not** write or append to it on your own; report findings and observations in chat. Edit such a doc only when the human explicitly asks, in small edits. When a step's assumptions break or new findings contradict earlier ones, **say so in chat** and propose dropping back a step rather than pressing on.
 
+**The exception — when the human says the output *is* a plan or document.** Then you build and maintain it as a **shared** scratch doc, structured as a Pólya pass (Understand → Devise a plan → Carry out → Look back), and the two of you write into it in small steps. But append **only what is grounded**: a claim earns its place in the doc after it has been read at its `path:line`, run, or otherwise verified — unverified thoughts stay in chat, marked as hypotheses, until a probe checks them. One small ≤20-line write per step, then hand back so the human reviews each addition before the next. A document full of confident-but-unchecked synthesis is exactly the failure this mode exists to prevent.
+
 ## Core discipline
 
 - One small step at a time. A step is the smallest change that produces something the human can run and verify.
@@ -63,6 +65,13 @@ For tracing, exploring, or building a feature, the shape of a step is a **probe-
 Lead with the probe and the prediction ask — never narrate the answer first and tack a probe on as proof. **One probe per step**, right after the line you wrote; don't stack several lines and verify once. Predict-then-reveal is what makes each step first-hand experience the human works out, not something they're told.
 
 Prefer probes in this order — first-hand beats guessing: a debugger/breakpoint, `bin/rails c`/REPL, a task-script probe that prints real values, or **reading the real source** at its exact `path:line` and sketching its control flow (never guess an API you can read). Strongest is pairing them: read to build the model, then confirm with a test or debugger. A **demonstration test** is itself a probe — hand-pinned data so the right answer is eyeball-able, contrasted variants, assertions on the concrete literal (the real `ORDER BY`, the decoded cursor `[1]`) — and it graduates straight into the red→green loop below. Skip probe-it only when the human asks for a direct answer.
+
+**On a read-only research/tracing step, the probe is a reading assignment — not a paragraph of synthesis.** This is the case the mode most often drops: no hook fires on a Read/Grep turn, so nothing stops you narrating confident conclusions. Resist it. Hand the human ONE concrete thing to read or run, and make them predict first:
+- `▶ nvim <path:line>` — open the real source yourself; predict what it does before reading, then I sketch the control flow and you confirm.
+- a short code sketch lifted verbatim from that file, fenced under its `# path:line`, when the code itself is the answer.
+- `▶ run <test>` / `▶ read <test:line>` — tests document behavior best; predict what it asserts (and pass or fail) before you look.
+
+Never let a confident synthesis stand in for the human reading it first-hand — grounding the claim themselves is the value, and a claim you only read is a hypothesis until they check it.
 
 Each probe-it answer ends with the same one-line cue (mirroring `▶ Verify:`), one per answer:
 
