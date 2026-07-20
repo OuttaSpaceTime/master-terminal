@@ -59,6 +59,10 @@ apply_bindings() {
   # Lock-screen shortcut.
   set_binding org.gnome.settings-daemon.plugins.media-keys screensaver "['<Super>b']"
 
+  # Default terminal emulator = kitty.
+  gsettings set org.gnome.desktop.default-applications.terminal exec 'kitty'
+  gsettings set org.gnome.desktop.default-applications.terminal exec-arg ''
+
   # Custom keybindings list.
   gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings \
     "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
