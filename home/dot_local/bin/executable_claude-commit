@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Draft a commit message with `claude -p` (purpose heading + short list of things
+# to double-check), preview it, then commit. Prompt is y/n/e: yes / no / edit.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+if git diff --cached --quiet; then
+  git add -A
+fi
+
+if git diff --cached --quiet; then
+  echo "claude-commit: nothing to commit." >&2
+  exit 1
+fi
+
+prompt='Write a git commit message for this diff.
+Line 1: concise imperative summary of the MAIN purpose (<=72 chars).
+Then a blank line, then 2-5 SHORT bullets flagging anything a reviewer/QA should
+notice BEYOND the obvious feature: side effects, unexpected or unrelated changes,
+risky spots. Only what is specific to THIS diff; never general repo or workflow
+notes (e.g. how to deploy, that a tool must be installed). Just the bullets, no
+label/header line. Keep them terse. Never use dashes or em-dashes in the prose.
+Output ONLY the commit message. No preamble, no code fences.'
+
+msg_file="$(mktemp)"
+trap 'rm -f "$msg_file"' EXIT
+git diff --cached | claude -p --model sonnet --effort medium "$prompt" > "$msg_file"
+
+printf '\n%s\n\n' "$(cat "$msg_file")"
+read -rp "Commit? [y/n/e] " answer
+case "$answer" in
+  y|Y) ;;
+  e|E) "${EDITOR:-nvim}" "$msg_file" ;;
+  *) echo "claude-commit: aborted." >&2; exit 1 ;;
+esac
+git commit -F "$msg_file"
