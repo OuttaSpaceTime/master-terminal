@@ -8,12 +8,19 @@ takes the assistant text produced since the last genuine user message, and if
 it contains no affordance marker (the "▶" cue that leads every probe/verify
 handoff) it blocks (exit 2) so the model must ground the answer with one.
 
+The turn's final assistant message is flushed to the transcript a moment AFTER
+the Stop hook fires, so a single read sees an empty/stale span and would block
+every turn. We poll the transcript briefly (STOP_GUARD_POLL tries, spaced by
+STOP_GUARD_POLL_INTERVAL seconds) until the affordance appears, and only block
+if it never does.
+
 Fails open: never blocks when SOLVEIT_OFF is set, when already re-triggered
 this turn (stop_hook_active), or on any read/parse error.
 """
 import json
 import os
 import sys
+import time
 
 AFFORDANCE = "▶"
 
@@ -47,6 +54,16 @@ def _assistant_text_since_last_user(entries):
     return "\n".join(texts)
 
 
+def _read_span(path):
+    entries = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                entries.append(json.loads(line))
+    return _assistant_text_since_last_user(entries)
+
+
 def main():
     if os.environ.get("SOLVEIT_OFF"):
         return
@@ -56,13 +73,15 @@ def main():
     path = data.get("transcript_path")
     if not path or not os.path.exists(path):
         return
-    entries = []
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                entries.append(json.loads(line))
-    if AFFORDANCE in _assistant_text_since_last_user(entries):
+    tries = int(os.environ.get("STOP_GUARD_POLL", "8"))
+    interval = float(os.environ.get("STOP_GUARD_POLL_INTERVAL", "0.25"))
+    span = _read_span(path)
+    for _ in range(tries):
+        if AFFORDANCE in span:
+            return
+        time.sleep(interval)
+        span = _read_span(path)
+    if AFFORDANCE in span:
         return
     sys.stderr.write(
         "SolveIt: your response since the last user message has no probe/verify "

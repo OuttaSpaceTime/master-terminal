@@ -41,6 +41,7 @@ def _thinking(t):
 def run(tmp_path, monkeypatch, capsys):
     def _run(entries, stop_hook_active=False):
         monkeypatch.delenv("SOLVEIT_OFF", raising=False)
+        monkeypatch.setenv("STOP_GUARD_POLL", "0")
         p = tmp_path / "transcript.jsonl"
         p.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
         payload = {"transcript_path": str(p), "stop_hook_active": stop_hook_active}
@@ -105,3 +106,32 @@ def test_solveit_off_short_circuits(tmp_path, monkeypatch, capsys):
     except SystemExit as e:
         code = e.code
     assert code == 0
+
+
+def test_polls_until_affordance_flushes(tmp_path, monkeypatch):
+    """Regression: the turn's final assistant text is flushed to the transcript
+    AFTER the Stop hook fires (Claude Code write race, issue #21751). The hook
+    must poll and pass once the ▶ appears, not false-block on the stale read."""
+    monkeypatch.delenv("SOLVEIT_OFF", raising=False)
+    monkeypatch.setenv("STOP_GUARD_POLL", "5")
+    monkeypatch.setenv("STOP_GUARD_POLL_INTERVAL", "0")
+    p = tmp_path / "transcript.jsonl"
+    p.write_text(json.dumps(_user("trace this")) + "\n")
+
+    calls = {"n": 0}
+
+    def fake_sleep(_):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            with open(p, "a") as f:
+                f.write(json.dumps(_assistant(_text("answer\n▶ Verify: echo hi"))) + "\n")
+
+    monkeypatch.setattr(guard.time, "sleep", fake_sleep)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"transcript_path": str(p)})))
+    code = 0
+    try:
+        guard.main()
+    except SystemExit as e:
+        code = e.code
+    assert code == 0
+    assert calls["n"] >= 2

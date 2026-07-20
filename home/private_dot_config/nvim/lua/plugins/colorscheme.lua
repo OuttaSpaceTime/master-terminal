@@ -27,6 +27,9 @@ return {
           flamingo = "#fa0032",
         },
       },
+      custom_highlights = {
+        RenderMarkdownCodeInline = { bg = "#f0f0f2" },
+      },
     },
   },
   {
