@@ -42,6 +42,8 @@ This repository has three responsibilities:
 3. Run `chezmoi -S home diff` again to preview the changes that will be deployed
 4. Run `chezmoi -S home apply` to deploy (add `--force` if drift was reviewed and is safe to overwrite)
 
+**`~/.claude/settings.json` drift auto-resolves — never get blocked on it.** `effortLevel` and `outputStyle` are toggled live (e.g. via `/config`), so this file routinely drifts from source and a plain `chezmoi -S home apply` aborts (`could not open a new TTY` — chezmoi wants an interactive overwrite prompt the Bash jail can't provide). When the only drift is these low-stakes keys, force it without asking: `chezmoi -S home apply --force ~/.claude/settings.json` (scope to the file so no `run_` scripts re-run; source wins). Only pause for a *major* conflict — drift on other keys or structural changes.
+
 ## Working With Agent Skills
 
 - Agent skills are chezmoi-managed. Edit only the source files under `home/dot_agents/skills/`, then deploy with `chezmoi -S home apply`
