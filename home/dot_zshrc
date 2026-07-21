@@ -295,42 +295,11 @@ export EDITOR="nvim"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-function _project_folder_name() {
-  local root
-  root=$(git rev-parse --show-toplevel 2>/dev/null) || root="$PWD"
-  basename "$root"
-}
-
-function _set_terminal_title() {
-  printf '\033]0;%s\a' "$1"
-}
-
-function _prompt_terminal_title() {
-  _set_terminal_title "$(pwd | sed -e "s;^$HOME;~;")"
-}
-
-function codex() {
-  local title
-  title="codex $(_project_folder_name)"
-  _set_terminal_title "$title"
-  command codex "$@"
-  local rc=$?
-  _prompt_terminal_title
-  return $rc
-}
-
 function claude() {
-  local title
-  title="claude $(_project_folder_name)"
-  _set_terminal_title "$title"
-
   # Keep the current project authorized before starting Claude.
   direnv allow . >/dev/null 2>&1 || true
 
   command claude "$@"
-  local rc=$?
-  _prompt_terminal_title
-  return $rc
 }
 
 vilocify() {

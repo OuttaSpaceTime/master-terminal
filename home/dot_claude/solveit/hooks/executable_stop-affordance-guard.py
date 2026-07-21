@@ -88,8 +88,8 @@ def main():
         "affordance (▶). A claim drawn from reading is a hypothesis, not an "
         "answer. Hand the human ONE runnable or readable probe and ask them to "
         "predict first — e.g. '▶ Predict, then run: <cmd>', "
-        "'▶ Verify: <cmd>', '▶ read <test:line>', or "
-        "'▶ nvim <path:line>'. Add one, or state plainly why a direct "
+        "'▶ Verify: <cmd>', '▶ run <test>', or "
+        "'▶ nvim +<line> <path>'. Add one, or state plainly why a direct "
         "answer was requested.\n"
     )
     sys.exit(2)

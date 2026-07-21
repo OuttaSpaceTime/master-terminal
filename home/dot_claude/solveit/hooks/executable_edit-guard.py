@@ -2,12 +2,15 @@
 """SolveIt PreToolUse guard for Write / Edit / MultiEdit.
 
 Blocks (exit 2, message to stderr) when:
-  1. a single edit adds more than 20 lines  -> split into a smaller step;
-  2. uncommitted work in the file's enclosing git repo crosses a cap. Two tiers:
-       - DIRTY_CAP (20): unstaged + untracked added lines -> checkpoint due. The
+  1. a single edit adds more than 30 lines  -> split into a smaller step;
+  2. uncommitted work in the file's enclosing git repo crosses a cap. Three tiers:
+       - DIRTY_CAP (30): unstaged + untracked added lines -> checkpoint due. The
          human stages what they accept (staged lines don't count here, so work
          continues) OR commits. Staging is the "accepted, keep going" signal.
-       - TOTAL_CAP (60): staged + unstaged + untracked added lines -> the human
+       - WARN_CAP (150): staged + unstaged + untracked added lines -> the write
+         still lands (exit 0), but a non-blocking warning is emitted so the human
+         wraps up the current commit's goal and commits soon.
+       - TOTAL_CAP (300): staged + unstaged + untracked added lines -> the human
          must commit; staging no longer helps. This forces a real commit from
          time to time.
      .solve/ is git-excluded, so task-folder scripts never inflate the main
@@ -19,7 +22,7 @@ Blocks (exit 2, message to stderr) when:
      ~/.claude/solveit/state/<session>.taskdir); later writes must target that
      same folder — add more scripts there rather than opening a new folder.
 
-20 lines is a hard ceiling per step, not a target. Fails open: any internal
+30 lines is a hard ceiling per step, not a target. Fails open: any internal
 error allows the tool call so a bug here never wedges a session.
 """
 import json
@@ -46,6 +49,17 @@ def git(repo, *args):
 def deny(msg):
     sys.stderr.write(msg)
     sys.exit(2)
+
+
+def warn(msg):
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "additionalContext": msg,
+        },
+        "systemMessage": msg,
+    }))
 
 
 def is_task_repo(repo):
@@ -165,6 +179,13 @@ def main():
             f"lines don't count). Checkpoint due — tell the human what changed and "
             f"why, then stop. They stage what they accept (then work continues) or "
             f"commit. You never commit."
+        )
+
+    if total >= WARN_CAP:
+        warn(
+            f"SolveIt: {total} lines uncommitted in {where} (warn at {WARN_CAP}, "
+            f"hard commit at {TOTAL_CAP}). Wrap up the current atomic step and "
+            f"commit soon — keep the commit to one clear goal."
         )
 
 

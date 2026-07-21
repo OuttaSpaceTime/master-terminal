@@ -97,6 +97,14 @@ def test_total_cap_blocks(repo, run):
     assert code == 2 and "total cap" in err
 
 
+def test_warn_between_150_and_300(repo, run, capsys):
+    (repo / "big.txt").write_text("l\n" * 200)
+    subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)
+    code = run("Write", {"file_path": str(repo / "s.txt"), "content": "x\n"}, repo)[0]
+    out = capsys.readouterr().out
+    assert code == 0 and "150" in out
+
+
 def test_second_task_folder_blocked(repo, run):
     a = repo / ".solve" / "tasks" / "a"
     a.mkdir(parents=True)

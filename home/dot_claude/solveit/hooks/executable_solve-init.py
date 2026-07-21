@@ -27,9 +27,10 @@ commits. Follow this and you will never hit a guard hook:
   token, no args). .solve/ is git-excluded,
   so scratch never dirties the repo.
 - NEVER COMMIT anything — not the main repo, not scratch. Leave changes DIRTY so
-  the human verifies and commits. When a checkpoint is due (20 unstaged / 60 total
-  uncommitted lines), say what changed and why, then stop.
-- KEEP STEPS SMALL: at most 20 added lines per edit; after each step, hand control
+  the human verifies and commits. Checkpoints: stage at 30 unstaged lines, a
+  warning fires at 150 total, a hard block at 300 total forces a commit — say what
+  changed and why, then stop.
+- KEEP STEPS SMALL: at most 30 added lines per edit; after each step, hand control
   back to the human. Do not propose the next step unless asked.
 - The allowlist below can change mid-session — run `solve-allow list` any time to
   see the current one. Use the solve-allow skill to add an allowance, solve-baseline
