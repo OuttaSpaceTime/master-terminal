@@ -25,7 +25,7 @@ Output ONLY the commit message. No preamble, no code fences.'
 
 msg_file="$(mktemp)"
 trap 'rm -f "$msg_file"' EXIT
-git diff --cached | claude -p --model sonnet --effort medium "$prompt" > "$msg_file"
+git diff --cached | SOLVEIT_OFF=1 claude -p --model sonnet --effort medium "$prompt" > "$msg_file"
 
 printf '\n%s\n\n' "$(cat "$msg_file")"
 read -rp "Commit? [y/n/e] " answer

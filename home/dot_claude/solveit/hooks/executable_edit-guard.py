@@ -27,9 +27,10 @@ import os
 import subprocess
 import sys
 
-CAP = 20  # per single edit/write
-DIRTY_CAP = 20  # unstaged + untracked added lines
-TOTAL_CAP = 60  # staged + unstaged + untracked added lines
+CAP = 30  # per single edit/write
+DIRTY_CAP = 30  # unstaged + untracked -> pause & force stage
+WARN_CAP = 150  # staged + unstaged + untracked -> warn, proceed
+TOTAL_CAP = 300  # staged + unstaged + untracked -> hard block, force commit
 
 
 def nlines(s):

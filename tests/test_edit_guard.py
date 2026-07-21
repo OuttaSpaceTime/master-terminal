@@ -52,31 +52,46 @@ def test_write_within_cap(repo, run):
 
 
 def test_write_over_cap(repo, run):
-    code, err = run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n" * 21}, repo)
+    code, err = run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n" * 31}, repo)
     assert code == 2 and "ceiling" in err
 
 
 def test_edit_over_cap(repo, run):
-    ti = {"file_path": str(repo / "a.txt"), "old_string": "a\n", "new_string": "y\n" * 25}
+    ti = {"file_path": str(repo / "a.txt"), "old_string": "a\n", "new_string": "y\n" * 35}
     assert run("Edit", ti, repo)[0] == 2
 
 
 def test_multiedit_sums_added(repo, run):
     ti = {
         "file_path": str(repo / "a.txt"),
-        "edits": [{"old_string": "", "new_string": "y\n" * 11}, {"old_string": "", "new_string": "z\n" * 11}],
+        "edits": [{"old_string": "", "new_string": "y\n" * 16}, {"old_string": "", "new_string": "z\n" * 16}],
     }
     assert run("MultiEdit", ti, repo)[0] == 2
 
 
-def test_dirty_cap_blocks(repo, run):
+def test_write_at_raised_cap(repo, run):
+    assert run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n" * 30}, repo)[0] == 0
+
+
+def test_dirty_within_raised_cap(repo, run):
     (repo / "big.txt").write_text("l\n" * 25)
+    assert run("Write", {"file_path": str(repo / "s.txt"), "content": "x\n"}, repo)[0] == 0
+
+
+def test_total_within_raised_cap(repo, run):
+    (repo / "big.txt").write_text("l\n" * 200)
+    subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)
+    assert run("Write", {"file_path": str(repo / "s.txt"), "content": "x\n"}, repo)[0] == 0
+
+
+def test_dirty_cap_blocks(repo, run):
+    (repo / "big.txt").write_text("l\n" * 35)
     code, err = run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)
     assert code == 2 and "unstaged" in err
 
 
 def test_total_cap_blocks(repo, run):
-    (repo / "big.txt").write_text("l\n" * 65)
+    (repo / "big.txt").write_text("l\n" * 305)
     subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)
     code, err = run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)
     assert code == 2 and "total cap" in err
