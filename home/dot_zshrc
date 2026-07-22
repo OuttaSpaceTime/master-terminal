@@ -228,6 +228,19 @@ gcor() {
   fi
 }
 
+gbr() {
+  local branches
+  branches=$(git branch --format='%(refname:short)' | fzf -m --prompt 'delete branch> ') || return
+  echo "$branches" | xargs -r git branch -D
+}
+
+gwr() {
+  local selection
+  selection=$(git worktree list | awk '{n=split($1,a,"/"); print a[n]"\t"$1}' \
+    | fzf -m --with-nth=1 --delimiter='\t' --prompt 'remove worktree> ') || return
+  echo "$selection" | cut -f2 | xargs -r -I{} git worktree remove {}
+}
+
 alias gpo='git push origin'
 alias gpod='git push origin -d'
 alias ga='git add'
@@ -252,7 +265,10 @@ alias dewt='docker compose exec web rails test'
 alias dewts='docker compose exec web rails test:system'
 alias vil-portal='cd ~/Code/Vilocify/vilocify-portal'
 alias vil-frontend='cd ~/Code/Vilocify/vilocify-frontend'
-alias vil-worktree='cd ~/Code/Vilocify/worktrees'
+vil-worktree() {
+  local base=~/Code/Vilocify/worktrees dir
+  dir=$(find "$base" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | fzf) && cd "$base/$dir"
+}
 alias study='cd ~/Code/Misc/study'
 alias master='cd ~/Code/Misc/master-terminal'
 export PATH="$HOME/Code/Vilocify/.bin:$PATH"
