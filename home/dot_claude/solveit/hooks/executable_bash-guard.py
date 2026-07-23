@@ -4,8 +4,8 @@
 Bash is reserved for running task scripts and for read-only search/inspection.
 A command is allowed only if every segment is one of:
   - running a task script: an interpreter (python, sh, ruby, ...) whose first
-    non-flag argument is a file under .solve/tasks/<X>/ that EXISTS, in a
-    folder <X> that also contains a .md; a direct ./path execution of such a
+    non-flag argument is a file under .solve/tasks/<X>/ that EXISTS; a direct
+    ./path execution of such a
     file; or any non-destructive runner (bin/rails runner, bundle exec ruby,
     npx tsx, rake, ...) that has such a task-script file among its arguments.
     The script path must be the LAST token — no args/flags/redirects may be
@@ -103,8 +103,8 @@ COMMIT_MSG = (
 )
 GENERIC_MSG = (
     "SolveIt: Bash runs task scripts and read-only search/inspection only. To RUN "
-    "something, write it as a script under .solve/tasks/<folder>/ (with a .md "
-    "describing it), then run it as e.g. `python .solve/tasks/<folder>/01-name.py`. "
+    "something, write it as a script under .solve/tasks/<folder>/ whose first comment "
+    "line is exactly how to run it, then run it as e.g. `python .solve/tasks/<folder>/01-name.py`. "
     "To LOOK at code, use read-only commands (grep, rg, find, ls, cat, head, awk, "
     "loops over them, ...) or the Read/Grep/Glob tools. You never commit anything — "
     "leave changes dirty for the human."
@@ -183,8 +183,7 @@ def under_tasks(pathstr, cwd):
 
 
 def task_script_ok(pathstr, cwd):
-    """A script path is runnable iff it exists under .solve/tasks/<X>/ and
-    that <X> folder contains at least one .md."""
+    """A script path is runnable iff it exists under .solve/tasks/<X>/."""
     pathstr = os.path.expanduser(pathstr)
     p = pathstr if os.path.isabs(pathstr) else os.path.normpath(os.path.join(cwd, pathstr))
     parts = p.split(os.sep)
@@ -193,15 +192,8 @@ def task_script_ok(pathstr, cwd):
     i = parts.index(".solve")
     if not (i + 2 < len(parts) and parts[i + 1] == "tasks"):
         return (False, GENERIC_MSG)
-    task_dir = os.sep.join(parts[: i + 3])
     if not os.path.isfile(p):
         return (False, f"SolveIt: the script {pathstr} does not exist yet - write it first, then run it.")
-    try:
-        has_md = any(f.endswith(".md") for f in os.listdir(task_dir))
-    except OSError:
-        has_md = False
-    if not has_md:
-        return (False, f"SolveIt: write a .md describing this task in {task_dir}/ before running its scripts.")
     return (True, None)
 
 

@@ -117,10 +117,9 @@ def test_task_script_missing_file(repo, run):
     assert code == 2 and "does not exist" in err
 
 
-def test_task_script_missing_md(repo, run):
+def test_task_script_runs_without_md(repo, run):
     path = make_task(repo, md=False)
-    code, err = run(f"python {path}", repo)
-    assert code == 2 and ".md" in err
+    assert run(f"python {path}", repo)[0] == 0
 
 
 def test_args_after_script_blocked(repo, run):

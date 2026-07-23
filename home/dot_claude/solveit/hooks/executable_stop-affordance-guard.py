@@ -8,6 +8,11 @@ takes the assistant text produced since the last genuine user message, and if
 it contains no affordance marker (the "▶" cue that leads every probe/verify
 handoff) it blocks (exit 2) so the model must ground the answer with one.
 
+It also enforces that any command the human copies out of the chat fits on ONE
+line: once the affordance is present, a ▶ line continued with a trailing
+backslash or a multi-line bash/sh/zsh fenced block blocks too, since pasting a
+multi-line command mangles newlines.
+
 The turn's final assistant message is flushed to the transcript a moment AFTER
 the Stop hook fires, so a single read sees an empty/stale span and would block
 every turn. We poll the transcript briefly (STOP_GUARD_POLL tries, spaced by
@@ -19,10 +24,52 @@ this turn (stop_hook_active), or on any read/parse error.
 """
 import json
 import os
+import re
 import sys
 import time
 
 AFFORDANCE = "▶"
+
+# Fenced-block languages that are commands the human copies and runs (not code
+# to read). A block tagged with one of these must be a SINGLE command line.
+SHELL_LANGS = {"bash", "sh", "shell", "zsh", "fish"}
+_FENCE = re.compile(r"^```([^`]*)$")
+
+MULTILINE_MSG = (
+    "SolveIt: a runnable command in your response spans multiple lines. The human "
+    "copies commands straight out of the chat, and pasting a multi-line command "
+    "mangles newlines — every command they run must fit on ONE line. Join steps with "
+    "'&&' or ';' onto a single line, or if it genuinely can't be one line, write it as "
+    "a task script and hand the human the one-line run command (e.g. "
+    "'▶ Verify: python .solve/tasks/<f>/01-name.py'). No backslash line-continuations, "
+    "no multi-line bash/sh/zsh fenced blocks.\n"
+)
+
+
+def _has_multiline_command(text):
+    """True if the response contains a command the human would copy that is not
+    on a single line: a ▶ affordance line continued with a trailing backslash, or
+    a shell-tagged fenced block with more than one command line."""
+    in_shell_fence = False
+    cmd_lines = 0
+    for line in text.split("\n"):
+        stripped = line.strip()
+        fence = _FENCE.match(stripped)
+        if fence:
+            if in_shell_fence:
+                if cmd_lines > 1:
+                    return True
+                in_shell_fence = False
+                cmd_lines = 0
+            elif fence.group(1).strip().lower() in SHELL_LANGS:
+                in_shell_fence = True
+                cmd_lines = 0
+            continue
+        if in_shell_fence and stripped and not stripped.startswith("#"):
+            cmd_lines += 1
+        if AFFORDANCE in line and line.rstrip().endswith("\\"):
+            return True
+    return False
 
 
 def _is_tool_result(content):
@@ -78,10 +125,13 @@ def main():
     span = _read_span(path)
     for _ in range(tries):
         if AFFORDANCE in span:
-            return
+            break
         time.sleep(interval)
         span = _read_span(path)
     if AFFORDANCE in span:
+        if _has_multiline_command(span):
+            sys.stderr.write(MULTILINE_MSG)
+            sys.exit(2)
         return
     sys.stderr.write(
         "SolveIt: your response since the last user message has no probe/verify "

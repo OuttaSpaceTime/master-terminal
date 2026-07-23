@@ -90,6 +90,32 @@ def test_thinking_block_does_not_count(run):
     assert code == 2
 
 
+def test_blocks_multiline_bash_fence(run):
+    text = "Run it:\n▶ Verify:\n```bash\ncd repo\nmake test\n```"
+    code, err = run([_user("q"), _assistant(_text(text))])
+    assert code == 2
+    assert "one line" in err.lower()
+
+
+def test_passes_single_line_bash_fence(run):
+    text = "Run it:\n▶ Verify:\n```bash\ncd repo && make test\n```"
+    code, _ = run([_user("q"), _assistant(_text(text))])
+    assert code == 0
+
+
+def test_blocks_backslash_continuation_on_affordance(run):
+    text = "▶ Predict, then run: grep foo \\\n  bar baz"
+    code, err = run([_user("q"), _assistant(_text(text))])
+    assert code == 2
+    assert "one line" in err.lower()
+
+
+def test_multiline_code_sketch_is_not_a_command(run):
+    text = "Read this:\n▶ nvim +10 foo.py\n```python\ndef f():\n    return 1\n```"
+    code, _ = run([_user("q"), _assistant(_text(text))])
+    assert code == 0
+
+
 def test_stop_hook_active_short_circuits(run):
     code, _ = run([_user("q"), _assistant(_text("no probe here"))], stop_hook_active=True)
     assert code == 0

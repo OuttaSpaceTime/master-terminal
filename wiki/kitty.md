@@ -34,6 +34,15 @@ curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin
 - `Ctrl+Shift+Alt+T` — rename current tab
 - `kitten @ set-tab-title "New Name"` — rename tab from CLI
 
+## Moving / Swapping Windows (Splits)
+
+Split *navigation* is remapped to `Ctrl+H/J/K/L` (`neighboring_window`), which works in every layout. Split *swapping* is layout-dependent:
+
+- `Ctrl+Alt+Shift+H/J/K/L` — `move_window left/down/up/right`. **Directional swap only works in the `splits` layout** — it's a silent no-op in `fat`/`tall`/`grid`, which are auto-tiled (kitty owns geometry, no real left/right neighbor).
+- `Alt+Shift+N` / `Alt+Shift+P` — `move_window_forward` / `_backward`. Non-directional; rotates the window through the position list, so it works in any layout (this is how you "cycle" in `grid`).
+
+`enabled_layouts` is unset → all layouts enabled; active default is not `splits`. Switch a tab live without editing config: `kitten @ goto-layout splits` (needs remote control, which is on). Reload config after edits with `Ctrl+Shift+F5`.
+
 ## Line Editing
 
 These are the usual readline/zsh-style shortcuts for editing commands in the prompt:
