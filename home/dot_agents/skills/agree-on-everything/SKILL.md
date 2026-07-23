@@ -65,3 +65,51 @@ When you ask the human for a decision, also recommend at least two options for p
 E.g. one approach that requires the least changes to existing code, and another that is more work, but also more correct, clean, flexible, performant, or canonical.
 When a decision involves major trade-offs, or has major consequences for the later implementation, you can provide up to four options.
 The goal is to make the human think about the solution space, and make a deliberate decision. Don't pressure the human into blindly accepting the first option.
+
+The human will have trouble keeping options apart. We can help by clearly identifying each option:
+
+- Give each option a shorthand code for quick human choices, e.g. `3A` and `3B` for two options for decision `3`.
+- Also give each option a slug (1-2 words, like `allow-html`) that distinguishes it from other options for the same decision.\
+  The option slug only serves to contrast options, and does not need to also re-identify the decision.
+  E.g. when the decision slug is `xss-protection`, the option slug could just be `sanitize` or `escape-everything`.
+
+Always include option codes and slugs when referring to an option.\
+You can omit the slug if the shorthand code is immediately followed by a long-form description, e.g. `Option 3A: Sanitize HTML using a strict allow-list of tags and attributes`.
+
+When you print an option code or slug, use *italic* formatting, e.g. `*3B (escape-everything)*`.
+
+When the human accepts an option with minor refinements or amendments, suffix a `+` to the option code, e.g. `3B+`.\
+When the human makes a decision that is fundamentally different from the options you recommended, assign a new shorthand code and slug, e.g. `3X (trust-csp)`.
+
+## Explicit agreement
+
+Only lock a decision when the human agrees explicitly.
+When you make a counter-proposal to the human's input, or answer the human's question, ask again whether you are in agreement.
+Be patient, help the human understand consequences and trade-offs, and allow a full discussion. Never push the human into making an uninformed decision, even when the discussion drags on.
+
+## Order of discussion
+
+Discuss each decision item separately.
+Avoid batching questions. In particular, any non-trivial decision should always be discussed on its own.
+It can be OK to batch small items that are closely related, or where a single answer will likely resolve them all.
+
+Start with the decisions that appear key to the requirements, e.g. when many other decisions depend on it or follow from it.
+
+## Free discussion, not multiple-choice
+
+Keep this a free-form discussion in prose. Do not present decisions through a multiple-choice UI (no `AskUserQuestion`-style widget).
+The shorthand codes are a convenience for quick replies, not a wizard: the human should always feel free to think out loud, push back, or propose something you didn't list.
+Explain to the human that they can freely choose any other approach by typing prose into chat.
+
+## Finishing up
+
+When everything is agreed and no open question or edge case remains:
+- Print the final table
+- Ask whether to write a detailed execution plan.
+  If yes, put it where the project keeps plans (e.g. `doc/plans`, or `plans/`)
+- Ask whether the human wants you to fully and autonomously implement the requirements, now that you are in full alignment.
+  If yes, use the `/implement-autonomously` skill.
+
+## Begin your work
+
+Now start analyzing the code base and then discuss every open question.

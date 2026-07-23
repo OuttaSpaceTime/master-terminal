@@ -261,11 +261,9 @@ alias fixup='git log --oneline | fzf | awk '\''{print $1}'\'' | xargs -I '\''{}'
 alias merge-conflicts='git diff --name-status --diff-filter=U'
 alias dew='docker compose exec web'
 alias de='docker compose exec'
-alias dewt='docker compose exec web rails test'
-alias dewts='docker compose exec web rails test:system'
-alias vil-portal='cd ~/Code/Vilocify/vilocify-portal'
-alias vil-frontend='cd ~/Code/Vilocify/vilocify-frontend'
-vil-worktree() {
+alias vilcb='cd ~/Code/Vilocify/vilocify-portal'
+alias vilcf='cd ~/Code/Vilocify/vilocify-frontend'
+vilcw() {
   local base=~/Code/Vilocify/worktrees dir
   dir=$(find "$base" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | fzf) && cd "$base/$dir"
 }
