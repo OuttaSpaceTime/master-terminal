@@ -20,7 +20,8 @@ Then a blank line, then 2-5 SHORT bullets flagging anything a reviewer/QA should
 notice BEYOND the obvious feature: side effects, unexpected or unrelated changes,
 risky spots. Only what is specific to THIS diff; never general repo or workflow
 notes (e.g. how to deploy, that a tool must be installed). Just the bullets, no
-label/header line. Keep them terse. Never use dashes or em-dashes in the prose.
+label/header line. Keep them terse. Put each bullet on ONE line; never wrap a
+bullet across multiple lines. Never use dashes or em-dashes in the prose.
 Output ONLY the commit message. No preamble, no code fences.'
 
 msg_file="$(mktemp)"

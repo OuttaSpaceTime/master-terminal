@@ -2,14 +2,17 @@
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
 
-local function copy_path_from_root(with_line)
+local function copy_path(root, with_line)
   local file = vim.api.nvim_buf_get_name(0)
   if file == "" then
     vim.notify("No file path for current buffer", vim.log.levels.WARN)
     return
   end
+  if not root then
+    vim.notify("Not in a git repository", vim.log.levels.WARN)
+    return
+  end
 
-  local root = LazyVim.root.get()
   local rel = vim.fn.fnamemodify(file, ":." .. root)
   if rel == file then
     rel = vim.fs.relpath(root, file) or vim.fn.fnamemodify(file, ":t")
@@ -20,13 +23,16 @@ local function copy_path_from_root(with_line)
   vim.notify("Copied: " .. value)
 end
 
-vim.keymap.set("n", "<leader>fy", function()
-  copy_path_from_root(false)
-end, { desc = "Copy File Path (Root)" })
+local function git_root()
+  local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
+  local out = vim.fn.systemlist({ "git", "-C", dir, "rev-parse", "--show-toplevel" })
+  return vim.v.shell_error == 0 and out[1] or nil
+end
 
-vim.keymap.set("n", "<leader>fY", function()
-  copy_path_from_root(true)
-end, { desc = "Copy File Path With Line (Root)" })
+vim.keymap.set("n", "<leader>fyp", function() copy_path(LazyVim.root.get(), false) end, { desc = "Copy Path (Root)" })
+vim.keymap.set("n", "<leader>fyl", function() copy_path(LazyVim.root.get(), true) end, { desc = "Copy Path + Line (Root)" })
+vim.keymap.set("n", "<leader>fyP", function() copy_path(git_root(), false) end, { desc = "Copy Path (Git Root)" })
+vim.keymap.set("n", "<leader>fyL", function() copy_path(git_root(), true) end, { desc = "Copy Path + Line (Git Root)" })
 
 local smart_splits = require("smart-splits")
 
