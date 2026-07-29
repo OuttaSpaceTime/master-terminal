@@ -18,6 +18,8 @@ return {
               if clients[1] and clients[1].config.root_dir then
                 return on_dir(clients[1].config.root_dir)
               end
+              local project = vim.fs.root(vim.fn.getcwd(), { "Gemfile" })
+              return project and on_dir(project)
             end
             on_dir(vim.fs.root(bufnr, { "Gemfile", ".git" }) or vim.fn.getcwd())
           end,

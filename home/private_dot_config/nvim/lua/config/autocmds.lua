@@ -112,3 +112,11 @@ vim.api.nvim_create_autocmd("UILeave", {
     io.write("\027]111\027\\")
   end,
 })
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(ev)
+    if vim.api.nvim_buf_get_name(ev.buf):match("/gems/[^/]+/") then
+      vim.diagnostic.enable(false, { bufnr = ev.buf })
+    end
+  end,
+})

@@ -64,3 +64,8 @@ vim.keymap.set({ "n", "i", "t" }, "<C-S-Tab>", "<Cmd>bprevious<CR>", { desc = "P
 -- Switch tabpage (same as gt/gT): Ctrl+Alt+Shift+H/L
 vim.keymap.set("n", "<C-A-S-h>", "<Cmd>tabprevious<CR>", { desc = "Prev Tab" })
 vim.keymap.set("n", "<C-A-S-l>", "<Cmd>tabnext<CR>", { desc = "Next Tab" })
+
+vim.keymap.set("n", "<leader>tn", "<Cmd>tabnew<CR>", { desc = "New Tab" })
+vim.keymap.set("n", "<leader>tc", "<Cmd>tabclose<CR>", { desc = "Close Tab" })
+vim.keymap.set("n", "<leader>tl", "<Cmd>tabnext<CR>", { desc = "Next Tab" })
+vim.keymap.set("n", "<leader>th", "<Cmd>tabprevious<CR>", { desc = "Prev Tab" })

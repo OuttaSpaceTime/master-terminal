@@ -1,3 +1,28 @@
+local function goto_open_diffview()
+  local views = require("diffview.lib").views
+  local tabs = {}
+  for _, view in ipairs(views) do
+    if view.tabpage and vim.api.nvim_tabpage_is_valid(view.tabpage) then
+      tabs[#tabs + 1] = view.tabpage
+    end
+  end
+  if #tabs == 0 then
+    vim.notify("No open Diffview", vim.log.levels.INFO)
+    return
+  end
+  local cur = vim.api.nvim_get_current_tabpage()
+  local idx
+  for i, tab in ipairs(tabs) do
+    if tab == cur then
+      idx = i
+      break
+    end
+  end
+  -- On a diffview: go to the next one. Otherwise: go to the first.
+  local target = idx and tabs[(idx % #tabs) + 1] or tabs[1]
+  vim.api.nvim_set_current_tabpage(target)
+end
+
 return {
   {
     "sindrets/diffview.nvim",
@@ -10,30 +35,12 @@ return {
       { "<leader>gc", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
       {
         "<leader>gj",
-        function()
-          local views = require("diffview.lib").views
-          local tabs = {}
-          for _, view in ipairs(views) do
-            if view.tabpage and vim.api.nvim_tabpage_is_valid(view.tabpage) then
-              tabs[#tabs + 1] = view.tabpage
-            end
-          end
-          if #tabs == 0 then
-            vim.notify("No open Diffview", vim.log.levels.INFO)
-            return
-          end
-          local cur = vim.api.nvim_get_current_tabpage()
-          local idx
-          for i, tab in ipairs(tabs) do
-            if tab == cur then
-              idx = i
-              break
-            end
-          end
-          -- On a diffview: go to the next one. Otherwise: go to the first.
-          local target = idx and tabs[(idx % #tabs) + 1] or tabs[1]
-          vim.api.nvim_set_current_tabpage(target)
-        end,
+        goto_open_diffview,
+        desc = "Go to open Diffview",
+      },
+      {
+        "gj",
+        goto_open_diffview,
         desc = "Go to open Diffview",
       },
       {
