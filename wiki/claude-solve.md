@@ -2,7 +2,7 @@
 title: SolveIt default mode
 tags: [claude-code, solveit, output-styles, hooks]
 created: 2026-06-13
-updated: 2026-07-17
+updated: 2026-07-30
 ---
 
 # SolveIt default mode
@@ -30,13 +30,30 @@ Claude Code runs in **SolveIt mode by default** in every session — incremental
 
 ### Hard limits (enforced by hooks)
 
-- **≤20 added lines per edit** — a ceiling, not a target (`edit-guard.py`).
-- **Two-tier uncommitted cap** — a checkpoint is due at **20+ *unstaged* lines** (staging what you accept lets work continue) or **60+ total** (staged + unstaged — now you must actually commit; staging no longer helps). Counts tracked diff vs HEAD plus untracked file lines in the enclosing repo. `.solve/` is git-excluded, so task scratch never counts — the cap tracks real project changes. Either way Claude never commits: it stops and says what changed; you commit before more is written.
+- **≤30 added lines per edit** — a ceiling, not a target (`edit-guard.py`, `CAP`).
+- **≤4 project-code edits per human turn** (`EDIT_CAP`) — one step, then hand back. The counter is reset by `solve-init.py` on every prompt; writes under `.solve/` don't count.
+- **Three-tier uncommitted cap** — a checkpoint is due at **30+ *unstaged* lines** (staging what you accept lets work continue), a **warning** at 150 total, and a **hard block at 300 total** where only a real commit helps. Counts tracked diff vs HEAD plus untracked file lines in the enclosing repo. `.solve/` is git-excluded, so task scratch never counts. Either way Claude never commits: it stops and says what changed; you commit before more is written.
 - **Bash runs task scripts and read-only search/inspection** (`bash-guard.py`). A Bash command is allowed only if every segment is one of: a runner — an interpreter (`python`, `sh`, `ruby`, `node`, …), a `./path` execution, or any non-destructive runner (`bin/rails runner`, `bundle exec ruby`, `npx tsx`, `rake`, …) — invoking a file under `.solve/tasks/<X>/` that **exists**, in a folder `<X>` that also contains a `.md`. **The script path must be the last token** — no args/flags/redirects passed at run time, so a script can't be a generic command forwarder (e.g. `exec bin/rails "$@"`); bake the exact command into the file. (Piping the script's output — `… | grep x` — is fine, since the pipe splits into a separate segment.) **A runner must point at a FILE, never an inline code string** — `bin/rails runner -e "…"`, `ruby -e`, `python -c`, `sh -c "…"` (and `--eval`/`--command`) are blocked; read-only commands' own `-e`/`-c` (e.g. `grep -e`, `head -c`) are unaffected since they match earlier. A segment may instead be a **read-only search/inspection** command (`grep`, `rg`, `find`, `ls`, `cat`, `head`, `tail`, `awk`, … — no `>`/`>>` redirect, and `find` may not `-exec`/`-delete`), optionally wrapped in **read-only shell structure** (`for`/`while`/`if` loops and pipes — each inner command is still validated, so a loop hiding `rm` is still blocked); **read-only git** (`diff`, `status`, `log`, `show`, `blame`, `ls-files`, `rev-parse`, … — the dual-use `branch`/`tag`/`remote`/`stash`/`checkout`/`reset` are *not* in the allowlist); `git init` (to create a scratch repo — commits nothing); `cd`; or `mv` **within** `.solve/tasks/` (for renaming a task folder). Segments are split **quote-aware** (a `\|` inside a grep pattern or a `;` inside a commit message no longer mis-splits). Read-only search is allowed because a tool-registration bug ([#52121](https://github.com/anthropics/claude-code/issues/52121)) can drop the `Grep`/`Glob` tools entirely, leaving shell as the only way to look at code; each allowed search **and read-only git** is appended to `reads.log`. Everything else is blocked — ad-hoc one-liners that mutate, **all** repo-mutating git (`add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`, in any repo), test runners (`pytest`, `python -m pytest` → wrap in a task script), and installs. Commands you explicitly allow via `permissions.allow` `Bash(...)` entries bypass all of this (see below). So everything the agent *executes against the project* is a reviewable file on disk, while *looking* stays cheap.
 - **No agent commits — ever** — Claude **never commits anything**. All `git add`/`commit`/`--amend` (and other mutating git) are blocked; you commit every checkpoint and `--amend` freely. The whole philosophy is to keep changes **dirty** so you verify and commit. Only `git init` (to make a task folder its own scratch repo) and read-only git are allowed.
 - **Re-running is unlimited** — running an existing task script is always allowed. Repeat work (e.g. tests) = write a descriptive script once, re-run it.
 
-The guard hooks **fail open**: any internal error allows the tool call, so a bug never wedges a session.
+The guard hooks **fail open**: any internal error allows the tool call, so a bug never wedges a session. Since 2026-07-30 a failure is no longer silent — each hook appends one line (`timestamp  hook  error`) to **`~/.claude/solveit/guard-errors.log`** via `log_guard_error()` in `solve_allow.py`. Check that file if the rules seem to have stopped applying.
+
+### Turn rules (enforced by `stop-affordance-guard.py`)
+
+The Stop hook reads the assistant text since your last message and blocks on:
+
+- **no `▶` handle** — but only when the turn *asserts* something. A turn that asks you a question, a short acknowledgement, a checkpoint report, or one carrying only fenced payload you asked for needs none.
+- **prose over ~2200 chars** (`BLOCK_CHARS`) when your last message didn't ask for depth ("explain", "why", "detail", …). Fenced payload is excluded from the count.
+- **a trailing menu** — "Want me to… / Should I…?" as the last paragraph. Do the reversible thing, or ask one question about the decision.
+- **asking you to paste output or report back** — the agent checks the output itself and says what it saw.
+- **`▶ Verify:` on a turn where nothing ran** — that marker means "I ran it"; hand it over as `▶ Try:` instead.
+- **an unhedged confident claim on a read-only turn** — "confirmed/proves/clearly" with nothing run and no hedge.
+- **a multi-line command** in a `▶` line or shell fence (you copy commands straight from chat).
+
+### Checking how it's going (`solveit-health`)
+
+`solveit-health` (`home/dot_local/bin/executable_solveit-health`, plus the `solveit-health` skill) reads the transcripts and scores every human turn against these rules: `probe%` on asserting turns, `menu%`, median prose chars, edits/turn, tools/turn — with `--days`/`--since`/`--by week`. It also groups guard blocks and separates **bounced runners** (real allowlist candidates, each with the `solve-allow add` line) from hits that are **blocked by design**. Use it after changing a hook: `solveit-health --since <date> --by day`.
 
 ### Reads log (`log-reads.py`)
 
@@ -47,7 +64,7 @@ Every `Read`, `Grep`, and `Glob` is appended (timestamp, tool, target) to **`<re
 Anything the agent **executes** lives here (Bash can only run task scripts); app code is still edited directly in the project. Path: `.solve/tasks/<YYYY-MM-DD>-<name>/`:
 
 - `.solve/` is added to the repo's `.git/info/exclude` automatically (by `solve-init.py` on the first prompt), so scratch is invisible to the repo. You can optionally `git init` a task folder to make it its own scratch repo, but it isn't required.
-- Numbered, **descriptively named** files `01-run-rspec-for-auth-model.sh`, `02-…` (longer names encouraged), plus one `.md` describing each file (what it does, how to run, how to verify). A script runs only once both the `.md` and the script exist.
+- Numbered, **descriptively named** files `01-run-rspec-for-auth-model.sh`, `02-…` (longer names encouraged). No `.md` is required (dropped 2026-07-23) — instead the script's **first comment line is exactly the command to run it**, at most 1–3 comment lines total. A script can run as soon as it exists.
 - The Write tool auto-creates parent dirs, so no `mkdir` is needed (and `mkdir` would be blocked anyway).
 
 ## chezmoi sources

@@ -153,10 +153,13 @@ Chezmoi source filenames encode target attributes:
 The SolveIt PreToolUse guards live under `home/dot_claude/solveit/hooks/` and deploy via chezmoi to `~/.claude/solveit/hooks/`. We work on these frequently.
 
 - `executable_bash-guard.py` — allows Bash only for task scripts + read-only search/git inspection; blocks everything else (command recognition lives in `segment_ok`/`split_segments`)
-- `executable_edit-guard.py` — enforces the 20-line-per-edit ceiling and the dirty (20) / total (60) uncommitted caps
+- `executable_edit-guard.py` — enforces the 30-line-per-edit ceiling (`CAP`), 4 project edits per turn (`EDIT_CAP`), and the dirty (30) / warn (150) / hard (300) uncommitted caps
+- `executable_stop-affordance-guard.py` — turn-level rules: a `▶` handle on asserting turns only, prose length, no trailing menus, no asking the human to paste output, `▶ Verify` only when something ran, hedging on read-only turns, single-line commands
 - `executable_log-reads.py` — mirrors Read/Grep/Glob into `.solve/reads.log`
-- `executable_solve-init.py` — session bootstrap
-- `solve_allow.py` — shared allowlist reader for bash-guard + solve-init
+- `executable_solve-init.py` — session bootstrap; resets the per-turn edit counter
+- `solve_allow.py` — shared allowlist reader for bash-guard + solve-init, plus `log_guard_error()` (all guards fail open but append to `~/.claude/solveit/guard-errors.log`)
+
+`solveit-health` (`home/dot_local/bin/executable_solveit-health` + the `solveit-health` skill) scores recent transcripts against these rules and proposes allowlist entries — run it after changing a hook.
 
 Tests live in `tests/` (pytest, `uv run pytest`). The `executable_`/hyphen source names aren't importable normally — load a hook in a test via `importlib.util.spec_from_file_location` from its source path.
 
