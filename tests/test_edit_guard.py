@@ -97,6 +97,43 @@ def test_total_cap_blocks(repo, run):
     assert code == 2 and "total cap" in err
 
 
+def test_splitting_marker_lifts_the_total_cap(repo, run):
+    (repo / "big.txt").write_text("l\n" * 305)
+    subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)
+    (repo / ".solve").mkdir()
+    (repo / ".solve" / "splitting").touch()
+    assert run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)[0] == 0
+
+
+def test_splitting_marker_keeps_the_dirty_cap(repo, run):
+    (repo / "big.txt").write_text("l\n" * 35)
+    (repo / ".solve").mkdir()
+    (repo / ".solve" / "splitting").touch()
+    code, err = run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)
+    assert code == 2 and "unstaged" in err
+
+
+def test_splitting_marker_dies_with_the_session(repo, run):
+    (repo / "big.txt").write_text("l\n" * 305)
+    subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)
+    (repo / ".solve").mkdir()
+    marker = repo / ".solve" / "splitting"
+    marker.touch()
+    ti = {"file_path": str(repo / "small.txt"), "content": "x\n"}
+    assert run("Write", ti, repo, session="chat1")[0] == 0
+    assert marker.read_text().strip() == "chat1"
+    assert run("Write", ti, repo, session="chat1")[0] == 0
+    code, err = run("Write", ti, repo, session="chat2")
+    assert code == 2 and "total cap" in err
+    assert not marker.exists()
+
+
+def test_agent_cannot_drop_the_marker_itself(repo, run):
+    ti = {"file_path": str(repo / ".solve" / "splitting"), "content": ""}
+    code, err = run("Write", ti, repo)
+    assert code == 2 and "human" in err
+
+
 def test_warn_between_150_and_300(repo, run, capsys):
     (repo / "big.txt").write_text("l\n" * 200)
     subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)

@@ -12,7 +12,12 @@ Blocks (exit 2, message to stderr) when:
          wraps up the current commit's goal and commits soon.
        - TOTAL_CAP (300): staged + unstaged + untracked added lines -> the human
          must commit; staging no longer helps. This forces a real commit from
-         time to time.
+         time to time. Escape valve for a deliberate multi-commit split: the
+         human runs `touch .solve/splitting`, and the first write of the session
+         stamps its session_id into that file and skips this tier. A later
+         session finds a foreign id, deletes the marker and enforces the cap
+         again — so the valve is off by default and dies with the chat. Writes
+         to the marker itself are denied; only the human drops it.
      .solve/ is git-excluded, so task-folder scripts never inflate the main
      repo's count — it tracks real project changes. Each .solve/tasks/<X> folder
      is auto-git-init'd on first write, so it's its own repo with its own separate
@@ -102,6 +107,12 @@ def main():
     if not os.path.isabs(fp):
         fp = os.path.normpath(os.path.join(cwd, fp))
 
+    if fp.endswith(os.path.join(".solve", "splitting")):
+        deny(
+            "SolveIt: .solve/splitting is the human's escape valve — they drop it "
+            "with `touch .solve/splitting`, never you."
+        )
+
     # 1. per-operation size: how many lines does this single step add?
     if tool == "Write":
         added = nlines(ti.get("content", ""))
@@ -180,8 +191,19 @@ def main():
     staged = added_lines("--cached")  # staged: index vs HEAD
     total = dirty + staged
 
+    marker = os.path.join(repo, ".solve", "splitting")
+    splitting = False
+    if os.path.exists(marker):
+        owner = open(marker).read().strip()
+        if not owner:
+            open(marker, "w").write(session + "\n")
+        if not owner or owner == session:
+            splitting = True
+        else:
+            os.remove(marker)
+
     where = "your task/scratch repo " + repo if is_task_repo(repo) else repo
-    if total >= TOTAL_CAP:
+    if total >= TOTAL_CAP and not splitting:
         deny(
             f"SolveIt: {total} lines uncommitted in {where} (staged {staged} + "
             f"dirty {dirty}) — the {TOTAL_CAP}-line total cap is reached. Staging "
