@@ -116,6 +116,22 @@ def test_second_task_folder_blocked(repo, run):
     assert code == 2 and "task folder" in err
 
 
+def test_project_edits_past_the_turn_cap_are_denied(repo, run):
+    ti = {"file_path": str(repo / "a.txt"), "content": "x\n"}
+    for _ in range(guard.EDIT_CAP):
+        assert run("Write", ti, repo, session="turn")[0] == 0
+    code, err = run("Write", ti, repo, session="turn")
+    assert code == 2 and "hand back" in err
+
+
+def test_task_script_writes_do_not_count_toward_the_turn(repo, run):
+    a = repo / ".solve" / "tasks" / "probe"
+    a.mkdir(parents=True)
+    for i in range(4):
+        ti = {"file_path": str(a / f"0{i}.py"), "content": "x\n"}
+        assert run("Write", ti, repo, session="scratch")[0] == 0
+
+
 def test_same_task_folder_ok(repo, run):
     a = repo / ".solve" / "tasks" / "a"
     a.mkdir(parents=True)

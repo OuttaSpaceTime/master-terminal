@@ -72,5 +72,13 @@ def test_allowlist_injected(repo, run):
     assert "ALLOWLISTED" in ctx and "`npm test:*`" in ctx
 
 
+def test_every_prompt_resets_the_edits_per_turn_counter(repo, run, tmp_path):
+    counter = tmp_path / "home/.claude/solveit/state/s5.edits"
+    run(repo, session="s5")
+    counter.write_text("2\n")
+    run(repo, session="s5")
+    assert counter.read_text().strip() == "0"
+
+
 def test_solveit_off_noop(repo, run):
     assert run(repo, session="s4", off=True) == ""

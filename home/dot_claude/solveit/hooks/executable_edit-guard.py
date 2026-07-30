@@ -31,6 +31,7 @@ import subprocess
 import sys
 
 CAP = 30  # per single edit/write
+EDIT_CAP = 4  # project-code edits per human turn (reset by solve-init on each prompt)
 DIRTY_CAP = 30  # unstaged + untracked -> pause & force stage
 WARN_CAP = 150  # staged + unstaged + untracked -> warn, proceed
 TOTAL_CAP = 300  # staged + unstaged + untracked -> hard block, force commit
@@ -134,6 +135,18 @@ def main():
         if not recorded:
             os.makedirs(os.path.dirname(marker), exist_ok=True)
             open(marker, "w").write(task_root + "\n")
+    if not task_root:
+        session = data.get("session_id") or "nosession"
+        counter = os.path.expanduser(f"~/.claude/solveit/state/{session}.edits")
+        n = (int(open(counter).read().strip() or 0) if os.path.exists(counter) else 0) + 1
+        os.makedirs(os.path.dirname(counter), exist_ok=True)
+        open(counter, "w").write(f"{n}\n")
+        if n > EDIT_CAP:
+            deny(
+                f"SolveIt: {n} edits to project code since the human's last message "
+                f"(cap {EDIT_CAP}). One step, then hand back — they verify each change "
+                f"before the next one lands."
+            )
     if task_root and not os.path.isdir(os.path.join(task_root, ".git")):
         os.makedirs(task_root, exist_ok=True)
         git(task_root, "init", "-q")

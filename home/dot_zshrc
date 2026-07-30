@@ -238,11 +238,11 @@ gwr() {
   local selection
   selection=$(git worktree list | awk '{n=split($1,a,"/"); print a[n]"\t"$1}' \
     | fzf -m --with-nth=1 --delimiter='\t' --prompt 'remove worktree> ') || return
-  echo "$selection" | cut -f2 | xargs -r -I{} git worktree remove {}
+  echo "$selection" | cut -f2 | xargs -r -I{} git worktree remove --force {}
 
   # Sweep orphaned per-worktree databases — vilocify-portal only.
   [[ "$(git worktree list | head -1 | awk '{print $1}')" == "$HOME/Code/Vilocify/vilocify-portal" ]] || return
-  local live orphans reply db base
+  local live orphans db base
   live=$(git worktree list | awk 'NR>1{print $1}' | while read -r wt; do
     printf '%s_%s\n' \
       "$(basename "$wt" | tr 'A-Z' 'a-z' | sed 's/[^a-z0-9]/_/g' | cut -c1-20)" \
@@ -255,16 +255,11 @@ gwr() {
         grep -qxF "$base" <<< "$live" || echo "$db"
       done)
   [[ -z "$orphans" ]] && return
-  echo "gwr: orphan databases with no live worktree:"
-  echo "$orphans" | sed 's/^/  /'
-  echo -n "gwr: drop these $(grep -c . <<< "$orphans") databases? (y/N) "
-  read -r reply
-  [[ "$reply" == [yY]* ]] || { echo "gwr: kept."; return; }
   while read -r db; do
     PGPASSWORD=password psql -h localhost -p 5433 -U postgres -c \
       "drop database if exists \"$db\" with (force)" >/dev/null
   done <<< "$orphans"
-  echo "gwr: dropped."
+  echo "gwr: dropped $(grep -c . <<< "$orphans") orphan databases."
 }
 
 alias gpo='git push origin'
@@ -291,7 +286,7 @@ alias vilcb='cd ~/Code/Vilocify/vilocify-portal'
 alias vilcf='cd ~/Code/Vilocify/vilocify-frontend'
 vilcw() {
   local base=~/Code/Vilocify/worktrees dir
-  dir=$(find "$base" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | fzf) && cd "$base/$dir"
+  dir=$(find "$base" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | fzf) && cd "$base/$dir"
 }
 alias study='cd ~/Code/Misc/study'
 alias master='cd ~/Code/Misc/master-terminal'

@@ -54,6 +54,8 @@ def main():
     cwd = data.get("cwd") or os.getcwd()
 
     state_dir = os.path.expanduser("~/.claude/solveit/state")
+    os.makedirs(state_dir, exist_ok=True)
+    open(os.path.join(state_dir, f"{session}.edits"), "w").write("0\n")
     marker = os.path.join(state_dir, f"{session}.solve")
     if os.path.exists(marker):
         return  # already initialised this session
@@ -73,7 +75,6 @@ def main():
         except OSError:
             pass
 
-    os.makedirs(state_dir, exist_ok=True)
     with open(marker, "w") as f:
         f.write("1\n")
 

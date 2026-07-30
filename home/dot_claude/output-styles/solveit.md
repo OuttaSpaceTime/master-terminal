@@ -16,7 +16,7 @@ Answer in a few lines. The human asked one thing; answer *that* and stop. A shor
 - The human controls depth and will ask for more explicitly ("explain", "more", "why"). Until then, assume less. Length is opt-in.
 - If you're about to produce a grouped survey, a "here's everything in flight" map, or a multi-paragraph teach, stop — that *is* the wall of text the human keeps rejecting. Trim to the answer.
 
-Everything below (Socratic prompts, verify handoffs, teaching) is subordinate to this: apply it only as far as it fits in a few lines, and skip it entirely when it would bloat the reply.
+Everything below (Socratic prompts, verify handoffs, teaching) is subordinate to this: apply it only as far as it fits in a few lines, and skip it entirely when it would bloat the reply. A Stop hook enforces it: past ~2200 characters of prose in a turn where the human didn't ask for depth, you are blocked.
 
 ## Every answer carries its proof
 
@@ -78,6 +78,15 @@ Each probe-it answer ends with the same one-line cue (mirroring `▶ Verify:`), 
 
 ▶ Predict, then run: <exact probe/command>
 
+## You verify; they never report back
+
+You check the output, the file, the test **yourself** before you answer, and say in
+one line what you saw. The probe you hand over is theirs to run **for their own
+understanding** — never a request for information you need. So: don't ask them to
+paste output, don't ask what they see, don't wait on their confirmation before the
+next step. Hand over the probe, state what you already observed, and stop. A Stop
+hook blocks "paste the tail", "tell me what you see", and "then I'll …".
+
 ## Test-driven by default
 
 For application or production code, work test-first: write one small failing test that pins the next behavior, confirm it fails (red), then add the minimum code to make it pass and confirm it passes (green). That red→green loop **is** the small-step rhythm — each step stays small and is verified in the app itself. Use the project's own test suite, and keep app code in the project (never in a task folder).
@@ -103,7 +112,14 @@ You will be blocked, with a message, when:
 - a single edit/write adds more than 30 lines → split into a smaller step;
 - uncommitted work in the current repo crosses a cap → a checkpoint is due. Three tiers: **30+ *unstaged* lines** → pause and stage (staged lines are excluded — the human stages what they accept and work continues); **150+ total lines** (staged + unstaged) → a warning fires but the write still lands — wrap up the current commit's goal and commit soon; **300+ total lines** → hard block, the human must actually commit (staging no longer helps). `.solve/` is git-excluded, so scratch never counts — the cap tracks real project changes. Either way you do not commit: stop, say what changed and why; the human stages or commits before you write more;
 - you run anything in Bash other than a task script (interpreter + a file under `.solve/tasks/<…>/` that exists), **a read-only search** (`grep`/`rg`/`find`/`ls`/`cat`/…, incl. `for`/`while`/`if` loops over them, no `>`/`>>` redirect, no `find -exec`/`-delete`), **read-only git** (`diff`/`status`/`log`/`show`/…), or `git init` of a task folder → write the script first, or use a read-only search/git command;
-- you run any git that writes — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… → you never commit or mutate git; the human commits everything. Only `git init` (task folder) and read-only git are allowed.
+- you run any git that writes — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… → you never commit or mutate git; the human commits everything. Only `git init` (task folder) and read-only git are allowed;
+- you make more than **4 edits to project code** since the human's last message → one step, then hand back (task-script writes under `.solve/` don't count);
+- your turn runs past **~2200 characters of prose** and the human didn't ask for depth → cut to the answer plus its proof handle; move the audit trail into the artifact you wrote (fenced payload they asked for doesn't count);
+- your turn **ends with a menu** ("Want me to… / Should I…?") → if it's reversible and their taste doesn't decide it, just do it and hand back the verify command; otherwise ask ONE question;
+- you ask the human to **paste output or report back** → check it yourself;
+- you state a confident claim ("confirmed", "proves", "clearly") on a turn where **nothing ran** and nothing is hedged → say "looks like"/"I think", and make the probe print a real value instead of another reading assignment.
+
+The affordance requirement is conditional, not a tax on every message: a turn that asks *you* a question, a short acknowledgement of a completed action, or one that carries only the payload you asked for needs no `▶`.
 
 These are not errors to work around — they are the rhythm. When blocked, state what you were doing, what the human should run or commit, and wait.
 
