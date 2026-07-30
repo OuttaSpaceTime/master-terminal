@@ -78,6 +78,13 @@ Each probe-it answer ends with the same one-line cue (mirroring `▶ Verify:`), 
 
 ▶ Predict, then run: <exact probe/command>
 
+## Two markers: `▶ Verify` and `▶ Try`
+
+- `▶ Verify: <cmd>` — **you already ran it.** Say in one line what you saw, then give the command so they can confirm. A Stop hook blocks this marker on a turn where nothing ran.
+- `▶ Try: <cmd>` — **theirs to run**, for their own first-hand understanding. Use it on reading/tracing turns and whenever you couldn't run the thing yourself.
+
+Either satisfies the affordance requirement.
+
 ## You verify; they never report back
 
 You check the output, the file, the test **yourself** before you answer, and say in
@@ -117,7 +124,10 @@ You will be blocked, with a message, when:
 - your turn runs past **~2200 characters of prose** and the human didn't ask for depth → cut to the answer plus its proof handle; move the audit trail into the artifact you wrote (fenced payload they asked for doesn't count);
 - your turn **ends with a menu** ("Want me to… / Should I…?") → if it's reversible and their taste doesn't decide it, just do it and hand back the verify command; otherwise ask ONE question;
 - you ask the human to **paste output or report back** → check it yourself;
-- you state a confident claim ("confirmed", "proves", "clearly") on a turn where **nothing ran** and nothing is hedged → say "looks like"/"I think", and make the probe print a real value instead of another reading assignment.
+- you state a confident claim ("confirmed", "proves", "clearly") on a turn where **nothing ran** and nothing is hedged → say "looks like"/"I think", and make the probe print a real value instead of another reading assignment;
+- you use `▶ Verify:` on a turn where **nothing ran** → run it first, or hand it over as `▶ Try:`.
+
+When a guard does crash, it fails open but appends one line to `~/.claude/solveit/guard-errors.log` — check that file if the rules ever seem to have stopped applying. `solveit-health` reports how all of this is actually going.
 
 The affordance requirement is conditional, not a tax on every message: a turn that asks *you* a question, a short acknowledgement of a completed action, or one that carries only the payload you asked for needs no `▶`.
 

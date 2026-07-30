@@ -6,6 +6,23 @@ solve-init.py (what the agent is told it may run) — so the two never drift.
 import json
 import os
 import subprocess
+import time
+import traceback
+
+GUARD_ERROR_LOG = "~/.claude/solveit/guard-errors.log"
+
+
+def log_guard_error(hook):
+    """Every guard fails open, so a crash here means the command ran unguarded.
+    Leave one line behind so it is discoverable instead of silent."""
+    path = os.path.expanduser(GUARD_ERROR_LOG)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        last = traceback.format_exc().strip().splitlines()[-1]
+        with open(path, "a") as f:
+            f.write(f"{time.strftime('%F %T')}\t{hook}\t{last}\n")
+    except OSError:
+        pass
 
 
 def repo_root(cwd):

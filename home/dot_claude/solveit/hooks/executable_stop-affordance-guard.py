@@ -28,6 +28,9 @@ import re
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from solve_allow import log_guard_error
+
 AFFORDANCE = "▶"
 
 # Fenced-block languages that are commands the human copies and runs (not code
@@ -47,6 +50,10 @@ CONFIDENT = re.compile(
     r"(?i)\b(confirmed|definitely|certainly|clearly|proves|now i (fully )?understand)\b"
 )
 HEDGE = re.compile(r"(?i)(looks like|i think|probably|seems|hypothes|my guess|likely|not sure)")
+CHECKPOINT = re.compile(
+    r"(?i)(unstaged lines|checkpoint|stage what you accept|before i write more|"
+    r"total cap|must commit)"
+)
 RUNNERS = {"Bash", "BashOutput"}
 WARN_CHARS, BLOCK_CHARS = 1200, 2200
 
@@ -72,6 +79,11 @@ PASTE_MSG = (
     "output/file/test yourself and say in one line what you saw; the probe you hand "
     "over is theirs to run for their own understanding, and nothing waits on their "
     "reply.\n"
+)
+VERIFY_MSG = (
+    "SolveIt: '▶ Verify:' means you already ran it and are reporting what you saw — "
+    "but nothing ran this turn. Either run it first and say the result in one line, or "
+    "hand it over as '▶ Try: <cmd>' — theirs to run for their own understanding.\n"
 )
 HEDGE_MSG = (
     "SolveIt: this turn only read — nothing ran — yet it asserts. A claim drawn from "
@@ -106,6 +118,8 @@ def _needs_affordance(body):
     to take on trust. Not when it asks them a question, acknowledges an action, or
     carries nothing but the payload they asked for."""
     if not body or body.endswith("?"):
+        return False
+    if CHECKPOINT.search(body):
         return False
     return not (len(body) < 300 and ACK.search(body) and not CLAIM.search(body))
 
@@ -229,6 +243,8 @@ def main():
     if AFFORDANCE in span:
         if _has_multiline_command(span):
             die(MULTILINE_MSG)
+        if not ran and "▶ Verify" in span:
+            die(VERIFY_MSG)
         if not ran and CONFIDENT.search(body) and not HEDGE.search(body):
             die(HEDGE_MSG)
         return
@@ -246,11 +262,17 @@ def main():
     )
 
 
-if __name__ == "__main__":
+def run_guarded():
+    """Fail open on any internal error — but leave a trace, since a silent crash
+    here means the turn went out unchecked."""
     try:
         main()
     except SystemExit:
         raise
     except Exception:
-        pass
+        log_guard_error("stop-affordance-guard")
     sys.exit(0)
+
+
+if __name__ == "__main__":
+    run_guarded()

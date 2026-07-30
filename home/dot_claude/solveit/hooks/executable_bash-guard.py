@@ -34,7 +34,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from solve_allow import allow_patterns, repo_root
+from solve_allow import allow_patterns, log_guard_error, repo_root
 
 INTERPRETERS = {
     "python", "python3", "python2", "sh", "bash", "zsh", "fish", "ruby",
@@ -95,48 +95,24 @@ BUNDLE_READONLY = {
     "doctor", "version",
 }
 
-COMMIT_MSG = (
-    "SolveIt: you never commit — not the main repo, not your task/scratch folders, "
-    "not anything. The whole point is to leave changes DIRTY so the human verifies "
-    "and commits them. Tell the human what changed and why, then stop. The human "
-    "runs every commit and --amend."
-)
+COMMIT_MSG = "SolveIt: you never commit or amend, anywhere. Say what changed and why, then stop."
 GENERIC_MSG = (
-    "SolveIt: Bash runs task scripts and read-only search/inspection only. To RUN "
-    "something, write it as a script under .solve/tasks/<folder>/ whose first comment "
-    "line is exactly how to run it, then run it as e.g. `python .solve/tasks/<folder>/01-name.py`. "
-    "To LOOK at code, use read-only commands (grep, rg, find, ls, cat, head, awk, "
-    "loops over them, ...) or the Read/Grep/Glob tools. You never commit anything — "
-    "leave changes dirty for the human."
+    "SolveIt: Bash runs task scripts + read-only search. Put it under .solve/tasks/<f>/ "
+    "and run that file, or look with grep/rg/find/ls/cat/head/awk."
 )
-REDIR_MSG = (
-    "SolveIt: a read-only search command may not redirect output to a file (>, >>). "
-    "Searching is for looking, not producing artifacts — write files with the "
-    "Edit/Write tool, or run a task script under .solve/tasks/<folder>/."
-)
-FIND_MSG = (
-    "SolveIt: `find` is allowed for search only — not -exec/-execdir/-delete/-ok. "
-    "Run anything that executes or mutates as a task script under .solve/tasks/<folder>/."
-)
+REDIR_MSG = "SolveIt: no > / >> from a search. Write files with Edit/Write, or run a task script."
+FIND_MSG = "SolveIt: `find` searches only — no -exec/-delete. Run it as a task script instead."
 ARGS_MSG = (
-    "SolveIt: don't pass arguments (or redirects) to a task script at run time — the "
-    "script path must be the last thing on the line. Passing args turns a reviewable "
-    "script into a generic command forwarder (e.g. a script that runs `bin/rails \"$@\"`), "
-    "which is exactly the escape hatch task scripts exist to close. Bake the exact "
-    "command into the script file (the human reviews it there), then run it bare."
+    "SolveIt: no args or redirects after a task script — the script path is the last "
+    "token. Bake the exact command into the file, then run it bare."
 )
 NOCODE_MSG = (
-    "SolveIt: a runner may only point at a task-script FILE — it may not run an inline "
-    "code string (`-e`/`-c`/`-p`/`--eval`/...). e.g. `bin/rails runner .solve/tasks/<f>/"
-    "01-foo.rb` is fine; `bin/rails runner -e \"...\"` is not. Put the code in a file under "
-    ".solve/tasks/<folder>/ (where the human reviews it) and run that file."
+    "SolveIt: a runner points at a task-script FILE, never inline code (-e/-c/--eval). "
+    "Put it under .solve/tasks/<f>/ and run that file."
 )
 GIT_MSG = (
-    "SolveIt: that git subcommand isn't allowed. You may only use git to LOOK — "
-    "`git diff`/`status`/`log`/`show`/`blame`/`ls-files`/`rev-parse`/... (read-only, logged) — "
-    "plus `git init` for a task folder. You never stage, commit, or mutate the repo (add/"
-    "commit/--amend/checkout/reset/stash/apply/...): leave changes DIRTY so the human verifies "
-    "and commits. Run anything that must mutate as a task script under .solve/tasks/<folder>/."
+    "SolveIt: git may only LOOK — diff/status/log/show/blame/ls-files/rev-parse, plus "
+    "`git init` for a task folder. You never stage, commit, or mutate the repo."
 )
 
 
@@ -413,10 +389,17 @@ def main():
         log_search(cmd, cwd)
 
 
-if __name__ == "__main__":
+def run_guarded():
+    """Fail open on any internal error — but leave a trace, since a silent crash
+    here means the command ran unguarded."""
     try:
         main()
     except SystemExit:
         raise
     except Exception:
-        sys.exit(0)  # fail open
+        log_guard_error("bash-guard")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    run_guarded()

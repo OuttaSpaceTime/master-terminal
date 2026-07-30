@@ -98,7 +98,7 @@ def test_blocks_multiline_bash_fence(run):
 
 
 def test_passes_single_line_bash_fence(run):
-    text = "Run it:\n▶ Verify:\n```bash\ncd repo && make test\n```"
+    text = "Run it:\n▶ Try:\n```bash\ncd repo && make test\n```"
     code, _ = run([_user("q"), _assistant(_text(text))])
     assert code == 0
 
@@ -165,7 +165,7 @@ def test_blocks_trailing_menu(run):
 
 
 def test_mid_turn_should_i_is_not_a_menu(run):
-    text = "I wondered whether I should inline it; the answer is no.\n▶ Verify: bin/rails test"
+    text = "I wondered whether I should inline it; the answer is no.\n▶ Try: bin/rails test"
     code, _ = run([_user("q"), _assistant(_text(text))])
     assert code == 0
 
@@ -185,7 +185,7 @@ def test_blocks_wall_of_text_when_no_depth_asked(run):
 
 
 def test_long_answer_allowed_when_depth_asked(run):
-    text = "x " * 1200 + "\n▶ Verify: echo hi"
+    text = "x " * 1200 + "\n▶ Try: echo hi"
     code, _ = run([_user("explain why in detail"), _assistant(_text(text))])
     assert code == 0
 
@@ -196,8 +196,33 @@ def test_payload_fence_does_not_count_toward_length(run):
     assert code == 0
 
 
+def test_checkpoint_report_needs_no_affordance(run):
+    text = "31 unstaged lines in the repo — stage what you accept, or commit before I write more."
+    code, _ = run([_user("go on"), _assistant(_text(text))])
+    assert code == 0
+
+
 def _tool_use(name="Bash"):
     return {"type": "tool_use", "id": "t1", "name": name, "input": {}}
+
+
+def test_verify_marker_requires_having_run_something(run):
+    text = "Looks like the guard is fine.\n▶ Verify: bin/rails test"
+    code, err = run([_user("check it"), _assistant(_text(text))])
+    assert code == 2
+    assert "▶ Try" in err
+
+
+def test_try_marker_is_fine_without_running(run):
+    text = "Looks like the guard is fine.\n▶ Try: bin/rails test"
+    code, _ = run([_user("check it"), _assistant(_text(text))])
+    assert code == 0
+
+
+def test_verify_marker_is_fine_when_something_ran(run):
+    text = "Green, 17 runs 0 failures.\n▶ Verify: bin/rails test"
+    code, _ = run([_user("run it"), _assistant(_tool_use(), _text(text))])
+    assert code == 0
 
 
 def test_blocks_unhedged_claim_on_read_only_turn(run):
@@ -235,7 +260,7 @@ def test_polls_until_affordance_flushes(tmp_path, monkeypatch):
         calls["n"] += 1
         if calls["n"] == 2:
             with open(p, "a") as f:
-                f.write(json.dumps(_assistant(_text("answer\n▶ Verify: echo hi"))) + "\n")
+                f.write(json.dumps(_assistant(_text("answer\n▶ Try: echo hi"))) + "\n")
 
     monkeypatch.setattr(guard.time, "sleep", fake_sleep)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"transcript_path": str(p)})))

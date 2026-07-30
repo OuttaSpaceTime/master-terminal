@@ -30,6 +30,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from solve_allow import log_guard_error
+
 CAP = 30  # per single edit/write
 EDIT_CAP = 4  # project-code edits per human turn (reset by solve-init on each prompt)
 DIRTY_CAP = 30  # unstaged + untracked -> pause & force stage
@@ -202,10 +205,17 @@ def main():
         )
 
 
-if __name__ == "__main__":
+def run_guarded():
+    """Fail open on any internal error — but leave a trace, since a silent crash
+    here means the edit landed uncapped."""
     try:
         main()
     except SystemExit:
         raise
     except Exception:
-        sys.exit(0)  # fail open
+        log_guard_error("edit-guard")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    run_guarded()

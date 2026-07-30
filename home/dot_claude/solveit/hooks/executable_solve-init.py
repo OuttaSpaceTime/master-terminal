@@ -39,8 +39,11 @@ commits. Follow this and you will never hit a guard hook:
 - The allowlist below can change mid-session — run `solve-allow list` any time to
   see the current one. Use the solve-allow skill to add an allowance, solve-baseline
   to curate a repo's baseline validation commands.
+- YOU verify, the human never reports back: check the output/file/test yourself and
+  say in one line what you saw. Never ask them to paste output or confirm before you
+  continue. The probe you hand over (`▶ Try: <cmd>`) is theirs to run for their own
+  understanding; `▶ Verify:` is only for something you already ran.
 """
-
 
 def run(*args):
     return subprocess.run(args, capture_output=True, text=True)
