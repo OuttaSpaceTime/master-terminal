@@ -3,6 +3,18 @@
   "permissions": {
     "allow": [
       "Bash(solve-allow list)",
+      "Bash(solveit-health:*)",
+      "Bash(bin/rails test:*)",
+      "Bash(bin/rails db:migrate:status:*)",
+      "Bash(bundle exec rubocop:*)",
+      "Bash(bundle show:*)",
+      "Bash(npx ng test:*)",
+      "Bash(npx ng lint:*)",
+      "Bash(npx editorconfig-checker:*)",
+      "Bash(scripts/srs-pressure:*)",
+      "Bash(scripts/wiki-due:*)",
+      "Bash(scripts/anki-sync:*)",
+      "Bash(scripts/study-calibration:*)",
       "WebSearch",
       "WebFetch"
     ],
