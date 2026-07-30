@@ -1,0 +1,4 @@
+interface:
+  display_name: "SolveIt Health"
+  short_description: "Score SolveIt turns from the transcripts, count what keeps getting blocked, propose allowlist entries"
+  default_prompt: "Use $solveit-health to run the solveit-health CLI over recent transcripts, read the probe%/menu%/chars/edits-per-turn table against its targets, and report which numbers moved plus the allowlist entries worth adding."

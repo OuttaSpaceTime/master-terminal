@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""solveit-health — how is SolveIt actually going?
+
+Reads Claude Code transcripts, scores every human turn against the SolveIt rules
+the hooks enforce, and reports what keeps getting blocked. Read the numbers with
+the solveit-health skill.
+
+  solveit-health                 # last 7 days
+  solveit-health --days 30 --by week
+  solveit-health --since 2026-07-30 --blocks    # only the block/allowlist section
+"""
+import argparse
+import glob
+import json
+import os
+import re
+from collections import Counter, defaultdict
+from datetime import date, timedelta
+
+BANNER = "SolveIt is on (the default)"
+FENCE = re.compile(r"```.*?```", re.S)
+MENU = re.compile(
+    r"(?i)(want me to|should i|shall i|next step|i can (also|now)|if you want,? i)[^?]*\?\s*$"
+)
+ACK = re.compile(
+    r"(?i)\b(applied|staged|reverted|committed|done|nice|removed|renamed|written|"
+    r"wrote|fixed|updated|noted|green|passing)\b"
+)
+CLAIM = re.compile(
+    r"(?i)\b(because|means|the (bug|cause|reason)|it (is|does|will)|confirmed|"
+    r"proves|therefore|which is why)\b"
+)
+CHECKPOINT = re.compile(r"(?i)(unstaged lines|checkpoint due|total cap is reached)")
+# Heads that are meant to be blocked — a jail hit here is the rule working, not a
+# missing allowance, so they never become allowlist suggestions.
+BY_DESIGN = {
+    "echo", "sed", "mkdir", "touch", "cp", "mv", "rm", "chmod", "cd", "for", "while",
+    "if", "solve-allow", "grep", "rg", "cat", "head", "tail", "awk", "find", "ls",
+    "git", "sleep", "true", "test", "export", "source", "wc", "sort", "uniq", "cut",
+}
+GUARDS = {
+    "Bash runs task scripts": "bash jail",
+    "hard ceiling": "edit too big",
+    "unstaged lines in": "checkpoint due",
+    "total cap is reached": "total cap",
+    "no probe/verify affordance": "missing probe",
+    "spans multiple lines": "multi-line command",
+    "since the human's last message (cap": "edits per turn",
+    "characters of prose": "too long",
+    "ended with a menu": "menu",
+    "paste output or report back": "paste-back",
+    "this turn only read": "unhedged claim",
+}
+
+
+def is_tool_result(c):
+    return isinstance(c, list) and any(
+        isinstance(b, dict) and b.get("type") == "tool_result" for b in c
+    )
+
+
+def text_of(c):
+    if isinstance(c, str):
+        return c
+    if isinstance(c, list):
+        return " ".join(
+            b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text"
+        )
+    return ""
+
+
+def real_user(d):
+    if d.get("type") != "user" or d.get("isSidechain") or is_tool_result(
+        (d.get("message") or {}).get("content")
+    ):
+        return False
+    t = text_of((d.get("message") or {}).get("content")).strip()
+    return bool(t) and not t.startswith("<") and not t.startswith("Caveat:")
+
+
+def is_claim_turn(prose):
+    if not prose or prose.endswith("?"):
+        return False
+    if CHECKPOINT.search(prose):
+        return False
+    return not (len(prose) < 300 and ACK.search(prose) and not CLAIM.search(prose))
+
+
+def scan(root, since):
+    """(turns, guard-block counter, bounced-command counter, session count)."""
+    turns, blocks, bounced, sessions = [], Counter(), Counter(), 0
+    for path in sorted(glob.glob(os.path.join(root, "*", "*.jsonl"))):
+        raw = open(path, errors="replace").read()
+        if BANNER not in raw:
+            continue
+        entries = []
+        for line in raw.splitlines():
+            try:
+                entries.append(json.loads(line))
+            except Exception:
+                pass
+        day = next((e.get("timestamp", "")[:10] for e in entries if e.get("timestamp")), "")
+        if not day or day < since:
+            continue
+        sessions += 1
+        project = os.path.basename(os.path.dirname(path))
+        cur, pending = None, {}
+        for e in entries:
+            content = (e.get("message") or {}).get("content")
+            if real_user(e):
+                cur = {"day": day, "project": project, "texts": [], "tools": 0, "edits": 0}
+                turns.append(cur)
+            elif e.get("type") == "assistant" and isinstance(content, list):
+                for b in content:
+                    if not isinstance(b, dict) or cur is None:
+                        continue
+                    if b.get("type") == "text" and b.get("text", "").strip():
+                        cur["texts"].append(b["text"])
+                    elif b.get("type") == "tool_use":
+                        cur["tools"] += 1
+                        ti = b.get("input") or {}
+                        if b["name"] in ("Edit", "Write", "MultiEdit") and ".solve/" not in str(
+                            ti.get("file_path", "")
+                        ):
+                            cur["edits"] += 1
+                        if b["name"] == "Bash":
+                            pending[b.get("id")] = str(ti.get("command", ""))
+            elif isinstance(content, list):
+                for b in content:
+                    if not isinstance(b, dict) or b.get("type") != "tool_result":
+                        continue
+                    body = str(b.get("content"))
+                    for fragment, label in GUARDS.items():
+                        if fragment in body:
+                            blocks[label] += 1
+                    if "Bash runs task scripts" in body:
+                        cmd = pending.get(b.get("tool_use_id"), "")
+                        if cmd:
+                            bounced[" ".join(cmd.split()[:2])] += 1
+    return turns, blocks, bounced, sessions
+
+
+def bucket_of(turn, by):
+    if by == "day":
+        return turn["day"]
+    if by == "week":
+        d = date.fromisoformat(turn["day"])
+        return (d - timedelta(days=d.weekday())).isoformat() + " (w)"
+    return "all"
+
+
+def report(turns, blocks, bounced, sessions, by, only_blocks):
+    print(f"{sessions} SolveIt sessions, {len(turns)} human turns\n")
+    if not only_blocks and turns:
+        groups = defaultdict(list)
+        for t in turns:
+            groups[bucket_of(t, by)].append(t)
+        print(f"{'bucket':16} {'turns':>6} {'probe%':>7} {'menu%':>6} {'p50 chars':>10} "
+              f"{'edits/t':>8} {'tools/t':>8}")
+        for key in sorted(groups):
+            g = groups[key]
+            proses = [FENCE.sub("", "\n".join(t["texts"])).strip() for t in g]
+            claims = [(t, p) for t, p in zip(g, proses) if is_claim_turn(p)]
+            probe = sum("▶" in "\n".join(t["texts"]) for t, _ in claims)
+            menu = sum(bool(MENU.search(p.rsplit("\n\n", 1)[-1].strip())) for p in proses)
+            chars = sorted(len(p) for p in proses)
+            print(f"{key:16} {len(g):>6} "
+                  f"{(100 * probe / len(claims) if claims else 0):>6.0f}% "
+                  f"{100 * menu / len(g):>5.0f}% "
+                  f"{chars[len(chars) // 2]:>10} "
+                  f"{sum(t['edits'] for t in g) / len(g):>8.2f} "
+                  f"{sum(t['tools'] for t in g) / len(g):>8.1f}")
+        print("\nprobe% counts only turns that assert something (the ones the hook checks).")
+    if blocks:
+        print("\nguard blocks")
+        for label, n in blocks.most_common():
+            print(f"  {n:>4}  {label}")
+    runners = Counter({h: n for h, n in bounced.items() if h.split()[0] not in BY_DESIGN})
+    if runners:
+        print("\nbounced runners — candidates for the allowlist")
+        for head, n in runners.most_common(15):
+            print(f"  {n:>4}  {head}    ->  solve-allow add '{head}:*'")
+    by_design = sum(bounced.values()) - sum(runners.values())
+    if by_design:
+        print(f"\n{by_design} further jail hits were commands blocked by design "
+              f"(echo/sed/mkdir/git-write/...) — those want a task script, not an allowance.")
+
+
+def main():
+    ap = argparse.ArgumentParser(description="How is SolveIt actually going?")
+    ap.add_argument("--since", help="YYYY-MM-DD (default: --days ago)")
+    ap.add_argument("--days", type=int, default=7)
+    ap.add_argument("--by", choices=("day", "week", "all"), default="all")
+    ap.add_argument("--blocks", action="store_true", help="only the blocks/allowlist section")
+    ap.add_argument("--root", default=os.path.expanduser("~/.claude/projects"))
+    a = ap.parse_args()
+    since = a.since or (date.today() - timedelta(days=a.days)).isoformat()
+    print(f"SolveIt health — transcripts since {since}\n")
+    report(*scan(a.root, since), by=a.by, only_blocks=a.blocks)
+
+
+if __name__ == "__main__":
+    main()
