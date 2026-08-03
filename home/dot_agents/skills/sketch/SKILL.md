@@ -1,11 +1,11 @@
 ---
 name: sketch
-description: "Quick draft diffs for a small, well-understood change (1-5 files) — no interaction or iterations. Produces a file-impact table, affected tests, and diff blocks as a saved planning document. Planning only — never applies code. Distinct from /plan (sequenced strategy for larger or uncertain changes) and /scout (exploratory scoping before you understand the code)."
+description: "Quick draft diffs for a small, well-understood change (1-5 files) — no interaction or iterations. Presents a file-impact table, affected tests, and diff blocks directly in chat. Planning only — never applies code. Distinct from /plan (sequenced strategy for larger or uncertain changes) and /scout (exploratory scoping before you understand the code)."
 ---
 
 # Sketch
 
-Draft diffs with context, a file-impact table, and affected tests for a small-scope change. **No code is applied — output is a saved planning document only.**
+Draft diffs with context, a file-impact table, and affected tests for a small-scope change. **No code is applied — the sketch is written in chat only.**
 
 ## When to Use Sketch (and When Not To)
 
@@ -51,10 +51,10 @@ Draft diffs with context, a file-impact table, and affected tests for a small-sc
 - **Affected Tests table:** spec files and checks that need updating, with expected changes.
 - Add a "Compatibility Notes" section only if the change affects APIs, migrations, or integrations.
 
-### 4. Save and Present
+### 4. Present in Chat
 
-- `mkdir -p .claude/docs/sketches` then write to `.claude/docs/sketches/YYYYMMDD-<topic>.md`.
-- Present the full sketch in chat. End with the saved file path so the user can reference it later.
+- Write the full sketch as your chat reply. That is the deliverable — no file.
+- Only if the user explicitly asks to save it: `mkdir -p .claude/docs/sketches` then write to `.claude/docs/sketches/YYYYMMDD-<topic>.md` and end with the saved path.
 
 ## Output Template
 
@@ -99,7 +99,7 @@ Draft diffs with context, a file-impact table, and affected tests for a small-sc
 ## Rules
 
 <critical>
-**Planning only.** Never apply diffs to source files. The only file you write is the sketch document itself.
+**Planning only.** Never apply diffs to source files. By default write no files at all — the sketch is a chat message.
 </critical>
 
 - **No fabricated context.** Every code snippet must come from a file you Read in this session.
