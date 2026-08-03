@@ -294,8 +294,8 @@ export PATH="$HOME/Code/Vilocify/.bin:$PATH"
 alias cpdrive='rclone copy drive:Documents/'Independent Order Of Light Warriors' ~/Code/Misc/prana-power/vault'
 alias syncdrive='rclone sync --interactive ~/Code/Misc/prana-power/vault drive:Documents/'Independent''
 alias synclocal='rclone sync --interactive drive:Documents/'Independent' ~/Code/Misc/prana-power/vault'
-alias claude-review='claude --mcp-config ~/Code/Misc/agentic-channels/code-review/standalone.mcp.json'
-alias claude-forge='claude --mcp-config ~/Code/Misc/agentic-channels/forge/standalone.mcp.json'
+alias claude-review='SOLVEIT_OFF=1 claude --settings '\''{"outputStyle":"default"}'\'' --mcp-config ~/Code/Misc/agentic-channels/code-review/standalone.mcp.json'
+alias claude-forge='SOLVEIT_OFF=1 claude --settings '\''{"outputStyle":"default"}'\'' --mcp-config ~/Code/Misc/agentic-channels/forge/standalone.mcp.json'
 alias claude-all='SOLVEIT_OFF=1 claude --settings '\''{"outputStyle":"default"}'\'' --append-system-prompt '\''Before running git add, commit, or push: show a summary listing every changed file with a one-line reason it changed, and a suggested commit message that is short and concise with a bullet point per change. Wait for the human to confirm before staging, committing, and pushing.'\'''
 
 # Per-session claude model + reasoning effort (avoids global /model bleed across instances)

@@ -105,12 +105,27 @@ def test_splitting_marker_lifts_the_total_cap(repo, run):
     assert run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)[0] == 0
 
 
-def test_splitting_marker_keeps_the_dirty_cap(repo, run):
+def test_splitting_marker_lifts_the_dirty_cap(repo, run):
     (repo / "big.txt").write_text("l\n" * 35)
     (repo / ".solve").mkdir()
     (repo / ".solve" / "splitting").touch()
-    code, err = run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)
-    assert code == 2 and "unstaged" in err
+    assert run("Write", {"file_path": str(repo / "small.txt"), "content": "x\n"}, repo)[0] == 0
+
+
+def test_splitting_marker_lifts_the_per_edit_cap(repo, run):
+    (repo / ".solve").mkdir()
+    (repo / ".solve" / "splitting").touch()
+    assert run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n" * 80}, repo)[0] == 0
+
+
+def test_splitting_marker_keeps_the_turn_edit_cap(repo, run):
+    (repo / ".solve").mkdir()
+    (repo / ".solve" / "splitting").touch()
+    ti = {"file_path": str(repo / "a.txt"), "content": "x\n"}
+    for _ in range(guard.EDIT_CAP):
+        assert run("Write", ti, repo, session="turn")[0] == 0
+    code, err = run("Write", ti, repo, session="turn")
+    assert code == 2 and "hand back" in err
 
 
 def test_splitting_marker_dies_with_the_session(repo, run):
@@ -132,6 +147,26 @@ def test_agent_cannot_drop_the_marker_itself(repo, run):
     ti = {"file_path": str(repo / ".solve" / "splitting"), "content": ""}
     code, err = run("Write", ti, repo)
     assert code == 2 and "human" in err
+
+
+def test_splitting_marker_never_lifts_the_task_folder_edit_ceiling(repo, run):
+    a = repo / ".solve" / "tasks" / "probe"
+    a.mkdir(parents=True)
+    (a / "t.md").write_text("# probe\n")
+    (repo / ".solve" / "splitting").touch()
+    code, err = run("Write", {"file_path": str(a / "01.py"), "content": "x\n" * 80}, repo)
+    assert code == 2 and "ceiling" in err
+
+
+def test_splitting_marker_never_lifts_the_task_repo_dirty_cap(repo, run):
+    a = repo / ".solve" / "tasks" / "probe"
+    a.mkdir(parents=True)
+    (a / "t.md").write_text("# probe\n")
+    subprocess.run(["git", "-C", str(a), "init", "-q"], check=True)
+    (a / "big.py").write_text("l\n" * 35)
+    (repo / ".solve" / "splitting").touch()
+    code, err = run("Write", {"file_path": str(a / "02.py"), "content": "x\n"}, repo)
+    assert code == 2 and "unstaged" in err
 
 
 def test_warn_between_150_and_300(repo, run, capsys):
