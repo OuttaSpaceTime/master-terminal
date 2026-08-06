@@ -118,6 +118,12 @@ def main():
         )
 
     session = data.get("session_id") or "nosession"
+    if not os.path.exists(os.path.expanduser(f"~/.claude/solveit/state/{session}.go")):
+        deny(
+            "SolveIt: the human gave no go this turn. Nothing is written without "
+            "one — propose the exact change as a diff they can apply, then stop. "
+            "They unlock the next write by opening a message with go/ok/yes."
+        )
     splitting = False
     valve = os.path.join(cwd, ".solve", "splitting")
     if os.path.exists(valve) and not task_folder_root(fp):

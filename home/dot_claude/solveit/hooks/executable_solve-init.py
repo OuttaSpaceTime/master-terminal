@@ -19,6 +19,10 @@ from solve_allow import allow_patterns
 CONTEXT = """\
 SolveIt is on (the default). Work in small, verifiable steps; the human runs and
 commits. Follow this and you will never hit a guard hook:
+- NOTHING IS WRITTEN OR RUN WITHOUT A GO: the human's message must open with an
+  affirmation (go, ok, yes, ja, do it, apply, ...). Without one, plan and discuss
+  only — name the change, show the exact diff they could apply, and stop. A go
+  covers only the turn it opens.
 - EXPLORE with Read/Grep/Glob, OR read-only shell (grep, rg, find, ls, cat, head,
   awk, ...) and read-only git (diff/status/log/show/blame/ls-files). Both are
   logged to .solve/reads.log, never blocked. No output redirection, no find -exec.
@@ -45,6 +49,17 @@ commits. Follow this and you will never hit a guard hook:
   understanding; `▶ Verify:` is only for something you already ran.
 """
 
+GO_WORDS = (
+    "go", "ok", "okay", "yes", "yep", "yeah", "sure", "ja", "jep", "passt",
+    "los", "mach", "do it", "go ahead", "apply", "ship it", "make it so",
+)
+
+
+def is_go(prompt):
+    words = prompt.strip().lower().replace(",", " ").split()
+    return bool(words) and (words[0] in GO_WORDS or " ".join(words[:2]) in GO_WORDS)
+
+
 def run(*args):
     return subprocess.run(args, capture_output=True, text=True)
 
@@ -59,6 +74,11 @@ def main():
     state_dir = os.path.expanduser("~/.claude/solveit/state")
     os.makedirs(state_dir, exist_ok=True)
     open(os.path.join(state_dir, f"{session}.edits"), "w").write("0\n")
+    go = os.path.join(state_dir, f"{session}.go")
+    if is_go(data.get("prompt") or ""):
+        open(go, "w").write("1\n")
+    elif os.path.exists(go):
+        os.remove(go)
     marker = os.path.join(state_dir, f"{session}.solve")
     if os.path.exists(marker):
         return  # already initialised this session

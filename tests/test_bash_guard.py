@@ -32,10 +32,16 @@ def repo(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run(monkeypatch, capsys):
-    def _run(cmd, cwd):
+def run(monkeypatch, capsys, tmp_path):
+    def _run(cmd, cwd, go=True):
         monkeypatch.delenv("SOLVEIT_OFF", raising=False)
-        payload = {"tool_input": {"command": cmd}, "cwd": str(cwd)}
+        flag = tmp_path / "home/.claude/solveit/state/s.go"
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        if go:
+            flag.write_text("1\n")
+        elif flag.exists():
+            flag.unlink()
+        payload = {"tool_input": {"command": cmd}, "cwd": str(cwd), "session_id": "s"}
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         try:
             guard.main()
@@ -162,3 +168,13 @@ def test_allowlisted_matching():
     assert guard.allowlisted("lsof", ["ls*"])
     assert guard.allowlisted("exact cmd", ["exact cmd"])
     assert not guard.allowlisted("exact cmdx", ["exact cmd"])
+
+
+def test_task_script_run_without_a_go_is_denied(repo, run):
+    script = make_task(repo)
+    code, err = run(f"python {script}", repo, go=False)
+    assert code == 2 and "no go" in err
+
+
+def test_search_without_a_go_stays_free(repo, run):
+    assert run("grep x foo", repo, go=False)[0] == 0

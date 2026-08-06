@@ -32,9 +32,15 @@ def repo(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run(monkeypatch, capsys):
-    def _run(tool, ti, cwd, session="s"):
+def run(monkeypatch, capsys, tmp_path):
+    def _run(tool, ti, cwd, session="s", go=True):
         monkeypatch.delenv("SOLVEIT_OFF", raising=False)
+        flag = tmp_path / "home/.claude/solveit/state" / f"{session}.go"
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        if go:
+            flag.write_text("1\n")
+        elif flag.exists():
+            flag.unlink()
         payload = {"tool_name": tool, "tool_input": ti, "cwd": str(cwd), "session_id": session}
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         try:
@@ -210,3 +216,8 @@ def test_same_task_folder_ok(repo, run):
     (a / "t.md").write_text("# a\n")
     assert run("Write", {"file_path": str(a / "01.py"), "content": "x\n"}, repo, session="s2")[0] == 0
     assert run("Write", {"file_path": str(a / "02.py"), "content": "x\n"}, repo, session="s2")[0] == 0
+
+
+def test_write_without_a_go_is_denied(repo, run):
+    code, err = run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n"}, repo, go=False)
+    assert code == 2 and "no go" in err

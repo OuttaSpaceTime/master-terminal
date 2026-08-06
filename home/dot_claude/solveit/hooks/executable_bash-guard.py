@@ -372,19 +372,28 @@ def main():
         return
     patterns = allow_patterns(cwd)
     is_search = False
+    executes = False
     for toks in split_segments(cmd):
         ok, msg, search = segment_ok(toks, cwd)
         if not ok:
             seg = " ".join(toks).strip()
             if seg and allowlisted(seg, patterns):
-                ok, search = True, False
+                ok, search, executes = True, False, True
         if not ok:
             sys.stderr.write(msg)
             sys.exit(2)
+        executes = executes or any(under_tasks(t, cwd) for t in toks)
         is_search = is_search or search
         target = cd_target(toks, cwd)
         if target is not None:
             cwd = target
+    session = data.get("session_id") or "nosession"
+    if executes and not os.path.exists(os.path.expanduser(f"~/.claude/solveit/state/{session}.go")):
+        sys.stderr.write(
+            "SolveIt: no go from the human this turn — reading and searching stay "
+            "free, running does not. Say what you want to run and why, then stop."
+        )
+        sys.exit(2)
     if is_search:  # log the whole command once, like a Grep/Glob entry
         log_search(cmd, cwd)
 
