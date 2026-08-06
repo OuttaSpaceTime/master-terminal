@@ -244,6 +244,46 @@ def test_confident_claim_passes_when_the_turn_ran_something(run):
     assert code == 0
 
 
+def test_blocks_claim_whose_only_probe_is_a_reading_assignment(run):
+    text = "Looks like searchable_text stays empty because id is nil on create.\n▶ nvim +239 component.rb"
+    code, err = run([_user("trace it"), _assistant(_text(text))])
+    assert code == 2
+    assert "reading assignment" in err.lower()
+
+
+def test_blocks_claim_whose_only_probe_is_a_grep(run):
+    text = "Looks like the cause is the second callback.\n▶ Try: rg searchable_text app/models"
+    code, err = run([_user("trace it"), _assistant(_text(text))])
+    assert code == 2
+    assert "reading assignment" in err.lower()
+
+
+def test_breakpoint_probe_satisfies_a_claim(run):
+    text = ("Looks like id is nil there because the callback runs before insert.\n"
+            "▶ Try: add `debugger` at component.rb:239, run bin/rails test test/component_test.rb, print self.id")
+    code, _ = run([_user("trace it"), _assistant(_text(text))])
+    assert code == 0
+
+
+def test_console_probe_satisfies_a_claim(run):
+    text = "Looks like the ORDER BY is reversed, which is why page 2 repeats.\n▶ Try: bin/rails runner .solve/tasks/2026-08-06-order/01-print-sql.rb"
+    code, _ = run([_user("trace it"), _assistant(_text(text))])
+    assert code == 0
+
+
+def test_reading_probe_is_fine_next_to_an_execution_probe(run):
+    text = ("Looks like the callback is the reason.\n"
+            "▶ nvim +239 component.rb\n▶ Try: bin/rails test test/component_test.rb")
+    code, _ = run([_user("trace it"), _assistant(_text(text))])
+    assert code == 0
+
+
+def test_reading_probe_is_fine_without_a_claim(run):
+    text = "Two callbacks touch that column.\n▶ nvim +239 component.rb"
+    code, _ = run([_user("where is it set?"), _assistant(_text(text))])
+    assert code == 0
+
+
 def test_polls_until_affordance_flushes(tmp_path, monkeypatch):
     """Regression: the turn's final assistant text is flushed to the transcript
     AFTER the Stop hook fires (Claude Code write race, issue #21751). The hook

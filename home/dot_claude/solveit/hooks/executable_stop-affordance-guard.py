@@ -66,6 +66,12 @@ CLAIM = re.compile(
     r"(?i)\b(because|means|the (bug|cause|reason)|it (is|does|will)|confirmed|"
     r"proves|therefore|which is why)\b"
 )
+# A probe that only opens or searches files. It can build the model, but it never
+# shows a runtime value, so it cannot be the whole verify for a behaviour claim.
+READING_PROBE = re.compile(
+    r"^(nvim|vim|vi|view|less|more|bat|cat|head|tail|sed|open|code|grep|rg|ag|ack)\b"
+)
+PROBE_LABEL = re.compile(r"^[A-Za-z][^:]{0,30}:\s*")
 
 
 MENU_MSG = (
@@ -90,6 +96,16 @@ HEDGE_MSG = (
     "reading is a hypothesis: say 'looks like' / 'I think', and make the probe "
     "something that prints a real value (a script, a test, a breakpoint) rather than "
     "another reading assignment.\n"
+)
+WEAK_PROBE_MSG = (
+    "SolveIt: this turn claims how the code behaves, and its only probe is a reading "
+    "assignment (nvim/grep). Too weak — make the code reveal itself: a "
+    "`debugger`/`binding.irb`/`breakpoint()` on the exact line, then the command that "
+    "hits it and the value to print once stopped; a console/REPL line on the real "
+    "object (`.to_sql`, the real record); or a task script or test that prints the "
+    "actual intermediate value. Ask them to predict that value first. Keep the "
+    "'▶ nvim +<line>' too if reading builds the model — it just can't be the whole "
+    "verify.\n"
 )
 LENGTH_MSG = (
     "SolveIt: {n} characters of prose since the human's last message, and they did "
@@ -159,6 +175,18 @@ def _has_multiline_command(text):
         if AFFORDANCE in line and line.rstrip().endswith("\\"):
             return True
     return False
+
+
+def _only_reading_probes(text):
+    """True when every ▶ handle in the turn just opens or searches a file."""
+    probes = []
+    for line in text.split("\n"):
+        if AFFORDANCE not in line:
+            continue
+        cmd = PROBE_LABEL.sub("", line.split(AFFORDANCE, 1)[1].strip()).lstrip("`")
+        if cmd:
+            probes.append(cmd)
+    return bool(probes) and all(READING_PROBE.match(p) for p in probes)
 
 
 def _is_tool_result(content):
@@ -247,15 +275,18 @@ def main():
             die(VERIFY_MSG)
         if not ran and CONFIDENT.search(body) and not HEDGE.search(body):
             die(HEDGE_MSG)
+        if CLAIM.search(body) and _only_reading_probes(span):
+            die(WEAK_PROBE_MSG)
         return
     if not _needs_affordance(body):
         return
     die(
         "SolveIt: your response since the last user message has no probe/verify "
         "affordance (▶). A claim drawn from reading is a hypothesis, not an answer. "
-        "Hand over ONE probe, strongest form first: '▶ run <test|script>' or "
-        "'▶ Predict, then run: <cmd>' — something they execute; then a breakpoint or "
-        "console step that prints live values; and only as a fallback "
+        "Hand over ONE probe, strongest form first: a `debugger`/`binding.irb` on the "
+        "exact line plus the command that hits it and the value to print once stopped; "
+        "a console/REPL or task-script probe that prints the real value "
+        "('▶ Predict, then run: <cmd>'); '▶ run <test|script>'; and only as a fallback "
         "'▶ nvim +<line> <path>' when the code itself is the answer. Check it "
         "yourself first and say in one line what you saw — the probe is theirs to run "
         "for their own understanding, not a request for a report.\n"
