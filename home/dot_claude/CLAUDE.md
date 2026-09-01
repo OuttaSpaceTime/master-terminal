@@ -1,8 +1,18 @@
 # Global Instructions
 
+## Verification before claiming
+
+Never state that behavior is covered, fixed, or that an API raises/returns X without empirical proof in this session. Run the test, the console probe, or the debugger and paste the output. If you cannot verify, say "unverified" explicitly and state what probe would confirm it.
+
 ## Test-First Workflow
 
 For any non-trivial change, and especially for bug fixes, write tests first and confirm the tests are failing before implementing the required change or fix.
+
+Once the fix is green, mutation-verify it: revert the production change, confirm the test goes red again, then restore it. Paste both outputs. A test that cannot be made to fail proves nothing — if you cannot produce a red state, say so explicitly instead of reporting the behavior as covered.
+
+## Manual QA / walkthroughs
+
+When the user asks to "walk through", "step through", or "manually QA" something: write each step as a small numbered task script, run it, and report the observed output together with the one-line command to re-run it. Never seed data silently — the script is the record and must be readable before it runs. Checks only a human can judge (rendering, interaction, timing) are handed over one at a time.
 
 ## Scope Discipline
 
@@ -32,6 +42,9 @@ For any non-trivial change, and especially for bug fixes, write tests first and 
 ## Testing & Fixtures
 
 - When testing migrations/fixtures, fold index/constraint changes into the existing migration and treat schema issues as fixture-only problems where possible; use the `_fixture model_class` approach for non-conventional table names.
+- Every bug fix needs its own explicit regression test. Incidental fixture coverage does not count as coverage.
+- Prefer dedicated focused unit tests over extending large cascade tests.
+- Run RuboCop only against Ruby files; never against `.yml` fixtures.
 
 ## Editing & File State
 

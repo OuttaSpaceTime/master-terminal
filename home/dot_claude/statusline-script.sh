@@ -28,6 +28,13 @@ RESET=$'\033[00m'
 # Debug: log full raw input for field inspection
 echo "$input" > /tmp/claude-statusline-debug.json
 
+# SolveIt guards are active unless SOLVEIT_OFF is set (claude-all, -review, -forge)
+if [ -n "$SOLVEIT_OFF" ]; then
+  mode_badge="${YELLOW}free${RESET}"
+else
+  mode_badge="${GREEN}solve${RESET}"
+fi
+
 # Model: extract tier and version from model ID (e.g. claude-sonnet-4-6 → Sonnet 4.6)
 model_id=$(echo "$input" | jq -r '.model.id // empty' 2>/dev/null)
 case "$model_id" in
@@ -158,8 +165,8 @@ if [ -n "$week_pct" ]; then
   [ -n "$quota_str" ] && quota_str="${quota_str}${DIM}|${RESET}${rl_color}7d:${week_fmt}%${RESET}" || quota_str="${rl_color}7d:${week_fmt}%${RESET}"
 fi
 
-# Build: Sonnet 4.6 [M]|[waiting_icon] c:N%/SZ|quota|branch+*↑N
-out=""
+# Build: solve|Sonnet 4.6 [M]|[waiting_icon] c:N%/SZ|quota|branch+*↑N
+out="${mode_badge}${DIM}|${RESET}"
 if [ -n "$model_id" ]; then
   # Tier color: Haiku=GREEN, Sonnet=CYAN, Opus=MAGENTA
   case "$model_tier" in
@@ -179,9 +186,9 @@ if [ -n "$model_id" ]; then
       max)    effort_letter="mx" ;;
       *)      effort_letter="$effort" ;;
     esac
-    out="${tier_color}${tier_label}${RESET} ${YELLOW}[${effort_letter}]${RESET}"
+    out="${out}${tier_color}${tier_label}${RESET} ${YELLOW}[${effort_letter}]${RESET}"
   else
-    out="${tier_color}${tier_label}${RESET}"
+    out="${out}${tier_color}${tier_label}${RESET}"
   fi
   out="${out}${DIM}|${RESET}"
 fi
