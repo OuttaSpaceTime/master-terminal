@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from solve_allow import log_guard_error
 
 CAP = 30  # per single edit/write
-EDIT_CAP = 4  # project-code edits per human turn (reset by solve-init on each prompt)
+EDIT_CAP = 1  # project-code edits per human turn (reset by solve-init on each prompt)
 DIRTY_CAP = 30  # unstaged + untracked -> pause & force stage
 WARN_CAP = 150  # staged + unstaged + untracked -> warn, proceed
 TOTAL_CAP = 300  # staged + unstaged + untracked -> hard block, force commit
@@ -180,8 +180,8 @@ def main():
         if n > EDIT_CAP:
             deny(
                 f"SolveIt: {n} edits to project code since the human's last message "
-                f"(cap {EDIT_CAP}). One step, then hand back — they verify each change "
-                f"before the next one lands."
+                f"(cap {EDIT_CAP}). One sketched change lands per go — hand back now, "
+                f"then sketch the next change as a diff so they verify this one first."
             )
     if task_root and not os.path.isdir(os.path.join(task_root, ".git")):
         os.makedirs(task_root, exist_ok=True)

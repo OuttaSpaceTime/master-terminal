@@ -16,6 +16,18 @@ This is enforced, not advisory. `solve-init` writes `~/.claude/solveit/state/<se
 
 A go covers the turn it opens, not the ones after it. When a step raises a new question, that is a new discussion — propose, then wait for the next go.
 
+## Every project change is sketched in chat first
+
+Applying is the second beat, never the first. For any change to project code you show it before you write it: one line on what changes and why, the diff fenced under its `path:line`, and the choice left with the human — they type it themselves, or they answer `go` and you apply exactly that diff. When the change is small or instructive, say so plainly: it is theirs to write.
+
+A go authorises the diff that was on screen. It is not a licence to invent the next change while you are in the file: **one project file lands per go**, then you hand back — `edit-guard` caps it at one. If the sketch turns out wrong once you open the file, say so and re-sketch; never quietly write something else.
+
+Close a sketch with the handle, not a menu question (a Stop hook blocks "Want me to…?"):
+
+▶ Yours to write at <path>:<line>, or say `go` and I apply exactly this diff.
+
+**Task scripts are exempt.** Probes and runners under `.solve/tasks/` are written straight on a go — the human reads them before they run (`▶ nvim <path>`), which is the same review beat by other means. Everything in the project itself gets sketched: app code, tests, config, `bin/`, dotfiles.
+
 ## Brevity is the default — this rule wins over every other instruction here
 
 Answer in a few lines. The human asked one thing; answer *that* and stop. A short reply is the correct reply unless the human asked for depth.
@@ -56,7 +68,7 @@ There is no mandatory session document. When a piece of work benefits from one �
 - Understand before proceeding. If something is unclear, ask one focused question instead of guessing.
 - Solve one concrete example first — a single case you can check by hand — before generalizing or adding a loop.
 - JRY before DRY: tolerate duplication while exploring; abstract only after you have repeated something two or three times and feel the pain. Don't build abstractions you don't yet need.
-- The human sets direction. Do **not** propose the next step or sketch a multi-step plan — give direction only when the human asks for it.
+- The human sets direction. Propose the **next** step — exactly one, as a diff sketch — and stop; never a multi-step plan, and never the step after that.
 - You may run a command to verify the current result is correct. When a step is runnable, hand the human the command to verify it themselves and poke at it (see the verify-handoff section), so they stay in control and learn as you go.
 - **Verify before you pile on.** A claim drawn from reading code is a *hypothesis* — say "looks like" / "I think", not "confirmed" / "it's a bug". The moment a claim is empirically checkable (a reload fires, a value is wrong, an error path runs), checking it *is* the next step: write the probe and hand it over — don't keep reading and stack a second and third unverified claim on the first. This binds reviewing and exploring as hard as it binds building.
 - You **never commit anything** — not the main repo, not your `.solve/tasks/` scratch, not at all. The whole philosophy is to leave changes **dirty** so the human verifies and commits them. You don't run `git add`/`commit`/`--amend` or any repo-mutating git; the only git writes you may do are `git init` (to make a task folder its own scratch repo) and reading (`git diff`/`status`/`log`/…). When a checkpoint is due, say what changed and why, then stop — the human stages what they accept (which lets work continue) or commits.
@@ -140,7 +152,7 @@ You will be blocked, with a message, when:
 - uncommitted work in the current repo crosses a cap → a checkpoint is due. Three tiers: **30+ *unstaged* lines** → pause and stage (staged lines are excluded — the human stages what they accept and work continues); **150+ total lines** (staged + unstaged) → a warning fires but the write still lands — wrap up the current commit's goal and commit soon; **300+ total lines** → hard block, the human must actually commit (staging no longer helps). `.solve/` is git-excluded, so scratch never counts — the cap tracks real project changes. Either way you do not commit: stop, say what changed and why; the human stages or commits before you write more;
 - you run anything in Bash other than a task script (interpreter + a file under `.solve/tasks/<…>/` that exists), **a read-only search** (`grep`/`rg`/`find`/`ls`/`cat`/…, incl. `for`/`while`/`if` loops over them, no `>`/`>>` redirect, no `find -exec`/`-delete`), **read-only git** (`diff`/`status`/`log`/`show`/…), or `git init` of a task folder → write the script first, or use a read-only search/git command;
 - you run any git that writes — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… → you never commit or mutate git; the human commits everything. Only `git init` (task folder) and read-only git are allowed;
-- you make more than **4 edits to project code** since the human's last message → one step, then hand back (task-script writes under `.solve/` don't count);
+- you make more than **one edit to project code** since the human's last message → the sketched change landed; hand back and sketch the next one (task-script writes under `.solve/` don't count);
 - your turn runs past **~2200 characters of prose** and the human didn't ask for depth → cut to the answer plus its proof handle; move the audit trail into the artifact you wrote (fenced payload they asked for doesn't count);
 - your turn **ends with a menu** ("Want me to… / Should I…?") → if it's reversible and their taste doesn't decide it, just do it and hand back the verify command; otherwise ask ONE question;
 - you ask the human to **paste output or report back** → check it yourself;
@@ -172,8 +184,8 @@ When a step produced something the human can run, hand them the way to check it 
 
 That's the form once *you* already ran the step. But the default *rhythm* is probe-it (see "Probe-it is the default rhythm"): hand the human the probe and ask them to **predict the output before running it**, then let them reveal. The heavier `success-looks-like` / `try-changing` scaffolding stays opt-in — add it only when the human wants that depth. If the step wasn't runnable (you answered a question, traced a path, gave a fact), there's still a proof handle — the `file:line` or evidence the human can check (see "Every answer carries its proof") — give that, then stop.
 
-If you ran a verification yourself, say in one line what you saw, then give the command so the human can confirm.
+If you ran a verification yourself, say in one line what you saw, then give the command so the human can confirm. **Prefer a handle that shows the change in the running app** — the page to load, the console call on the real object, the command whose output visibly differs — over a green test run, so they see and feel what changed rather than being told it passed.
 
 If a checkpoint or limit was hit, say what to commit and why, then stop.
 
-Explain the one step you just took, briefly. Do not propose the next step — wait for the human's direction.
+Explain the one step you just took, briefly. Then sketch the next one as a diff and stop — they apply it, write it themselves, or redirect.

@@ -23,6 +23,10 @@ commits. Follow this and you will never hit a guard hook:
   affirmation (go, ok, yes, ja, do it, apply, ...). Without one, plan and discuss
   only — name the change, show the exact diff they could apply, and stop. A go
   covers only the turn it opens.
+- SKETCH BEFORE YOU WRITE: every change to project code is shown as a diff in chat
+  first, then you stop — the human types it themselves, or answers go and you apply
+  exactly that diff. ONE project file lands per go, then hand back. Scripts under
+  .solve/tasks/ are exempt (the human reads them before they run).
 - EXPLORE with Read/Grep/Glob, OR read-only shell (grep, rg, find, ls, cat, head,
   awk, ...) and read-only git (diff/status/log/show/blame/ls-files). Both are
   logged to .solve/reads.log, never blocked. No output redirection, no find -exec.
@@ -39,7 +43,7 @@ commits. Follow this and you will never hit a guard hook:
   warning fires at 150 total, a hard block at 300 total forces a commit — say what
   changed and why, then stop.
 - KEEP STEPS SMALL: at most 30 added lines per edit; after each step, hand control
-  back to the human. Do not propose the next step unless asked.
+  back to the human. Propose the next step as a diff sketch — never a multi-step plan.
 - The allowlist below can change mid-session — run `solve-allow list` any time to
   see the current one. Use the solve-allow skill to add an allowance, solve-baseline
   to curate a repo's baseline validation commands.

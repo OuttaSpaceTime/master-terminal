@@ -42,7 +42,7 @@ This repository has three responsibilities:
 3. Run `chezmoi -S home diff` again to preview the changes that will be deployed
 4. Run `chezmoi -S home apply` to deploy (add `--force` if drift was reviewed and is safe to overwrite)
 
-**`~/.claude/settings.json` drift auto-resolves — never get blocked on it.** `effortLevel` and `outputStyle` are toggled live (e.g. via `/config`), so this file routinely drifts from source and a plain `chezmoi -S home apply` aborts (`could not open a new TTY` — chezmoi wants an interactive overwrite prompt the Bash jail can't provide). When the only drift is these low-stakes keys, force it without asking: `chezmoi -S home apply --force ~/.claude/settings.json` (scope to the file so no `run_` scripts re-run; source wins). Only pause for a *major* conflict — drift on other keys or structural changes.
+**`~/.claude/settings.json` cannot drift any more.** Its chezmoi source is a `modify_` script (`home/dot_claude/modify_settings.json`), not a plain file: chezmoi feeds it the deployed file on stdin and uses its stdout as the target contents. Keys you toggle in the UI (`model`, `outputStyle`, `effortLevel`, `theme`, …) are passed straight through from the live file, so `chezmoi -S home diff` stays empty; `permissions`, `hooks`, `statusLine` and `enabledPlugins` are still enforced from the repo. Edit the `MANAGED` blob to change those — `DEFAULTS` only seeds a machine that lacks the key. Details in `wiki/claude-code.md`.
 
 ## Working With Agent Skills
 
@@ -153,7 +153,7 @@ Chezmoi source filenames encode target attributes:
 The SolveIt PreToolUse guards live under `home/dot_claude/solveit/hooks/` and deploy via chezmoi to `~/.claude/solveit/hooks/`. We work on these frequently.
 
 - `executable_bash-guard.py` — allows Bash only for task scripts + read-only search/git inspection; blocks everything else (command recognition lives in `segment_ok`/`split_segments`)
-- `executable_edit-guard.py` — enforces the 30-line-per-edit ceiling (`CAP`), 4 project edits per turn (`EDIT_CAP`), and the dirty (30) / warn (150) / hard (300) uncommitted caps
+- `executable_edit-guard.py` — enforces the 30-line-per-edit ceiling (`CAP`), 1 project edit per turn (`EDIT_CAP`, the sketch-then-apply rhythm), and the dirty (30) / warn (150) / hard (300) uncommitted caps
 - `executable_stop-affordance-guard.py` — turn-level rules: a `▶` handle on asserting turns only, prose length, no trailing menus, no asking the human to paste output, `▶ Verify` only when something ran, hedging on read-only turns, single-line commands
 - `executable_log-reads.py` — mirrors Read/Grep/Glob into `.solve/reads.log`
 - `executable_solve-init.py` — session bootstrap; resets the per-turn edit counter

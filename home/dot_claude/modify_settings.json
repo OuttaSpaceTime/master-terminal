@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+import collections
+import json
+import sys
+
+MANAGED = json.loads(r'''
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
@@ -20,8 +26,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
-  "outputStyle": "solveit",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -94,7 +98,14 @@
     "skill-creator@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false
-  },
+  }
+}
+''', object_pairs_hook=collections.OrderedDict)
+
+DEFAULTS = json.loads(r'''
+{
+  "model": "opus[1m]",
+  "outputStyle": "solveit",
   "effortLevel": "high",
   "promptSuggestionEnabled": false,
   "tui": "default",
@@ -107,3 +118,11 @@
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }
+''', object_pairs_hook=collections.OrderedDict)
+
+live = sys.stdin.read().strip()
+out = json.loads(live, object_pairs_hook=collections.OrderedDict) if live else collections.OrderedDict()
+out.update(MANAGED)
+for key, value in DEFAULTS.items():
+    out.setdefault(key, value)
+sys.stdout.write(json.dumps(out, indent=2) + "\n")

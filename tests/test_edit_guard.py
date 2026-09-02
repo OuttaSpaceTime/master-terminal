@@ -53,6 +53,14 @@ def run(monkeypatch, capsys, tmp_path):
     return _run
 
 
+@pytest.fixture
+def next_turn(tmp_path):
+    def _next(session="s"):
+        (tmp_path / "home/.claude/solveit/state" / f"{session}.edits").unlink(missing_ok=True)
+
+    return _next
+
+
 def test_write_within_cap(repo, run):
     assert run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n" * 20}, repo)[0] == 0
 
@@ -134,7 +142,7 @@ def test_splitting_marker_keeps_the_turn_edit_cap(repo, run):
     assert code == 2 and "hand back" in err
 
 
-def test_splitting_marker_dies_with_the_session(repo, run):
+def test_splitting_marker_dies_with_the_session(repo, run, next_turn):
     (repo / "big.txt").write_text("l\n" * 305)
     subprocess.run(["git", "-C", str(repo), "add", "big.txt"], check=True)
     (repo / ".solve").mkdir()
@@ -143,6 +151,7 @@ def test_splitting_marker_dies_with_the_session(repo, run):
     ti = {"file_path": str(repo / "small.txt"), "content": "x\n"}
     assert run("Write", ti, repo, session="chat1")[0] == 0
     assert marker.read_text().strip() == "chat1"
+    next_turn("chat1")
     assert run("Write", ti, repo, session="chat1")[0] == 0
     code, err = run("Write", ti, repo, session="chat2")
     assert code == 2 and "total cap" in err
@@ -221,3 +230,10 @@ def test_same_task_folder_ok(repo, run):
 def test_write_without_a_go_is_denied(repo, run):
     code, err = run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n"}, repo, go=False)
     assert code == 2 and "no go" in err
+
+
+def test_only_one_project_edit_lands_per_turn(repo, run):
+    ti = {"file_path": str(repo / "a.txt"), "content": "x\n"}
+    assert run("Write", ti, repo, session="one")[0] == 0
+    code, err = run("Write", ti, repo, session="one")
+    assert code == 2 and "hand back" in err
