@@ -311,3 +311,52 @@ def test_polls_until_affordance_flushes(tmp_path, monkeypatch):
         code = e.code
     assert code == 0
     assert calls["n"] >= 2
+
+
+def _write(path):
+    return {"type": "tool_use", "id": "w1", "name": "Write", "input": {"file_path": path}}
+
+
+def test_blocks_task_script_written_but_not_shown(run):
+    code, err = run([
+        _user("go, probe it"),
+        _assistant(_write("/repo/.solve/tasks/t/01-probe-token-expiry.py"),
+                   _text("Written.\n▶ Try: python .solve/tasks/t/01-probe-token-expiry.py")),
+    ])
+    assert code == 2
+    assert "01-probe-token-expiry.py" in err
+
+
+def test_task_script_shown_passes(run):
+    text = (
+        "Prints the token expiry for the fixture user.\n"
+        "```python\n# python .solve/tasks/t/01-probe-token-expiry.py\nprint(user.token)\n```\n"
+        "▶ nvim .solve/tasks/t/01-probe-token-expiry.py"
+    )
+    code, _ = run([
+        _user("go, probe it"),
+        _assistant(_write("/repo/.solve/tasks/t/01-probe-token-expiry.py"), _text(text)),
+    ])
+    assert code == 0
+
+
+def test_bash_task_script_listing_is_not_a_multiline_command(run):
+    text = (
+        "Runs the auth specs.\n"
+        "```bash\n# bash .solve/tasks/t/01-run-auth-specs.sh\ncd repo\nbundle exec rspec spec/auth\n```\n"
+        "▶ nvim .solve/tasks/t/01-run-auth-specs.sh"
+    )
+    code, _ = run([
+        _user("go, run the auth specs"),
+        _assistant(_write("/repo/.solve/tasks/t/01-run-auth-specs.sh"), _text(text)),
+    ])
+    assert code == 0
+
+
+def test_project_write_needs_no_script_listing(run):
+    code, _ = run([
+        _user("go, apply it"),
+        _assistant(_write("/repo/app/models/user.rb"),
+                   _text("Applied.\n▶ Try: bin/rails test test/models/user_test.rb")),
+    ])
+    assert code == 0

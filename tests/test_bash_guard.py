@@ -1,8 +1,10 @@
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -178,3 +180,18 @@ def test_task_script_run_without_a_go_is_denied(repo, run):
 
 def test_search_without_a_go_stays_free(repo, run):
     assert run("grep x foo", repo, go=False)[0] == 0
+
+
+def test_script_written_this_turn_is_denied(repo, run):
+    script = make_task(repo)
+    fresh = time.time() + 5
+    os.utime(repo / script, (fresh, fresh))
+    code, err = run(f"python {script}", repo)
+    assert code == 2 and script in err and "nvim" in err
+
+
+def test_script_from_an_earlier_turn_runs(repo, run):
+    script = make_task(repo)
+    old = time.time() - 60
+    os.utime(repo / script, (old, old))
+    assert run(f"python {script}", repo)[0] == 0

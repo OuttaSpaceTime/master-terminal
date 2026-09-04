@@ -55,6 +55,7 @@ CHECKPOINT = re.compile(
     r"total cap|must commit)"
 )
 RUNNERS = {"Bash", "BashOutput"}
+WRITERS = {"Write", "Edit", "MultiEdit"}
 WARN_CHARS, BLOCK_CHARS = 1200, 2200
 
 _FENCE_BLOCK = re.compile(r"```.*?```", re.S)
@@ -72,6 +73,7 @@ READING_PROBE = re.compile(
     r"^(nvim|vim|vi|view|less|more|bat|cat|head|tail|sed|open|code|grep|rg|ag|ack)\b"
 )
 PROBE_LABEL = re.compile(r"^[A-Za-z][^:]{0,30}:\s*")
+TASK_SCRIPT = re.compile(r"(^|/)\.solve/tasks/[^/]+/.+")
 
 
 MENU_MSG = (
@@ -106,6 +108,12 @@ WEAK_PROBE_MSG = (
     "actual intermediate value. Ask them to predict that value first. Keep the "
     "'▶ nvim +<line>' too if reading builds the model — it just can't be the whole "
     "verify.\n"
+)
+SCRIPT_MSG = (
+    "SolveIt: you wrote {name} but this turn never shows it. The human reads a task "
+    "script before it runs — say in one line what it does and what you expect it to "
+    "print, show the script fenced, and hand over `▶ nvim {path}`. Their next go "
+    "runs it.\n"
 )
 LENGTH_MSG = (
     "SolveIt: {n} characters of prose since the human's last message, and they did "
@@ -154,24 +162,26 @@ MULTILINE_MSG = (
 def _has_multiline_command(text):
     """True if the response contains a command the human would copy that is not
     on a single line: a ▶ affordance line continued with a trailing backslash, or
-    a shell-tagged fenced block with more than one command line."""
+    a shell-tagged fenced block with more than one command line. A block whose
+    first line is a comment is a script listing (the task-script convention puts
+    the run command there), not something the human pastes."""
     in_shell_fence = False
-    cmd_lines = 0
+    fenced = []
     for line in text.split("\n"):
         stripped = line.strip()
         fence = _FENCE.match(stripped)
         if fence:
             if in_shell_fence:
-                if cmd_lines > 1:
+                listing = fenced and fenced[0].startswith("#")
+                if not listing and len([l for l in fenced if not l.startswith("#")]) > 1:
                     return True
                 in_shell_fence = False
-                cmd_lines = 0
             elif fence.group(1).strip().lower() in SHELL_LANGS:
                 in_shell_fence = True
-                cmd_lines = 0
+            fenced = []
             continue
-        if in_shell_fence and stripped and not stripped.startswith("#"):
-            cmd_lines += 1
+        if in_shell_fence and stripped:
+            fenced.append(stripped)
         if AFFORDANCE in line and line.rstrip().endswith("\\"):
             return True
     return False
@@ -217,7 +227,7 @@ def _assistant_text_since_last_user(entries):
             continue
         start, last_user = i + 1, _user_text(content)
         break
-    texts, ran = [], False
+    texts, ran, scripts = [], False, []
     for e in entries[start:]:
         if e.get("type") != "assistant":
             continue
@@ -231,7 +241,11 @@ def _assistant_text_since_last_user(entries):
                 texts.append(b.get("text", ""))
             elif b.get("type") == "tool_use" and b.get("name") in RUNNERS:
                 ran = True
-    return "\n".join(texts), last_user, ran
+            elif b.get("type") == "tool_use" and b.get("name") in WRITERS:
+                fp = (b.get("input") or {}).get("file_path") or ""
+                if TASK_SCRIPT.search(fp):
+                    scripts.append(fp[fp.index(".solve/"):])
+    return "\n".join(texts), last_user, ran, scripts
 
 
 def _read_span(path):
@@ -255,13 +269,17 @@ def main():
         return
     tries = int(os.environ.get("STOP_GUARD_POLL", "8"))
     interval = float(os.environ.get("STOP_GUARD_POLL_INTERVAL", "0.25"))
-    span, last_user, ran = _read_span(path)
+    span, last_user, ran, scripts = _read_span(path)
     for _ in range(tries):
         if AFFORDANCE in span:
             break
         time.sleep(interval)
-        span, last_user, ran = _read_span(path)
+        span, last_user, ran, scripts = _read_span(path)
     body = _prose(span)
+    for fp in scripts:
+        name = os.path.basename(fp)
+        if name not in span or not _FENCE_BLOCK.search(span):
+            die(SCRIPT_MSG.format(name=name, path=fp))
     if MENU.search(_final_paragraph(body)):
         die(MENU_MSG)
     if PASTE_BACK.search(body):

@@ -9,7 +9,10 @@ A command is allowed only if every segment is one of:
     file; or any non-destructive runner (bin/rails runner, bundle exec ruby,
     npx tsx, rake, ...) that has such a task-script file among its arguments.
     The script path must be the LAST token — no args/flags/redirects may be
-    passed at run time, so a script can't be a generic command forwarder;
+    passed at run time, so a script can't be a generic command forwarder. A
+    script written or changed during the CURRENT turn may not run yet (its
+    mtime is newer than the session's go flag): the agent first says what it
+    does and hands over `nvim <path>`, and the human's next go runs it;
   - read-only search/inspection: grep, rg, find, ls, cat, head, awk, ... — the
     shell stand-ins for the Read/Grep/Glob tools, which a tool-registration bug
     can drop entirely (issue #52121), leaving the agent no other way to look at
@@ -109,6 +112,11 @@ ARGS_MSG = (
 NOCODE_MSG = (
     "SolveIt: a runner points at a task-script FILE, never inline code (-e/-c/--eval). "
     "Put it under .solve/tasks/<f>/ and run that file."
+)
+FRESH_MSG = (
+    "SolveIt: {path} was written this turn — the human has not seen it yet. Say in "
+    "one line what it does and what you expect it to show, show the script itself, "
+    "hand over `▶ nvim {path}`, and stop. Their next go runs it."
 )
 GIT_MSG = (
     "SolveIt: git may only LOOK — diff/status/log/show/blame/ls-files/rev-parse, plus "
@@ -278,6 +286,16 @@ def segment_ok(toks, cwd):
     return (False, GENERIC_MSG, False)
 
 
+def written_since(pathstr, cwd, marker):
+    """True if the file was written after `marker` was last touched — i.e. during
+    the current turn, since solve-init rewrites the go flag on each go prompt."""
+    p = os.path.expanduser(pathstr)
+    p = p if os.path.isabs(p) else os.path.normpath(os.path.join(cwd, p))
+    if not os.path.isfile(p) or not os.path.exists(marker):
+        return False
+    return os.path.getmtime(p) > os.path.getmtime(marker)
+
+
 def solve_dir(cwd):
     """<repo-root>/.solve — where reads.log lives (git-excluded)."""
     return os.path.join(repo_root(cwd), ".solve")
@@ -371,8 +389,11 @@ def main():
     if not cmd:
         return
     patterns = allow_patterns(cwd)
+    session = data.get("session_id") or "nosession"
+    go = os.path.expanduser(f"~/.claude/solveit/state/{session}.go")
     is_search = False
     executes = False
+    fresh = []
     for toks in split_segments(cmd):
         ok, msg, search = segment_ok(toks, cwd)
         if not ok:
@@ -382,17 +403,21 @@ def main():
         if not ok:
             sys.stderr.write(msg)
             sys.exit(2)
-        executes = executes or any(under_tasks(t, cwd) for t in toks)
+        tasks = [t for t in toks if under_tasks(t, cwd)]
+        executes = executes or bool(tasks)
+        fresh += [t for t in tasks if written_since(t, cwd, go)]
         is_search = is_search or search
         target = cd_target(toks, cwd)
         if target is not None:
             cwd = target
-    session = data.get("session_id") or "nosession"
-    if executes and not os.path.exists(os.path.expanduser(f"~/.claude/solveit/state/{session}.go")):
+    if executes and not os.path.exists(go):
         sys.stderr.write(
             "SolveIt: no go from the human this turn — reading and searching stay "
             "free, running does not. Say what you want to run and why, then stop."
         )
+        sys.exit(2)
+    if fresh:
+        sys.stderr.write(FRESH_MSG.format(path=fresh[0]))
         sys.exit(2)
     if is_search:  # log the whole command once, like a Grep/Glob entry
         log_search(cmd, cwd)

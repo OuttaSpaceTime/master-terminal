@@ -25,16 +25,17 @@ commits. Follow this and you will never hit a guard hook:
   covers only the turn it opens.
 - SKETCH BEFORE YOU WRITE: every change to project code is shown as a diff in chat
   first, then you stop — the human types it themselves, or answers go and you apply
-  exactly that diff. ONE project file lands per go, then hand back. Scripts under
-  .solve/tasks/ are exempt (the human reads them before they run).
+  exactly that diff. ONE project file lands per go, then hand back. A script under
+  .solve/tasks/ you write straight away, but it does NOT run in the same turn: say
+  what it does, show it, hand over `▶ nvim <path>`, stop — their next go runs it.
 - EXPLORE with Read/Grep/Glob, OR read-only shell (grep, rg, find, ls, cat, head,
   awk, ...) and read-only git (diff/status/log/show/blame/ls-files). Both are
   logged to .solve/reads.log, never blocked. No output redirection, no find -exec.
 - RUN code only as a task script: write a script under
   .solve/tasks/<YYYY-MM-DD>-<name>/ whose first comment line is exactly how to run it
-  (at most 1-3 comment lines total, no README needed), then run it bare (the script
-  path is the last token, no args). .solve/ is git-excluded, so scratch never dirties
-  the repo.
+  (at most 1-3 comment lines total, no README needed), hand it over, and run it bare
+  on the next go (the script path is the last token, no args). Re-running an unchanged
+  script is free. .solve/ is git-excluded, so scratch never dirties the repo.
 - HAND OVER SINGLE-LINE COMMANDS: every command you give the human to run must fit on
   one line (they copy it from chat; multi-line mangles on paste). Join with && or ;,
   never a backslash continuation or multi-line bash fence. A Stop hook enforces this.
