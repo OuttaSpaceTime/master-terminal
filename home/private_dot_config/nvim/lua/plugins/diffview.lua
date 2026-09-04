@@ -33,6 +33,8 @@ return {
       -- into the tab — typing `:DiffviewClose` triggers E445 (the modified noice
       -- buffer blocks tabclose). See sindrets/diffview.nvim#302.
       { "<leader>gc", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
+      { "<leader>Dc", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
+      { "<leader>Dr", "<cmd>DiffviewRefresh<cr>", desc = "Refresh Diffview" },
       {
         "<leader>gj",
         goto_open_diffview,
@@ -67,6 +69,14 @@ return {
         merge_tool = {
           layout = "diff3_mixed",
         },
+      },
+    },
+  },
+  {
+    "folke/which-key.nvim",
+    opts = {
+      spec = {
+        { "<leader>D", group = "diffview" },
       },
     },
   },
