@@ -360,3 +360,40 @@ def test_project_write_needs_no_script_listing(run):
                    _text("Applied.\n▶ Try: bin/rails test test/models/user_test.rb")),
     ])
     assert code == 0
+
+
+def test_block_message_says_not_to_resend_the_answer(run):
+    text = "Looks like the cause is the second callback.\n▶ Try: rg searchable_text app/models"
+    code, err = run([_user("trace it"), _assistant(_text(text))])
+    assert code == 2
+    assert "on the human's screen" in err
+    assert "Send only the correction" in err
+
+
+def test_repair_note_is_on_every_block_path(run):
+    paths = [
+        [_user("trace this"), _assistant(_text("Confident synthesis. No probe."))],
+        [_user("go"), _assistant(_text("Did the thing. Want me to also rename it?"))],
+        [_user("go"), _assistant(_text("It is done.\n▶ Try: ls\nPaste the output here."))],
+        [_user("go"), _assistant(_text("Nothing ran.\n▶ Verify: bin/rails test"))],
+    ]
+    for entries in paths:
+        code, err = run(entries)
+        assert code == 2, entries
+        assert "Send only the correction" in err, entries
+
+
+def test_length_block_asks_for_no_rewrite_at_all(run):
+    text = "x " * 1200 + "\n▶ Verify: echo hi"
+    code, err = run([_user("shorten it"), _assistant(_text(text))])
+    assert code == 2
+    assert "shortened rewrite" in err
+    assert "Send only the correction" not in err
+
+
+def test_bare_why_question_does_not_lift_the_length_cap(run):
+    text = "x " * 1200 + "\n▶ Try: echo hi"
+    code, err = run([_user("hold on why did we remove the before parameter?"),
+                     _assistant(_text(text))])
+    assert code == 2
+    assert "brevity" in err.lower()

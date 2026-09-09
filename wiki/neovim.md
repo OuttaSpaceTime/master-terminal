@@ -2,7 +2,7 @@
 title: Neovim and LazyVim
 tags: [neovim, lazyvim, editor]
 created: 2026-04-07
-updated: 2026-05-07
+updated: 2026-09-09
 ---
 
 # Neovim and LazyVim
@@ -65,6 +65,15 @@ updated: 2026-05-07
 - Ruby LSP’s RuboCop integration runs in-process, so it avoids RuboCop server mode
 - After changing RuboCop in the bundle, restart the LSP or Neovim to avoid stale LSP processes
 - `ruby_lsp` is started via `rbenv exec ruby-lsp`, so it follows the Ruby version selected by `rbenv`
+
+## Heredoc Syntax Highlighting
+
+- Treesitter injects a language into a Ruby heredoc from the terminator: `<<~SQL` is parsed as `sql`, `<<~JS` as `javascript`
+- The query is `(heredoc_body (heredoc_content) @injection.content (heredoc_end) @injection.language)` in `~/.local/share/nvim/site/queries/ruby/injections.scm`
+- The terminator is lowercased and resolved via `vim.treesitter.language.get_lang()`, so aliases work — `nvim-treesitter/plugin/filetypes.lua` registers `js`, `jsx`, `ecma` for `javascript`
+- Injection silently does nothing when the resolved parser is not installed, which is why `<<~SQL` looked like a plain string until `sql` was added to `ensure_installed` in `lua/plugins/treesitter-sql.lua`
+- To check what a heredoc body actually parses as, put the cursor inside it and run `:Inspect`; the `@lang` column names the injected parser
+- `tests/test_nvim_heredoc_injection.py` guards this: `uv run pytest tests/test_nvim_heredoc_injection.py`
 
 ## Indentation
 

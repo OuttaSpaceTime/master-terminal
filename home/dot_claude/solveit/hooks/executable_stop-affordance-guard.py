@@ -45,7 +45,7 @@ PASTE_BACK = re.compile(
     r"(?i)(paste (the|it|that|your|them)|tell me what you (see|get)|let me know what|"
     r"report back|then i'?ll (write|decide|continue|take))"
 )
-DEPTH = re.compile(r"(?i)\b(explain|why|detail|walk me through|elaborate|in depth|deeper)\b")
+DEPTH = re.compile(r"(?i)\b(explain|detail|walk me through|elaborate|in depth|deeper)\b")
 CONFIDENT = re.compile(
     r"(?i)\b(confirmed|definitely|certainly|clearly|proves|now i (fully )?understand)\b"
 )
@@ -122,8 +122,22 @@ LENGTH_MSG = (
 )
 
 
-def die(msg):
-    sys.stderr.write(msg)
+REPAIR = (
+    "The text you already wrote is on the human's screen and stays there — do not "
+    "write it again in other words. Send only the correction: the fixed handle, plus "
+    "one sentence if it needs a lead-in.\n"
+)
+
+
+LENGTH_REPAIR = (
+    "They have already read it — don't send a shortened rewrite of the same answer. "
+    "Say nothing further beyond the handle, and keep the next turn to the answer plus "
+    "its proof.\n"
+)
+
+
+def die(msg, repair=REPAIR):
+    sys.stderr.write(msg + repair)
     sys.exit(2)
 
 
@@ -285,7 +299,7 @@ def main():
     if PASTE_BACK.search(body):
         die(PASTE_MSG)
     if len(body) > BLOCK_CHARS and not DEPTH.search(last_user):
-        die(LENGTH_MSG.format(n=len(body)))
+        die(LENGTH_MSG.format(n=len(body)), LENGTH_REPAIR)
     if AFFORDANCE in span:
         if _has_multiline_command(span):
             die(MULTILINE_MSG)

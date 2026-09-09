@@ -12,7 +12,7 @@ updated: 2026-06-19
 - [Chezmoi](chezmoi.md) — commands, workflow, decisions
 - [Chrome](chrome.md) — tab switching, tab numbers, side panel behavior
 - [Kitty](kitty.md) — shortcuts, sessions, tab titles
-- [Neovim](neovim.md) — LazyVim shortcuts and navigation
+- [Neovim](neovim.md) — LazyVim shortcuts, navigation, and heredoc syntax highlighting
 - [Zsh Completion](zsh-completion.md) — `zsh-autocomplete` freeze note and the `fzf-tab` replacement
 - [GNOME](gnome.md) — hotkeys, workspace navigation, window management
 - [Git Hooks](git-hooks.md) — RuboCop hook version drift and `--no-server`

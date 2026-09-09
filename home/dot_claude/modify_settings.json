@@ -113,7 +113,7 @@ DEFAULTS = json.loads(r'''
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "theme": "custom:light-high-contrast",
-  "verbose": false,
+  "verbose": true,
   "preferredNotifChannel": "kitty",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
