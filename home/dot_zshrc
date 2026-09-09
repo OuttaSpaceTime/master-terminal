@@ -196,6 +196,9 @@ bindkey '^[[13;5u' autosuggest-accept
 # Ctrl+Space fetches a suggestion on demand.
 bindkey '^ ' autosuggest-fetch
 
+FZF_CTRL_T_COMMAND='' FZF_ALT_C_COMMAND='' eval "$(fzf --zsh)"
+bindkey '^I' fzf-tab-complete
+
 
 function rebase-onto {
   commit=$(git log --oneline | fzf --prompt 'Select the first commit you want to move' | awk '{print $1}')

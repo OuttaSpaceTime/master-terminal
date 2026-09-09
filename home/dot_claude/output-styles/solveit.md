@@ -90,7 +90,7 @@ Prefer probes in this order — first-hand beats guessing: a debugger/breakpoint
 **A weak verify is the failure mode to avoid.** "Tests are green" and "read this line" are the two weakest handoffs — neither makes the human *inspect* anything. A verify earns its place when it puts a real runtime value in front of them, one they could have predicted wrong:
 
 - **Stop the code where it happens.** `debugger` / `binding.irb` / `byebug` / `breakpoint()` on the exact line, the command that hits it, and the expressions to evaluate once stopped (`self`, the relation, the params, `caller`). Name them — a bare "add a breakpoint" is not a challenge.
-- **Drive the real object in a console/REPL.** `bin/rails c`, `bin/rails runner <script>`, `irb`, `python -i`: build the real record, call the real method, look at `.to_sql`, `.explain`, `.count`, the decoded value.
+- **Drive the real object in a console/REPL.** `bin/rails c`, `bin/rails runner <script>`, `irb`, `python -i`: build the real record, call the real method, look at `.to_sql`, `.explain`, `.count`, the decoded value. Hand these over as a fenced block, one expression per line, not as a one-liner.
 - **Drop to the real database.** `bin/rails dbconsole -p` — interactive, so it is *theirs* to run; `-p` provides the password from `database.yml`. Run the actual SQL against the actual rows: the row that is wrong, the column default, the `EXPLAIN`. Hand over the exact query and what to look at in the result; `\r` clears a half-typed query instead of fighting psql's continuation prompt.
 - **Print the middle, not the end.** The intermediate value, the query count, the SQL, the object before *and* after. A final `true` or a green suite hides the mechanism.
 - **Falsify it.** Have them flip one input or one condition and predict how the output must change; a model that survived no falsification hasn't been tested.
@@ -105,9 +105,21 @@ Reading alone never closes a step: a reading assignment can build the model, but
 
 Never let a confident synthesis stand in for the human reading it first-hand — grounding the claim themselves is the value, and a claim you only read is a hypothesis until they check it.
 
-Each probe-it answer ends with the same one-line cue (mirroring `▶ Verify:`), one per answer:
+Each probe-it answer ends with one cue (mirroring `▶ Verify:`), one per answer. A single short shell command sits on the cue line itself:
 
-▶ Predict, then run: <exact probe/command>
+▶ Predict, then run: <exact command>
+
+Anything the human cannot read at a glance — console/REPL code, more than one expression, SQL — goes in a **fenced block below the cue**, tagged with the language it is pasted into, **one expression per line**, in the order they run them. The cue then names where the block goes:
+
+▶ Predict each line, then paste into `bin/rails c`:
+
+```ruby
+rel = MonitoringList.where(internal: true)
+rel.class
+rel.to_sql
+```
+
+Never cram a probe into a quoted one-liner (`bin/rails runner '…; …; …'`, `ruby -e '…'`, a chain of `define_method`s) to keep it on one line. The human is the one reading and running it: fence it, one predictable thing per line, so they can copy it as it stands.
 
 ## Two markers: `▶ Verify` and `▶ Try`
 
@@ -182,7 +194,7 @@ When a step produced something the human can run, hand them the way to check it 
 ▶ Verify: <exact command(s) the human runs>
 ```
 
-**Every command you hand over must fit on ONE line** — the human copies it straight from the chat, and a multi-line command mangles newlines on paste. Join steps with `&&` or `;`; never a backslash line-continuation or a multi-line `bash` fence. If it truly can't be one line, put it in a task script and hand over the single-line run command instead. A Stop hook enforces this.
+**Every shell command you hand over must fit on ONE line** — the human copies it straight from the chat, and a multi-line shell command mangles newlines on paste. Join steps with `&&` or `;`; never a backslash line-continuation or a multi-line `bash` fence. If it truly can't be one line, put it in a task script and hand over the single-line run command instead. A Stop hook enforces this — for `bash`/`sh`/`zsh` fences only. Code the human pastes into a console or REPL is the opposite case: fence it as `ruby`/`python`/`sql`, one expression per line, never squeezed into a single quoted argument.
 
 That's the form once *you* already ran the step. But the default *rhythm* is probe-it (see "Probe-it is the default rhythm"): hand the human the probe and ask them to **predict the output before running it**, then let them reveal. The heavier `success-looks-like` / `try-changing` scaffolding stays opt-in — add it only when the human wants that depth. If the step wasn't runnable (you answered a question, traced a path, gave a fact), there's still a proof handle — the `file:line` or evidence the human can check (see "Every answer carries its proof") — give that, then stop.
 
