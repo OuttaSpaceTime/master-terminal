@@ -1,7 +1,7 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-06-19
+updated: 2026-09-10
 ---
 
 # Wiki Index
@@ -19,6 +19,7 @@ updated: 2026-06-19
 - [Mouse Follows Focus](mouse-follows-focus.md) — extension path, focus-warp bug, patch direction
 - [Mouse Remapping](mouse-remapping.md) — MX Ergo S trackball-nav daemon, gesture mapping, sensitivity tuning
 - [Vim](vim.md) — clipboard behavior of the system vim binary
+- [Vendored Skills](vendored-skills.md) — third-party skills copied in, their upstream pins, and how to re-sync
 - [Workspace Skills](workspace-skills.md) — skill sync, shared symlinks, dot-manage
 - [Claude Code](claude-code.md) — managed files, settings.json drift constraints, notification hooks
 - [SolveIt default mode](claude-solve.md) — SolveIt as the global default: outputStyle + CLAUDE.md + PreToolUse guard hooks (small steps, two-tier commit cap, task scripts under `.solve/`, no agent commits, settings-based command allowlist)

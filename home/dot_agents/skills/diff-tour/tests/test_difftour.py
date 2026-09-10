@@ -1,0 +1,767 @@
+#!/usr/bin/env python3
+"""Tests for bin/difftour.py. Run from the skill directory: python3 tests/test_difftour.py"""
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+
+SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCRIPT = os.path.join(SKILL, 'bin', 'difftour.py')
+
+
+def sh(cwd, *cmd, **kw):
+    return subprocess.run(list(cmd), cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True, **kw)
+
+
+def read(path):
+    with open(path, encoding='utf-8') as f:
+        return f.read()
+
+
+def hunks(cwd, *args):
+    r = sh(cwd, sys.executable, SCRIPT, *args)
+    return r.returncode, r.stdout, r.stderr
+
+
+class RepoCase(unittest.TestCase):
+    """A throwaway repository with two committed files, a binary, edits and an untracked file."""
+    def setUp(self):
+        self.dir = tempfile.mkdtemp(prefix='difftour-')
+        d = self.dir
+        sh(d, 'git', 'init', '-q', '-b', 'main')
+        sh(d, 'git', 'config', 'user.email', 't@example.com')
+        sh(d, 'git', 'config', 'user.name', 'T')
+        self.write('a.py', 'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\n')
+        self.write('b.txt', 'hello\n')
+        self.write('bin.dat', b'\x00\x01\x02')
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'base')
+        # Two hunks in a.py, one in b.txt, a binary change, an untracked file.
+        self.write('a.py', 'line1\nCHANGED <b>&\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10 tail\n')
+        self.write('b.txt', 'hello world\n')
+        self.write('bin.dat', b'\x00\x01\x03')
+        self.write('new.txt', 'brand new\n')
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def write(self, name, content):
+        mode = 'wb' if isinstance(content, bytes) else 'w'
+        with open(os.path.join(self.dir, name), mode) as f:
+            f.write(content)
+
+
+class Repo(RepoCase):
+
+    def test_full_read_numbers_every_hunk_and_binary_file(self):
+        code, out, err = hunks(self.dir, '--', 'HEAD')
+        self.assertEqual(code, 0, err)
+        markers = re.findall(r'^### (h\d+)  (\S+)(.*)$', out, re.M)
+        self.assertEqual([m[0] for m in markers], ['h1', 'h2', 'h3', 'h4'])
+        self.assertEqual(markers[0][1], 'a.py:1')
+        self.assertEqual(markers[1][1], 'a.py:7')
+        self.assertEqual(markers[2][1], 'b.txt:1')
+        self.assertEqual(markers[3][1], 'bin.dat')
+        self.assertIn('no text hunk', markers[3][2])
+        self.assertIn('+CHANGED <b>&', out)
+        # The file header appears once per file, not once per hunk.
+        self.assertEqual(out.count('diff --git a/a.py b/a.py'), 1)
+
+    def test_ids_prints_only_markers(self):
+        code, out, err = hunks(self.dir, '--ids', '--', 'HEAD')
+        self.assertEqual(code, 0, err)
+        lines = out.strip().splitlines()
+        self.assertEqual(len(lines), 4)
+        self.assertTrue(all(l.startswith('### h') for l in lines))
+
+    def test_untracked_files_are_numbered_as_additions(self):
+        code, out, err = hunks(self.dir, '--ids', '--untracked', '--', 'HEAD')
+        self.assertEqual(code, 0, err)
+        self.assertIn('### h5  new.txt:1', out)
+        code, out, err = hunks(self.dir, '--only', 'h5', '--untracked', '--', 'HEAD')
+        self.assertIn('+brand new', out)
+        self.assertIn('diff --git a/new.txt b/new.txt', out)
+
+    def test_only_selects_hunks_with_their_file_header(self):
+        code, out, err = hunks(self.dir, '--only', 'h2,h3', '--', 'HEAD')
+        self.assertEqual(code, 0, err)
+        self.assertIn('### h2', out)
+        self.assertIn('### h3', out)
+        self.assertNotIn('### h1', out)
+        self.assertIn('+line10 tail', out)
+        self.assertNotIn('+CHANGED', out)
+        self.assertIn('diff --git a/b.txt b/b.txt', out)
+
+    def test_staged_diff_uses_git_diff_arguments_verbatim(self):
+        sh(self.dir, 'git', 'add', 'b.txt')
+        code, out, err = hunks(self.dir, '--ids', '--', '--cached')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.strip().splitlines(), ['### h1  b.txt:1'])
+
+    def assemble(self, *frags):
+        paths = []
+        for n, body in enumerate(frags):
+            path = os.path.join(self.dir, 't%d.html' % n)
+            with open(path, 'w') as f:
+                f.write(body)
+            paths.append(path)
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', *paths)
+        self.assertEqual(code, 0, err)
+        return read(out_path), out, err
+
+    def test_assemble_lays_out_chapters_beats_and_escaped_hunks(self):
+        page, out, err = self.assemble(
+            '<h1>Tour <code>x</code></h1>\n<p>The summary.</p>\n',
+            '<section id="topic-1">\n<h2>1. Topic one</h2>\n<p>Chapter intro.</p>\n'
+            '<h3>1.1 First beat</h3>\n<p>Beat prose.</p>\n'
+            '<p>Desc of h1.</p>\n<!-- hunk h1 -->\n'
+            '<!-- hunk h3 fishy: the greeting lost its exclamation -->\n<p>Desc of h3.</p>\n'
+            '</section>\n')
+        self.assertTrue(page.startswith('<!doctype html>'))
+        self.assertIn('<title>Tour x</title>', page)
+        self.assertIn('<h1>Tour <code>x</code></h1>', page)
+        self.assertIn('<div class="summary"><p>The summary.</p></div>', page)
+        self.assertIn('<h2><span class="n">1</span><span class="t">Topic one</span></h2>', page)
+        self.assertIn('<div class="intro"><p>Chapter intro.</p></div>', page)
+        self.assertIn('<h3>First beat</h3>', page)
+        self.assertIn('<p>Beat prose.</p>', page)
+        # Prose before a placeholder belongs to the beat; prose after it is the hunk's note.
+        self.assertRegex(page, r'(?s)<div class="say">[^<]*<h3>First beat</h3>.*Beat prose.*Desc of h1.*</div><div class="show">')
+        self.assertIn('<figure class="hunk lvl-fishy" id="h3"', page)
+        self.assertIn('data-level="3" data-reason="the greeting lost its exclamation"', page)
+        # The sentence opens with the badge, the reason follows in the level's colour, then the card.
+        self.assertIn('<div class="note"><p><span class="lvl">fishy</span>Desc of h3.</p></div>\n'
+                      '<p class="flag fishy"><b>May be wrong:</b> the greeting lost its exclamation</p>\n'
+                      '<div class="card">\n<figcaption><span class="where">b.txt:1', page)
+        self.assertIn('<figure class="hunk lvl-plain" id="h1" data-key="', page)
+        self.assertIn('data-level="1"', page)
+        # "Desc of h1." sits before h1's placeholder, so it is beat prose; h1 itself has no sentence.
+        self.assertIn('<div class="note"><p><span class="lvl">read</span></p></div>\n<div class="card">', page)
+        self.assertNotIn('<aside', page)
+        self.assertIn('language-diff-python diff-highlight', page)
+        self.assertIn('+CHANGED &lt;b&gt;&amp;', page)
+        self.assertNotIn('<!-- hunk h1 -->', page)
+        self.assertNotIn('<section id="topic-1">', page)
+        # The rest of the diff is appended so nothing is hidden, and it is reported.
+        self.assertIn('<span class="t">Unsorted hunks</span>', page)
+        self.assertIn('id="h2"', page)
+        self.assertIn('class="hunk lvl-plain file" id="h4"', page)
+        # A binary file that is new: the kind pill sits in the header bar's where, not the tools.
+        self.assertIn('<span class="where">bin.dat <span class="tag binary">binary</span></span>', page)
+        self.assertIn('A binary file', page)
+        self.assertIn('h2 h4', err)
+        self.assertIn('(4 hunks, 2 placed by fragments, 2 appended)', out)
+        self.assertTrue(out.startswith('file:///'), out)
+        self.assertIn(out_path if False else 'tour.html', out)
+        # Assets are inlined: no external requests.
+        self.assertIn('window.Prism', page)
+        self.assertIn('.sq[aria-pressed="true"]::after', page)
+        self.assertIn('rel="icon" href="data:image/svg+xml,', page)
+        self.assertNotIn('src="../vendor', page)
+        self.assertNotIn('the page shell', page)
+
+    def test_meta_line_counts_the_diff(self):
+        page, out, err = self.assemble('<h1>T</h1>', '<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertRegex(page, r'(?s)<p class="meta">.*<b>3</b> files.*<b class="added">\+3</b> <b class="removed">−3</b>.*<b>4</b> hunks.*<code>HEAD</code>')
+        self.assertEqual(err, '')
+        self.assertNotIn('Unsorted hunks', page)
+
+    def test_unknown_and_duplicate_placeholders_are_reported(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2><!-- hunk h1 --><!--hunk h99-->',
+            '<h2>B</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('Unknown hunk h99', page)
+        self.assertIn('h99', err)
+        self.assertIn('placed more than once', err)
+        self.assertIn('id="h1"', page)
+        self.assertIn('id="h1-2"', page)
+        self.assertLess(page.index('<span class="t">A</span>'), page.index('<span class="t">B</span>'))
+
+    def test_worker_shortcuts_are_tolerated(self):
+        # No <h2>, bare paragraphs, hunks before any <h3>.
+        page, out, err = self.assemble(
+            'Intro line.\n\n<!-- hunk h1 -->\nabout h1\n<h3>Later</h3>\n<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<span class="t">Topic 1</span>', page)
+        self.assertIn('<div class="intro"><p>Intro line.</p></div>', page)
+        self.assertIn('<div class="note"><p><span class="lvl">read</span>about h1</p></div>', page)
+        self.assertIn('<h3>Later</h3>', page)
+
+    def test_a_directory_expands_to_its_fragments_in_path_order(self):
+        work = os.path.join(self.dir, 'work')
+        os.makedirs(os.path.join(work, 'topic-01'))
+        os.makedirs(os.path.join(work, 'topic-02'))
+        with open(os.path.join(work, '00-intro.html'), 'w') as f:
+            f.write('<h1>Dir tour</h1><p>Sum.</p>')
+        with open(os.path.join(work, 'topic-02', 'fragment.html'), 'w') as f:
+            f.write('<h2>Second</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        with open(os.path.join(work, 'topic-01', 'fragment.html'), 'w') as f:
+            f.write('<h2>First</h2><!-- hunk h1 --><!-- hunk h2 -->')
+        out_path = os.path.join(work, 'diff-tour.html')
+        for _ in range(2):   # the second run must not ingest the first run's output
+            code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', work)
+            self.assertEqual(code, 0, err)
+            self.assertEqual(err, '')
+        page = read(out_path)
+        self.assertIn('<h1>Dir tour</h1>', page)
+        self.assertLess(page.index('<span class="t">First</span>'), page.index('<span class="t">Second</span>'))
+        self.assertEqual(page.count('<h1>'), 1)
+
+    def test_function_context_becomes_a_row_above_the_diff(self):
+        # A change below a declaration: git puts the declaration after the second @@.
+        self.write('m.py', 'def alpha():\n    a = 1\n    b = 2\n    c = 3\n    d = 4\n    e = 5\n    f = 6\n    return a\n')
+        sh(self.dir, 'git', 'add', 'm.py')
+        sh(self.dir, 'git', 'commit', '-q', '-m', 'm')
+        self.write('m.py', 'def alpha():\n    a = 1\n    b = 2\n    c = 3\n    d = 4\n    e = 55\n    f = 6\n    return a\n')
+        code, out, err = hunks(self.dir, '--ids', '--', 'HEAD', '--', 'm.py')
+        self.assertEqual(out.strip(), '### h1  m.py:3', err)
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2><!-- hunk h1 -->')
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'm.py', '++', frag)
+        self.assertEqual(code, 0, err)
+        page = read(out_path)
+        self.assertIn('<div class="ctx">def alpha():</div>\n<pre class="diff">', page)
+        # A hunk with no sentence still opens with its badge.
+        self.assertIn('<div class="note"><p><span class="lvl">read</span></p></div>', page)
+        # The @@ line itself is not shown; the diff starts with the first context line.
+        self.assertNotIn('@@ -3,6', page)
+        self.assertIn('diff-highlight">     b = 2\n', page)
+        # A hunk starting at line 1 has no declaration above it and gets no row; the
+        # second hunk in the same file does (git's default heuristic picks "line6").
+        page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertNotIn('@@ -1,3', page)
+        h1 = re.search(r'<figure class="hunk lvl-plain" id="h1".*?</figure>', page, re.S).group(0)
+        self.assertNotIn('<div class="ctx">', h1)
+        h2 = re.search(r'<figure class="hunk lvl-plain" id="h2".*?</figure>', page, re.S).group(0)
+        self.assertIn('<div class="ctx">line6</div>', h2)
+
+    def test_each_tour_gets_its_own_uid_for_viewed_marks(self):
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        uids = []
+        for name in ('one', 'two', 'one'):
+            out_path = os.path.join(self.dir, name, 'diff-tour.html')
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', frag)
+            self.assertEqual(code, 0, err)
+            uids.append(re.search(r'data-uid="([0-9a-f]+)"', read(out_path)).group(1))
+        self.assertNotEqual(uids[0], uids[1])   # a different tour, different marks
+        self.assertEqual(uids[0], uids[2])      # the same tour re-assembled keeps its marks
+        self.assertNotEqual(uids[0], 'fixture')
+
+    def test_intro_headings_are_summary_not_chapters(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>What this change achieves</h2>\n<p>Better.</p>\n<h2>How it was built</h2>\n<p>Thus.</p>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertEqual(page.count('<section class="chapter"'), 1)
+        self.assertIn('<section class="chapter" id="topic-1">', page)
+        self.assertIn('<div class="summary">', page)
+        self.assertLess(page.index('<div class="summary">'), page.index('<h2 class="legend-title">How to read this tour</h2>'))
+        self.assertIn('<h2>What this change achieves</h2>', page)
+        self.assertNotIn('<span class="t">What this change achieves</span>', page)
+
+    def test_the_problem_is_wrapped_for_pull_quote_styling(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>The problem</h2>\n<p>Setup, then the sting.</p>\n<h2>What changes</h2>\n<p>Nothing a user or API sees changes</p>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<h2>The problem</h2>\n<div class="problem"><p>Setup, then the sting.</p></div>\n<h2>What changes</h2>', page)
+
+    def test_before_after_table_gets_an_arrow_column(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>What changes</h2>\n<table>\n<tr><th>Before</th><th>After</th></tr>\n'
+            '<tr><td>Crashed</td><td>Rejected</td></tr>\n<tr><td>One</td><td>Two</td><td>Three</td></tr>\n</table>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<tr><th>Before</th><th class="arrow"></th><th>After</th></tr>', page)
+        self.assertIn('<tr><td>Crashed</td><td class="arrow">→</td><td>Rejected</td></tr>', page)
+        # A row that is not two cells is left alone.
+        self.assertIn('<tr><td>One</td><td>Two</td><td>Three</td></tr>', page)
+
+    def test_intro_fixed_headings_get_their_bylines(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>The spectrum of solutions</h2>\n<h3>The minimal solution</h3>\n<p>Patch it.</p>\n'
+            '<p>Patch it. <strong>Buys:</strong> two lines. <b>Costs</b>: still\nleaks.</p>\n'
+            '<h3>The Maximal Solution</h3>\n<p>Rebuild it.</p>\n<h3>The evaporating solution</h3>\n<p>Avoid it.</p>\n'
+            '<h3>Where this change sits</h3>\n<p>Between.</p>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<h2>The spectrum of solutions</h2>\n<p class="byline">Three other ways', page)
+        self.assertIn('<h3>The minimal solution</h3>\n<p class="byline">The smallest patch', page)
+        self.assertIn('<h3>The Maximal Solution</h3>\n<p class="byline">The thorough fix', page)
+        self.assertIn('<h3>The evaporating solution</h3>\n<p class="byline">Make the problem not arise', page)
+        self.assertEqual(page.count('class="byline"'), 4)
+        # The four blocks become two-column rows: label and byline left, prose right.
+        self.assertEqual(page.count('<div class="row"><div class="lbl">'), 4)
+        self.assertIn('<div class="lbl"><h3>The minimal solution</h3>\n<p class="byline">The smallest patch', page)
+        self.assertIn('</div><div class="prose"><p>Patch it.</p>\n<p>Patch it. <span class="buys"><strong>Buys:</strong> two lines.</span> '
+                      '<span class="costs"><b>Costs</b>: still\nleaks.</span></p></div></div>', page)
+        self.assertIn('<div class="lbl"><h3>Where this change sits</h3>\n</div><div class="prose"><p>Between.</p></div>', page)
+        self.assertLess(page.index('<h2>The spectrum of solutions</h2>\n<p class="byline">'), page.index('<div class="spectrum">'))
+
+    def test_cross_reference_links_survive_into_the_page(self):
+        page, out, err = self.assemble(
+            '<h2>First</h2><p>See <a href="#topic-2">the other one</a> and <a href="#h3">the greeting</a>.</p>'
+            '<!-- hunk h1 --><p>Pairs with <a href="#h2">its sibling</a>.</p><!-- hunk h2 -->',
+            '<h2>Second</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<section class="chapter" id="topic-2">', page)
+        self.assertIn('<a href="#topic-2">the other one</a>', page)
+        self.assertIn('<a href="#h3">the greeting</a>', page)
+        self.assertIn('<p><span class="lvl">read</span>Pairs with <a href="#h2">its sibling</a>.</p>', page)
+
+    def test_line_marks_resolve_quoted_blocks_to_line_ranges(self):
+        # a.py's second hunk (h2) body after the @@ line:
+        #   1 " line7"  2 " line8"  3 " line9"  4 "-line10"  5 "+line10 tail"
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h2 hot: the tail -->\n'
+            '<!-- focus:\n-line10\n+line10 tail\n-->\n'
+            '<!-- dim:\nline7\nline8\n-->\n'
+            '<p>Sentence.</p>\n<!-- hunk h1 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('data-focus="4-5"', page)
+        self.assertIn('data-dim="1-2"', page)
+        # The mark comments do not leak into the sentence, and the sentence keeps its badge.
+        self.assertIn('<div class="note"><p><span class="lvl">hot</span>Sentence.</p></div>', page)
+        self.assertNotIn('focus:', page.split('<main>')[1])
+        self.assertEqual(err, '')
+
+    def test_line_marks_report_misses_and_ambiguity(self):
+        # m.py: a block of "x = 1" lines repeated, so a one-line quote is ambiguous.
+        self.write('m.py', 'a\nb\nc\n')
+        sh(self.dir, 'git', 'add', 'm.py')
+        sh(self.dir, 'git', 'commit', '-q', '-m', 'm')
+        self.write('m.py', 'a\nx = 1\nb\nx = 1\nc\nx = 1\n')
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2>\n<!-- hunk h1 -->\n'
+                    '<!-- focus: x = 1 -->\n'                 # 3 matches, no hint: dropped
+                    '<!-- focus @6: x = 1 -->\n'              # 3 matches, hint picks line 6
+                    '<!-- dim: not in this hunk at all -->\n'  # no match: dropped
+                    '<p>Sentence.</p>')
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'm.py', '++', frag)
+        self.assertEqual(code, 0, err)
+        page = read(out_path)
+        self.assertIn('data-focus="6-6"', page)
+        self.assertNotIn('data-dim', page.split('<main>')[1].split('</main>')[0])   # the inlined script mentions the attribute; the figures must not
+        self.assertIn('matches 3 times at lines 2, 4, 6 and carries no @N; dropped', err)
+        self.assertNotIn('hint', err)   # a hint that resolved a tie is not a problem
+        self.assertIn('quoted block not found', err)
+
+    def test_line_marks_edge_cases(self):
+        # Code with a YAML list item next to the same text without its dash, a blank line,
+        # odd indentation, and a "<" inside a quoted line.
+        self.write('y.yml', 'a\n')
+        sh(self.dir, 'git', 'add', 'y.yml')
+        sh(self.dir, 'git', 'commit', '-q', '-m', 'y')
+        self.write('y.yml', 'a\nitems:\n  - foo\n  foo\n\n  bar: <b>\n')
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2>\n<!-- hunk h1 -->\n'
+                    '<!-- focus:\n- foo\n-->\n'
+                    '<!-- dim @5:\nfoo\n\n bar: <b>\n-->\n'
+                    '<!-- focus @2:   items:   -->\n'
+                    '<p>Sentence.</p>')
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'y.yml', '++', frag)
+        self.assertEqual(code, 0, err)
+        page = read(out_path)
+        # Body lines: 1 "a"(ctx) 2 "items:" 3 "- foo" 4 "foo" 5 "" 6 "bar: <b>".
+        # "- foo" matches only its own line: the exact pass wins over the stripped one.
+        self.assertIn('data-focus="3-3,2-2"', page)
+        self.assertIn('data-dim="4-6"', page)   # a blank line inside the block matches the blank body line
+        self.assertEqual(err, '')   # a hint on a unique match is not reported
+
+    def test_line_marks_syntax_problems_are_reported_not_shown(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- focus: line1 -->\n<p>Beat prose.</p>\n'
+            '<!-- hunk h1 -->\n<!-- focus line1 -->\n<!-- dim:\nline2 --> leaked tail\n-->\n<p>Sentence.</p>\n'
+            '<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertNotIn('leaked tail', main)
+        self.assertNotRegex(main, r'<!--\s*(focus|dim)')   # the layout's own marker comments may remain
+        self.assertIn('<span class="lvl">read</span>Sentence.</p>', main)
+        self.assertIn('stood before any placeholder', err)
+        self.assertIn('without a colon', err)
+        self.assertIn('contained "-->"', err)
+
+    def test_line_marks_on_binary_unknown_and_shared_hunks(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2><!-- hunk h4 --><!-- focus: anything --><p>Binary.</p>'
+            '<!-- hunk h99 --><!-- dim: x --><p>Unknown.</p>'
+            '<!-- hunk h1 --><!-- focus:\n+CHANGED <b>&\n--><p>Marked here.</p>',
+            '<h2>B</h2><!-- hunk h1 --><p>Not marked here.</p><!-- hunk h2 --><!-- hunk h3 -->')
+        self.assertIn('focus in h4: quoted block not found', err)
+        self.assertIn('h99', err)
+        self.assertRegex(page, r'<figure class="hunk lvl-plain" id="h1" [^>]*data-focus="3-3"')
+        self.assertNotRegex(page, r'<figure class="hunk lvl-plain" id="h1-2" [^>]*data-focus')
+
+    def test_an_unclosed_mark_is_cut_and_reported_not_shown(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h1 -->\n<!-- focus:\nline1\n<p>Sentence one.</p>\n'
+            '<!-- hunk h2 --><p>Sentence two.</p><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertNotRegex(main, r'<!--\s*(focus|dim)')
+        self.assertIn('id="h2"', main)                      # the next hunk survived the unclosed comment
+        self.assertIn('Sentence two.', main)
+        self.assertIn('never closed with -->', err)
+
+    def test_a_quoted_heading_or_placeholder_does_not_split_the_fragment(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<h3>Only beat</h3>\n<!-- hunk h1 -->\n'
+            '<!-- focus:\n<h3>Not a beat</h3>\n<h2>Not a chapter</h2>\n-->\n'
+            '<p>Sentence.</p>\n<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertEqual(main.count('<section class="chapter"'), 1)
+        self.assertEqual(main.count('<h3>'), 1)
+        self.assertNotIn('Not a', main)
+        self.assertIn('focus in h1: quoted block not found', err)
+
+    def test_a_stray_mark_in_a_prose_only_beat_keeps_it_solo(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<h3>Prose only</h3>\n<!-- focus: x -->\n<p>Just prose.</p>\n'
+            '<h3>With hunks</h3>\n<!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertIn('<section class="beat solo"><div class="say"><h3>Prose only</h3>\n<p>Just prose.</p></div></section>', main)
+        self.assertNotIn('<div class="show"></div>', main)
+        self.assertIn('stood before any placeholder', err)
+
+    def test_a_gap_marks_from_the_head_block_to_the_tail_block(self):
+        # h1 body: 1 " line1" 2 "-line2" 3 "+CHANGED <b>&" 4 " line3" 5 " line4" 6 " line5"
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h1 -->\n<!-- dim:\nline1\n[...]\n line4\n-->\n<p>S.</p>\n'
+            '<!-- hunk h2 -->\n<!-- dim:\nline9\n[...]\n-->\n'                   # nothing after the gap
+            '<!-- focus:\nline8\n[...]\nline7\n-->\n'                             # the tail lies above the head
+            '<!-- dim:\nline7\n[...]\n+line10 tail\n-->\n<p>S.</p>',              # head to tail is the whole hunk
+            '<h2>B</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertRegex(page, r'id="h1" [^>]*data-dim="1-5"')
+        self.assertNotRegex(page, r'id="h2" [^>]*data-(dim|focus)')
+        self.assertIn('dim in h2: empty block on one side of [...]', err)
+        self.assertIn('focus in h2: after [...], quoted block not found', err)
+        self.assertIn('dim in h2: the block covers the whole hunk', err)
+
+    def test_a_gap_tail_takes_the_first_match_below_the_head(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour_html
+        class H:
+            id, moved = 'h9', set()
+            body = ['@@', '+  before do', '+    x', '+  end', '+', '+  it do', '+    y', '+  end']
+        ranges, problems = difftour_html.resolve_marks(H(), [('dim', None, '\n  before do\n[...]\n  end\n')])
+        self.assertEqual(ranges['dim'], [(1, 3)])   # the first `end` below the head, not the last
+        self.assertEqual(problems, [])
+
+    def test_moved_blocks_are_flagged_in_the_marker_and_dimmed_on_the_page(self):
+        d = self.dir
+        self.write('c.rb', 'class A\n  def alpha_value(input)\n    input.to_s.strip.downcase\n  end\n\n'
+                           '  def beta_total(items)\n    items.map(&:to_i).sum\n  end\n\n  def gamma_default_value\n    DEFAULT_GAMMA_VALUE.dup\n  end\nend\n')
+        sh(d, 'git', 'add', 'c.rb')
+        sh(d, 'git', 'commit', '-q', '-m', 'methods')
+        self.write('c.rb', 'class A\n  def gamma_default_value\n    DEFAULT_GAMMA_VALUE.dup\n  end\n\n  private\n\n  def alpha_value(input)\n'
+                           '    input.to_s.strip.downcase\n  end\n\n  def beta_total(items)\n    items.map(&:to_i).sum\n  end\nend\n')
+        code, out, err = hunks(self.dir, '--', 'HEAD')
+        self.assertEqual(code, 0, err)
+        markers = [m for m in re.findall(r'^### (h\d+)  (\S+)(.*)$', out, re.M) if m[1].startswith('c.rb')]
+        self.assertTrue(any(re.search(r'\(moved: \d+ of \d+ lines\)', m[2]) for m in markers), markers)
+        self.assertNotIn('moved', [m for m in re.findall(r'^### h\d+  a\.py.*$', out, re.M)][0])
+        moved_ids = [m[0] for m in markers if 'moved' in m[2]]
+        page, out_path, err = self.assemble(
+            '<h2>A</h2>' + ''.join('<!-- hunk %s --><p>S.</p>' % h for h in ['h1', 'h2', 'h3', 'h4'] + moved_ids))
+        for hid in moved_ids:
+            self.assertRegex(page, r'id="%s" [^>]*data-dim="[0-9,-]+"' % hid)   # dimmed with no worker mark
+        self.assertNotRegex(page, r'id="h1" [^>]*data-dim')
+        self.assertNotIn('line mark', err)
+
+    def test_dim_yields_to_focus_and_whole_hunk_marks_are_dropped(self):
+        # h2 body: 1 " line7" 2 " line8" 3 " line9" 4 "-line10" 5 "+line10 tail"
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h2 -->\n<!-- focus:\nline9\n-line10\n-->\n<!-- dim:\nline8\nline9\n-line10\n+line10 tail\n-->\n'
+            '<!-- hunk h1 -->\n<!-- dim:\nline1\n-line2\n+CHANGED <b>&\nline3\nline4\nline5\n-->\n<p>S.</p>'
+            '<!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('data-focus="3-4"', page)
+        self.assertIn('data-dim="2-2,5-5"', page)         # the dim block minus the focused lines
+        self.assertIn('dim block overlaps a focus block', err)
+        self.assertIn('covers the whole hunk', err)
+        self.assertNotRegex(page, r'id="h1" [^>]*data-dim')
+
+    @unittest.skipUnless(shutil.which('node'), 'the wrapper runs in a browser; checking it needs node')
+    def test_wrap_lines_against_real_prism_output(self):
+        """The line wrapper in report.js, run in node against the vendored Prism: every source
+        line becomes one .ln with the run span as its direct child, a + line after a - run
+        carries no leftover span of that run, a token spanning lines keeps its class on both,
+        and the text keeps its newlines."""
+        js = read(os.path.join(SKILL, 'assets', 'report.js'))
+        fn = js[js.index('  function wrapLines(code) {'):js.index('  function markLines(fig, code) {')]
+        script = r"""
+const path = require('path'), V = %r;
+global.self = global; global.window = global;
+const Prism = require(V + '/prism-core.min.js'); global.Prism = Prism;
+for (const n of ['clike', 'javascript', 'diff', 'diff-highlight']) require(V + '/prism-' + n + '.min.js');
+%s
+const src = ' ctx\n-old line\n+new line\n+/* two\n+   lines */\n tail\n';
+const html = Prism.highlight(src, Prism.languages.diff, 'diff-javascript');
+const code = { innerHTML: html };
+wrapLines(code);
+/* The mock has no DOM, so the trailing empty line span the browser version removes is
+   removed here by hand. */
+const out = code.innerHTML.replace(/<span class="ln"><\/span>$/, '');
+const lines = out.split('<span class="ln">').slice(1);
+const check = [];
+check.push(['lines', lines.length === 6]);
+check.push(['balanced', (out.match(/<span/g) || []).length === (out.match(/<\/span>/g) || []).length]);
+check.push(['no-empty-span', !/<span class="token [^"]*"><\/span>/.test(out)]);
+check.push(['plus-after-minus', /^<span class="token inserted-sign inserted/.test(lines[2])]);
+check.push(['comment-split', /token comment/.test(lines[3]) && /token comment/.test(lines[4])]);
+check.push(['newlines', (out.match(/\n/g) || []).length === 6]);
+const failed = check.filter(c => !c[1]).map(c => c[0]);
+if (failed.length) { console.log('FAILED ' + failed.join(',')); console.log(out); process.exit(1); }
+console.log('ok');
+""" % (os.path.join(SKILL, 'vendor', 'prism'), fn)
+        r = subprocess.run(['node', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.strip(), 'ok')
+
+    def test_fishy_without_reason_gets_a_default(self):
+        page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)
+
+    def test_all_five_levels_render(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h1 skip -->\n<!-- hunk h2 note: a default worth a conscious yes -->\n'
+            '<!-- hunk h3 HOT: verification runs on every request -->\n<!-- hunk h4 -->')
+        self.assertEqual(err, '')
+        self.assertIn('<figure class="hunk lvl-skip" id="h1" data-key="', page)
+        self.assertIn('data-level="0"', page)
+        self.assertIn('<span class="lvl">skip</span>', page)
+        self.assertNotIn('class="flag skip"', page)
+        self.assertIn('<figure class="hunk lvl-note" id="h2"', page)
+        self.assertIn('<p class="flag note"><b>A choice to accept knowingly:</b> a default worth a conscious yes</p>', page)
+        self.assertIn('<figure class="hunk lvl-hot" id="h3"', page)
+        self.assertIn('data-level="4" data-reason="verification runs on every request"', page)
+        self.assertIn('<p class="flag hot"><b>Silent or irreversible if wrong:</b> verification runs on every request</p>', page)
+        self.assertIn('<figure class="hunk lvl-plain file" id="h4"', page)
+        # Reasons are escaped into the attribute and the aside alike.
+        page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 note: uses <b> & "quotes" --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('data-reason="uses &lt;b&gt; &amp; &quot;quotes&quot;"', page)
+        self.assertIn(' uses &lt;b&gt; &amp; &quot;quotes&quot;</p>', page)
+
+    def test_missing_double_dash_prints_usage(self):
+        code, out, err = hunks(self.dir, 'HEAD')
+        self.assertEqual(code, 2)
+        self.assertIn('difftour.py', err)
+
+
+def setup(cwd, target):
+    r = sh(cwd, sys.executable, SCRIPT, '--setup', target)
+    facts = dict(line.split('=', 1) for line in r.stdout.splitlines() if re.match(r'^[A-Z]+=', line))
+    return r.returncode, facts, r.stdout, r.stderr
+
+
+class Setup(RepoCase):
+    """--setup resolves every target spelling into a working directory and a numbered diff."""
+
+    def test_working_tree_targets(self):
+        code, facts, out, err = setup(self.dir, 'dirty')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(facts['ARGS'], '--untracked --')
+        self.assertTrue(os.path.isdir(os.path.join(facts['WORK'], 'topic-12')))
+        self.assertEqual(facts['TOPICS'].split()[0], 'topic-01')
+        self.assertEqual(facts['TOPICS'].split()[-1], 'topic-12')
+        self.assertIn('### h5  new.txt:1', read(os.path.join(facts['WORK'], 'diff.txt')))
+        self.assertIn('(none: working tree)', out)
+        self.assertRegex(facts['DIFF'], r'diff\.txt  \(\d+ lines, 5 hunks\)$')
+        sh(self.dir, 'git', 'add', 'b.txt')
+        code, facts, out, err = setup(self.dir, 'staged')
+        self.assertEqual(facts['ARGS'], '-- --cached')
+        self.assertIn('1 hunks', facts['DIFF'])
+        code, facts, out, err = setup(self.dir, 'uncommitted')
+        self.assertEqual(facts['ARGS'], '--untracked -- HEAD')
+        self.assertIn('5 hunks', facts['DIFF'])
+        shutil.rmtree(facts['WORK'])
+
+    def test_a_repository_tmp_folder_hosts_the_tour_and_is_never_toured(self):
+        os.makedirs(os.path.join(self.dir, 'tmp'))
+        code, facts, out, err = setup(self.dir, 'dirty')
+        self.assertEqual(code, 0, err)
+        self.assertTrue(facts['WORK'].startswith(os.path.join(os.path.realpath(self.dir), 'tmp', 'diff-tour.'))
+                        or facts['WORK'].startswith(os.path.join(self.dir, 'tmp', 'diff-tour.')), facts['WORK'])
+        # tmp/ is not ignored here, yet a second tour does not number the first tour's files,
+        # and gets its own folder.
+        code2, facts2, out2, err2 = setup(self.dir, 'dirty')
+        self.assertEqual(code2, 0, err2)
+        self.assertNotEqual(facts['WORK'], facts2['WORK'])
+        self.assertIn('5 hunks', facts2['DIFF'])
+
+    def test_commit_range_branch_and_pr_targets(self):
+        d = self.dir
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'second')
+        # A feature branch two commits off main, and a bare origin that knows both plus
+        # a pull-request ref, the way GitHub and GitLab expose them.
+        sh(d, 'git', 'checkout', '-q', '-b', 'feature/x')
+        self.write('f.txt', 'feature\n')
+        sh(d, 'git', 'add', 'f.txt')
+        sh(d, 'git', 'commit', '-q', '-m', 'feature work')
+        origin = tempfile.mkdtemp(prefix='difftour-origin-')
+        sh(origin, 'git', 'init', '-q', '--bare')
+        sh(d, 'git', 'remote', 'add', 'origin', origin)
+        sh(d, 'git', 'push', '-q', 'origin', 'main', 'feature/x')
+        sh(origin, 'git', 'symbolic-ref', 'HEAD', 'refs/heads/main')
+        sh(origin, 'git', 'update-ref', 'refs/pull/7/head', 'refs/heads/feature/x')
+        sh(d, 'git', 'fetch', '-q', 'origin')
+        sh(d, 'git', 'remote', 'set-head', 'origin', 'main')
+        try:
+            code, facts, out, err = setup(d, 'HEAD~1')
+            self.assertEqual(code, 0, err)
+            self.assertEqual(facts['ARGS'], '-- HEAD~1~1..HEAD~1')
+            self.assertIn('second', out)
+            code, facts, out, err = setup(d, 'main..feature/x')
+            self.assertEqual(code, 0, err)
+            self.assertIn('feature work', out)
+            self.assertIn('1 hunks', facts['DIFF'])
+            code, facts, out, err = setup(d, 'branch')
+            self.assertEqual(code, 0, err)
+            self.assertRegex(facts['ARGS'], r'^-- [0-9a-f]{12}\.\.HEAD$')
+            code, facts, out, err = setup(d, 'feature/x')
+            self.assertEqual(code, 0, err)
+            self.assertRegex(facts['ARGS'], r'^-- [0-9a-f]{12}\.\.feature/x$')
+            code, facts, out, err = setup(d, '7')
+            self.assertEqual(code, 0, err)
+            self.assertIn('..refs/diff-tour/pr-7', facts['ARGS'])
+            self.assertIn('feature work', out)
+            code, facts, out, err = setup(d, 'https://github.com/acme/repo/pull/7')
+            self.assertEqual(code, 0, err)
+            self.assertIn('feature work', out)
+            # Failures name the problem and stop.
+            sh(d, 'git', 'checkout', '-q', 'main')
+            code, facts, out, err = setup(d, 'branch')
+            self.assertEqual(code, 3)
+            self.assertIn('default branch', err)
+            code, facts, out, err = setup(d, 'feature/y')
+            self.assertEqual(code, 3)
+            self.assertIn('not a branch, commit, range', err)
+            self.assertIn('feature/x', err)
+            code, facts, out, err = setup(d, '99')
+            self.assertEqual(code, 3)
+            self.assertIn('refs/pull/99/head', err)
+        finally:
+            shutil.rmtree(origin)
+
+    def test_setup_fetches_origin_and_puts_the_branch_state_to_the_human(self):
+        d = self.dir
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'second')
+        sh(d, 'git', 'checkout', '-q', '-b', 'feature/x')
+        self.write('f.txt', 'feature\n')
+        sh(d, 'git', 'add', 'f.txt')
+        sh(d, 'git', 'commit', '-q', '-m', 'feature work')
+        origin = tempfile.mkdtemp(prefix='difftour-origin-')
+        other = tempfile.mkdtemp(prefix='difftour-other-')
+        sh(origin, 'git', 'init', '-q', '--bare')
+        sh(origin, 'git', 'symbolic-ref', 'HEAD', 'refs/heads/main')
+        sh(d, 'git', 'remote', 'add', 'origin', origin)
+        sh(d, 'git', 'push', '-q', '-u', 'origin', 'main', 'feature/x')
+        sh(d, 'git', 'remote', 'set-head', 'origin', 'main')
+        sh(origin, 'git', 'tag', 'v1', 'refs/heads/main')
+        try:
+            # In sync: a plain confirmation with two options.
+            code, facts, out, err = setup(d, 'feature/x')
+            self.assertEqual(code, 0, err)
+            self.assertTrue(facts['BASE'].startswith('origin/main  (fetched now; local main is in sync)'), facts['BASE'])
+            self.assertEqual(facts['TIP'], 'feature/x  (local; in sync with origin/feature/x)')
+            self.assertIn('ASK: Tour this commit on feature/x against origin/main?', out)
+            options = [l for l in out.splitlines() if l.startswith('OPTION: ')]
+            self.assertEqual([o.split(' | ')[0] for o in options], ['OPTION: Tour this commit', 'OPTION: Stop'])
+            works = [facts['WORK']]
+            self.assertNotIn('=>', out)
+
+            # Someone else pushes to the branch and to main: local is behind both. Setup
+            # fetches, compares against origin's main, reports the gap and offers the pushed
+            # branch as a target; the local branch itself is never moved.
+            sh(other, 'git', 'clone', '-q', origin, '.')
+            sh(other, 'git', 'config', 'user.email', 'o@example.com')
+            sh(other, 'git', 'config', 'user.name', 'O')
+            sh(other, 'git', 'checkout', '-q', 'feature/x')
+            with open(os.path.join(other, 'g.txt'), 'w') as f:
+                f.write('pushed by a colleague\n')
+            sh(other, 'git', 'add', 'g.txt')
+            sh(other, 'git', 'commit', '-q', '-m', 'colleague work')
+            sh(other, 'git', 'checkout', '-q', 'main')
+            with open(os.path.join(other, 'm.txt'), 'w') as f:
+                f.write('main moved on\n')
+            sh(other, 'git', 'add', 'm.txt')
+            sh(other, 'git', 'commit', '-q', '-m', 'main moved on')
+            sh(other, 'git', 'push', '-q', 'origin', 'main', 'feature/x')
+            local_tip = sh(d, 'git', 'rev-parse', 'refs/heads/feature/x').stdout.strip()
+            local_main = sh(d, 'git', 'rev-parse', 'refs/heads/main').stdout.strip()
+            code, facts, out, err = setup(d, 'feature/x')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('local main is 1 behind', facts['BASE'])
+            self.assertFalse(os.path.exists(os.path.join(d, '.git', 'refs', 'tags', 'v1')))   # --no-tags
+            self.assertEqual(facts['TIP'], 'feature/x  (local; 0 ahead of and 1 behind origin/feature/x)')
+            self.assertIn('Your branch is 1 behind origin/feature/x.', out)
+            self.assertIn('OPTION: Tour origin/feature/x instead | the pushed state, 1 commit you do not have locally => --setup origin/feature/x', out)
+            self.assertIn('OPTION: Stop | pull or rebase first', out)
+            self.assertNotIn('colleague work', out)          # the local branch does not have it
+            self.assertEqual(sh(d, 'git', 'rev-parse', 'refs/heads/feature/x').stdout.strip(), local_tip)
+            self.assertEqual(sh(d, 'git', 'rev-parse', 'refs/heads/main').stdout.strip(), local_main)
+            # The offered command tours the pushed branch, against the fresh origin/main.
+            code, facts, out, err = setup(d, 'origin/feature/x')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertRegex(facts['ARGS'], r'^-- [0-9a-f]{12}\.\.origin/feature/x$')
+            self.assertIn('colleague work', out)
+            self.assertNotIn('main moved on', out)            # the base is origin/main, not the stale local main
+            self.assertEqual(facts['TIP'], 'origin/feature/x  (remote-tracking branch; no local branch of that name)')
+
+            # A local commit on top: diverged, both counts in the question.
+            self.write('h.txt', 'unpushed\n')
+            sh(d, 'git', 'add', 'h.txt')
+            sh(d, 'git', 'commit', '-q', '-m', 'unpushed work')
+            code, facts, out, err = setup(d, 'branch')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('Your branch is 1 ahead of and 1 behind origin/feature/x.', out)
+            self.assertIn('OPTION: Tour these 2 commits | the local branch as it is, including 1 unpushed commit', out)
+
+            # A branch that tracks a local branch has no pushed state to offer: no `=>` option,
+            # and the question does not talk about origin.
+            sh(d, 'git', 'branch', '-q', '--track', 'feature/local', 'feature/x')
+            sh(d, 'git', 'checkout', '-q', 'feature/local')
+            self.write('i.txt', 'on the local tracker\n')
+            sh(d, 'git', 'add', 'i.txt')
+            sh(d, 'git', 'commit', '-q', '-m', 'tracker work')
+            code, facts, out, err = setup(d, 'feature/local')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('tracks the local branch feature/x, 1 ahead and 0 behind it', facts['TIP'])
+            self.assertNotIn('=>', out)
+            self.assertNotIn('Your branch is', out)
+            sh(d, 'git', 'checkout', '-q', 'feature/x')
+
+            # origin unreachable: the fetch fails, setup still works and says the base may be stale.
+            sh(d, 'git', 'remote', 'set-url', 'origin', os.path.join(origin, 'gone'))
+            code, facts, out, err = setup(d, 'feature/x')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('NOT fetched, may be stale', facts['BASE'])
+            self.assertIn('origin could not be reached', out)
+            # Working-tree tours ask nothing.
+            self.write('f.txt', 'edited\n')
+            code, facts, out, err = setup(d, 'dirty')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertNotIn('ASK:', out)
+        finally:
+            shutil.rmtree(origin)
+            shutil.rmtree(other)
+            for w in works:
+                shutil.rmtree(w, ignore_errors=True)
+
+
+if __name__ == '__main__':
+    unittest.main()

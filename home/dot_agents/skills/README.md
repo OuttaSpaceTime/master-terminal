@@ -32,6 +32,8 @@ All skills that produce artifacts write to `.claude/` relative to the project ro
 | /plan | `.claude/docs/plans/` | `plan-YYYYMMDD-HHMMSS.md` |
 | /review | `.claude/docs/reviews/` | `NNN-<name>-YYYYMMDD.md` |
 | /sketch | `.claude/docs/sketches/` | `YYYYMMDD-<topic>.md` |
+| /diff-tour | system temp or `tmp/` | `diff-tour.<rand>/diff-tour.html` |
+| /sketch-diff-tour | system temp | `sketch-tour.<rand>/sketch-tour.html` |
 | /walkthrough | none (interactive only) | — |
 | /control-flow-trace | none (inline output) | — |
 | /strict-diff | none (inline output) | — |
@@ -45,6 +47,9 @@ Skills can be chained — the output of one feeds the next:
 - `/scout` → `/walkthrough` (walkthrough walks through unknowns)
 - `/plan` → `/walkthrough` (walkthrough walks through the execution flow)
 - `/explore-solutions` → `/walkthrough` (walkthrough on chosen approach)
+- `/sketch` → `/sketch-diff-tour` (the sketch's file list and decisions seed the draft)
+- `/explore-solutions` → `/sketch-diff-tour` (one worktree and one tour per candidate approach)
+- `/sketch-diff-tour` → `/diff-tour` (same page, once the change is really built)
 
 When chaining, the downstream skill reads the most recent artifact from the upstream skill's directory.
 Exception: `/walkthrough` consumes upstream artifacts but produces none itself.
@@ -53,5 +58,5 @@ Exception: `/walkthrough` consumes upstream artifacts but produces none itself.
 
 **Interactive (checkpoint-based)**: scout, plan, review, walkthrough, diff-review, explore-solutions, control-flow-trace
 **Autonomous loop**: autoresearch
-**Single-pass**: sketch, strict-diff, research
+**Single-pass**: sketch, strict-diff, research, diff-tour, sketch-diff-tour
 **Workspace-local orchestration**: dot-manage
