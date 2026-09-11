@@ -1,7 +1,7 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-09-10
+updated: 2026-09-11
 ---
 
 # Wiki Index
@@ -14,7 +14,8 @@ updated: 2026-09-10
 - [Kitty](kitty.md) — shortcuts, sessions, tab titles
 - [Neovim](neovim.md) — LazyVim shortcuts, navigation, and heredoc syntax highlighting
 - [Zsh Completion](zsh-completion.md) — `zsh-autocomplete` freeze note and the `fzf-tab` replacement
-- [GNOME](gnome.md) — hotkeys, workspace navigation, window management
+- [GNOME](gnome.md) — hotkeys, workspace navigation, window switching, known collisions
+- [Pop Shell](pop-shell.md) — System76 auto-tiling extension on Ubuntu 24.04: branch choice, source install, hjkl tiling keys, the apply-gnome-shortcuts conflict, missing pop-launcher
 - [Git Hooks](git-hooks.md) — RuboCop hook version drift and `--no-server`
 - [Mouse Follows Focus](mouse-follows-focus.md) — extension path, focus-warp bug, patch direction
 - [Mouse Remapping](mouse-remapping.md) — MX Ergo S trackball-nav daemon, gesture mapping, sensitivity tuning

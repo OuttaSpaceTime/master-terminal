@@ -2,10 +2,26 @@
 title: Mouse Follows Focus
 tags: [gnome, extension, mouse, focus]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-09-11
 ---
 
 # Mouse Follows Focus
+
+> **Superseded since 2026-09-11.** [Pop Shell](pop-shell.md) implements this natively via
+> `mouse-cursor-follows-active-window` (default `true`), and does it correctly: it warps
+> only on keyboard shortcuts and touchpad gestures, so the input-origin problem this fork
+> spent its whole design budget working around does not arise. The fork is disabled
+> (`Enabled: No`, in `disabled-extensions`) and the upstream extension stays disabled too.
+>
+> The kitty title-bar warp bug below is therefore moot — it was caused by the fork
+> reacting to mouse-driven focus changes, which Pop Shell never does.
+>
+> Re-enable only if Pop Shell is removed: `gnome-extensions enable mousefollowsfocus-local@felix.local`
+>
+> Pointer landing position is Pop Shell's `mouse-cursor-focus-location`
+> (`0=TopLeft 1=TopRight 2=BottomLeft 3=BottomRight 4=Center`, set to `4` here).
+>
+> Everything below is kept as the record of the fork investigation.
 
 Upstream installed extension path:
 

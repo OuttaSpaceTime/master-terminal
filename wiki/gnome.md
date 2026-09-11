@@ -2,36 +2,37 @@
 title: GNOME
 tags: [gnome, hotkeys, shortcuts, desktop]
 created: 2026-04-10
-updated: 2026-04-10
+updated: 2026-09-11
 ---
 
 # GNOME
 
 Custom hotkeys for the GNOME desktop environment.
 
+> Window movement, tiling, monitor and workspace-direction keys are owned by
+> **[Pop Shell](pop-shell.md)** since 2026-09-11. This page covers only what Pop Shell
+> does not bind. The old `Super+h/j/k/l` split/maximize scheme documented here is gone.
+
 ## Workspace Navigation
 
 | Shortcut | Action |
 |---|---|
-| Alt 1–4 | Switch workspaces |
-| Super Shift 1–4 | Move to workspace 1–4 |
-| Super Alt H / L | Switch to workspace left / right |
-| Ctrl Super H / L | Move window to monitor left / right |
+| Alt 1–4 | Switch to workspace 1–4 |
+| Shift Alt 1–4 | Move window to workspace 1–4 |
+| Ctrl Super J / K | Switch workspace down / up (set by Pop Shell) |
 
-## Window Management
+Workspaces are static, not dynamic: `dynamic-workspaces false` with `num-workspaces 4`,
+applied by `apply-gnome-shortcuts`.
+
+## Window Switching
 
 | Shortcut | Action |
 |---|---|
-| Alt Tab / Super Tab | Switch windows |
+| Alt Tab | Switch windows |
+| Super Tab | Switch applications |
+| Super ` / Alt ` | Switch windows of an application |
 | Alt Escape | Switch windows directly |
-| Super ` | Switch windows of an application |
-| Super Shift ` | Switch windows of an app (reverse) |
-| Shift Alt ` | Switch windows of an app directly |
-| Super H | View split on left |
-| Super L | View split on right |
-| Super J | Restore window |
-| Super K | Maximize window |
-| Super Shift Q | Close window |
+| Alt F2 | Run dialog |
 
 ## Mouse
 
@@ -44,24 +45,38 @@ Custom hotkeys for the GNOME desktop environment.
 
 | Shortcut | Action |
 |---|---|
-| Super Q | Show dock |
-| Super 1–9 | Toggle apps in dock |
+| Super 1–9 | Toggle apps in dash-to-panel |
+
+GNOME Shell's own `switch-to-application-1..9` bindings are cleared by
+`apply-gnome-shortcuts` so dash-to-panel owns `Super+1–9` without collision.
 
 ## System
 
 | Shortcut | Action |
 |---|---|
 | Super V | Show notifications |
-| Super S | Quick settings |
-| Super Shift L | Lock screen |
+| Super S | Quick settings — **collides with Pop Shell**, see below |
+| Super Escape | Lock screen |
+| Super Shift I | Toggle WH-1000XM5 headset profile |
 | Right Super | Overview |
+
+`toggle-overview` (was `Super+S`) is cleared by Pop Shell's `configure.sh`; the overview
+is reachable via the Right Super overlay key.
+
+## Known collisions
+
+- **Super S** is GNOME's `toggle-quick-settings` and Pop Shell's `toggle-stacking-global`.
+  Rebind one of them if stacking or quick settings misbehaves.
+- **Super Q** is now close-window (Pop Shell). It previously showed the dock.
 
 ## Persistence
 
-- GNOME shortcut changes can drift back to defaults after login or updates if they are only changed in the GUI.
-- This repo re-applies the custom movement bindings from `~/.local/bin/apply-gnome-shortcuts` via a GNOME autostart entry.
-- Current mapping uses `Ctrl+Super+h/l` for monitor movement, `Super+Alt+h/l` for workspace switching, and `Alt+Shift+h/l` for moving windows to the left/right workspace.
-- Screen lock is pinned to `Super+Shift+l` through the shortcut script so it survives GNOME resets and login races.
-- `tiling-assistant` still ships the old `Super+Left/Right/Up/Down` defaults, but once its own bindings are cleared it no longer suppresses native GNOME defaults for us.
-- The durable fix is to run the shortcut script in login mode, which reapplies the `h/j/k/l` mapping immediately and again after delayed retries so later session startup resets do not win.
-- Dash-to-panel hotkeys own `Super+1-9` for app launch/switch, so GNOME Shell app-switch bindings for `Super+1-9` are cleared to avoid collisions.
+- GNOME shortcut changes drift back to defaults after login or updates if they are only
+  changed in the GUI.
+- `~/.local/bin/apply-gnome-shortcuts` runs from a GNOME autostart entry in `--login`
+  mode, reapplying at 0s, +5s, +20s and +50s so later session-startup resets do not win.
+- That retry loop is aggressive enough to beat other extensions, which is why every
+  binding Pop Shell owns was **removed** from the script — otherwise it silently undid
+  Pop Shell about a minute after each login. See [Pop Shell](pop-shell.md).
+- What the script still pins: static workspaces, cleared `switch-to-application-1..9`,
+  kitty as default terminal, and the Super+Shift+I headset toggle.
