@@ -110,10 +110,10 @@ WEAK_PROBE_MSG = (
     "verify.\n"
 )
 SCRIPT_MSG = (
-    "SolveIt: you wrote {name} but this turn never shows it. The human reads a task "
-    "script before it runs — say in one line what it does and what you expect it to "
-    "print, show the script fenced, and hand over `▶ nvim {path}`. Their next go "
-    "runs it.\n"
+    "SolveIt: you wrote {name} but this turn neither ran it nor shows it. Either run "
+    "it now and report what it printed, or — if it is not ready to run — say in one "
+    "line what it does and what you expect it to print, show the script fenced, and "
+    "hand over `▶ nvim {path}`.\n"
 )
 LENGTH_MSG = (
     "SolveIt: {n} characters of prose since the human's last message, and they did "
@@ -168,7 +168,7 @@ MULTILINE_MSG = (
     "mangles newlines — every command they run must fit on ONE line. Join steps with "
     "'&&' or ';' onto a single line, or if it genuinely can't be one line, write it as "
     "a task script and hand the human the one-line run command (e.g. "
-    "'▶ Verify: python .solve/tasks/<f>/01-name.py'). No backslash line-continuations, "
+    "'▶ Verify: python .solve/tasks/<f>/current.py'). No backslash line-continuations, "
     "no multi-line bash/sh/zsh fenced blocks.\n"
 )
 
@@ -290,7 +290,7 @@ def main():
         time.sleep(interval)
         span, last_user, ran, scripts = _read_span(path)
     body = _prose(span)
-    for fp in scripts:
+    for fp in scripts if not ran else []:
         name = os.path.basename(fp)
         if name not in span or not _FENCE_BLOCK.search(span):
             die(SCRIPT_MSG.format(name=name, path=fp))

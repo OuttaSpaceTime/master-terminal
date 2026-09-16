@@ -317,6 +317,10 @@ def _write(path):
     return {"type": "tool_use", "id": "w1", "name": "Write", "input": {"file_path": path}}
 
 
+def _bash():
+    return {"type": "tool_use", "id": "b1", "name": "Bash", "input": {"command": "ruby x"}}
+
+
 def test_blocks_task_script_written_but_not_shown(run):
     code, err = run([
         _user("go, probe it"),
@@ -338,6 +342,28 @@ def test_task_script_shown_passes(run):
         _assistant(_write("/repo/.solve/tasks/t/01-probe-token-expiry.py"), _text(text)),
     ])
     assert code == 0
+
+
+def test_task_script_written_and_run_in_one_turn_needs_no_listing(run):
+    """The script was sketched in chat before the go, so the turn that writes and
+    runs it reports the output instead of re-showing the source."""
+    code, _ = run([
+        _user("go"),
+        _assistant(_write("/repo/.solve/tasks/t/current.rb"),
+                   _bash(),
+                   _text("Expiry is 3600.\n▶ Verify: ruby .solve/tasks/t/current.rb")),
+    ])
+    assert code == 0
+
+
+def test_task_script_written_without_running_still_needs_a_listing(run):
+    code, err = run([
+        _user("go, write the probe"),
+        _assistant(_write("/repo/.solve/tasks/t/current.rb"),
+                   _text("Written.\n▶ Try: ruby .solve/tasks/t/current.rb")),
+    ])
+    assert code == 2
+    assert "current.rb" in err
 
 
 def test_bash_task_script_listing_is_not_a_multiline_command(run):

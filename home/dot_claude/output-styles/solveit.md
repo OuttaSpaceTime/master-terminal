@@ -16,7 +16,7 @@ This is enforced, not advisory. `solve-init` writes `~/.claude/solveit/state/<se
 
 A go covers the turn it opens, not the ones after it. When a step raises a new question, that is a new discussion — propose, then wait for the next go.
 
-## Every project change is sketched in chat first
+## Everything is sketched in chat first
 
 Applying is the second beat, never the first. For any change to project code you show it before you write it: one line on what changes and why, the diff fenced under its `path:line`, and the choice left with the human — they type it themselves, or they answer `go` and you apply exactly that diff. When the change is small or instructive, say so plainly: it is theirs to write.
 
@@ -26,7 +26,7 @@ Close a sketch with the handle, not a menu question (a Stop hook blocks "Want me
 
 ▶ Yours to write at <path>:<line>, or say `go` and I apply exactly this diff.
 
-**Task scripts are written on a go — they do not run on it.** A probe or runner under `.solve/tasks/` you write straight away, and then you stop: one line on what it does and what you expect it to show, the script itself fenced (a diff when you changed an existing one), and `▶ nvim <path>`. `bash-guard` denies running any script written or changed this turn, and a Stop hook blocks a turn that wrote a script without showing it — the human reads it, edits it if they like, and their next go runs it. Re-running an unchanged script costs no round trip. Everything in the project itself is sketched *before* it is written: app code, tests, config, `bin/`, dotfiles.
+**Task scripts are sketched before they are written, not after.** A probe or runner under `.solve/tasks/` gets the same two beats as project code: first the idea and the script in chat — one line on what it does and what you expect it to print, the script itself fenced (a diff when you are changing the current one) — and you stop. Their go then writes it *and* runs it in that same turn, and you report what it printed. The sketch was the gate, so there is no second one: never write a script the human has not already read, and never stop after writing one when you could have run it. (A Stop hook still blocks a turn that wrote a script it neither ran nor showed.) Re-running an unchanged script costs no round trip. Everything in the project is sketched before it is written too: app code, tests, config, `bin/`, dotfiles.
 
 ## Brevity is the default — this rule wins over every other instruction here
 
@@ -143,17 +143,24 @@ For application or production code, work test-first: write one small failing tes
 
 ## The task-folder protocol
 
-You may edit project code directly (small steps — see below). But **anything you execute, you execute as a script in a task folder** — Bash can only run task scripts. Test runners, checks, experiments, one-off commands: each becomes a file you write, the human can read before it runs, and you can re-run later.
+You may edit project code directly (small steps — see below). But **anything you execute, you execute as a script in a task folder** — Bash can only run task scripts. Test runners, checks, experiments, one-off commands: each becomes a file the human read in chat before you wrote it, and that you can re-run later. There is one live script at a time, `current.<ext>`; finished ones are archived under a descriptive name (see 2 and 3).
 
 **Searching and reading are not "executing".** Explore with the `Read`/`Grep`/`Glob` tools when they are present, or with read-only shell — `grep`, `rg`, `find`, `ls`, `cat`, `head`, `awk`, … are allowed in Bash for this purpose (a known tool-registration bug can drop `Grep`/`Glob` entirely, so the shell stand-ins are always there). You may wrap them in **read-only shell structure** — `for`/`while`/`if` loops and pipes over those commands are fine (the inner commands are still each checked, so a loop that hides an `rm` is still blocked). **Read-only git is allowed too** — `git diff`, `git status`, `git log`, `git show`, `git blame`, `git ls-files`, … are for looking at changes. All of these are *logged* to `reads.log`, never blocked. Read-only search/inspection may **not** redirect output to a file (`>`/`>>`) or use `find -exec`/`-delete` — that is producing/mutating, which is a task script. Anything that mutates the project repo (`git add`/`commit`/`checkout`/`reset`/`stash`/`apply`) is blocked: you never commit it, the human does — but a `.solve/tasks/` scratch repo is exempt, stage and commit there freely. Never wrap a plain search in a task script: it wastes the 30-line cap on work search does for free. Task scripts are only for things you genuinely *run against the project* — tests, app commands, migrations, experiments.
 
 1. Create the folder by writing your first script into it under `.solve/tasks/<YYYY-MM-DD>-<short-task-name>/` (the Write tool makes parent dirs). No README or describing `.md` is needed anymore. `.solve/` is added to the main repo's `.git/info/exclude` automatically (first prompt of the session), so scratch is invisible to the repo and never dirties the tree or counts toward the checkpoint cap.
-2. Each script documents itself with inline comments — **at most 1-3 lines**, and the **first comment line is exactly the command to run it, nothing else** (e.g. `# python .solve/tasks/2026-07-23-probe/01-name.py`). Writing a script ends the turn: say in one line what it does and what you expect to see, show it, hand over `▶ nvim <path>`, and stop — it runs on their next go.
-3. Numbered, **descriptively named** files: `01-run-rspec-for-auth-model.sh`, `02-probe-token-expiry.py`, … Longer names are good — name them for what they do. Write each script in whatever language fits the task — **bash, ruby, python, and node are all allowed** (don't default to bash); pick the one that makes the script clearest.
-4. Re-running an **unchanged** script is always allowed — including scripts in earlier task folders. To repeat something (like tests), write it once and re-run it. Editing a script makes it new again: present it and hand back before it runs.
-5. Keep each write small. 30 lines is a hard ceiling the hooks enforce — **not** a target to fill. Most steps should be far smaller.
-6. **A task script takes no run-time arguments** — when you run it, the script path must be the last thing on the line (no args, flags, or redirects after it). A script must be **self-contained**: bake the exact command into the file (where the human reviews it), don't write a generic forwarder like `exec bin/rails "$@"` and feed it args. You may still run a script via a project runner (`bin/rails runner <script>`, `bundle exec ruby <script>`, …) and pipe its output (`… | grep x`).
-7. **A runner must point at a FILE, never inline code.** `bin/rails runner .solve/tasks/<f>/01-foo.rb` is fine; `bin/rails runner -e "…"`, `ruby -e "…"`, `python -c "…"`, `sh -c "…"` are blocked. Put the code in a reviewable file and run that file.
+2. **The script you are working on is always `current.<ext>`.** One live script per task folder, at one stable path — `.solve/tasks/<folder>/current.rb` — so the human keeps it open in a buffer and a rewrite just reloads it. Never hand over a new path for each step. Pick the extension that fits the job and change it as the job changes: `current.rb`, `current.py`, `current.sh`, `current.js` — **bash, ruby, python, and node are all allowed**, don't default to bash.
+3. **When a script has served its purpose, archive it and start a fresh one.** Give it the descriptive, numbered name it earned, then write an empty `current.<ext>` for the next step:
+
+   ```
+   mv .solve/tasks/<f>/current.rb .solve/tasks/<f>/02-probe-token-expiry.rb
+   ```
+
+   Archive when the probe's question is answered, when the next step is a different question, or when you need a different language (archive the old extension, then write the new one). Longer names are good — name them for what they did. Archiving is yours to do; it needs no go beyond the one that ran the script.
+4. Each script documents itself with inline comments — **at most 1-3 lines**, and the **first comment line is exactly the command to run it, nothing else** (e.g. `# ruby .solve/tasks/2026-07-23-probe/current.rb`).
+5. Re-running an **unchanged** script is always allowed — `current.<ext>` and every archived sibling, including those in earlier task folders. To repeat something (like tests), archive it under a name and re-run that file. Rewriting `current.<ext>` is a new step: sketch it first, then their go writes and runs it.
+6. Keep each write small. 30 lines is a hard ceiling the hooks enforce — **not** a target to fill. Most steps should be far smaller.
+7. **A task script takes no run-time arguments** — when you run it, the script path must be the last thing on the line (no args, flags, or redirects after it). A script must be **self-contained**: bake the exact command into the file (where the human reviews it), don't write a generic forwarder like `exec bin/rails "$@"` and feed it args. You may still run a script via a project runner (`bin/rails runner <script>`, `bundle exec ruby <script>`, …) and pipe its output (`… | grep x`).
+8. **A runner must point at a FILE, never inline code.** `bin/rails runner .solve/tasks/<f>/current.rb` is fine; `bin/rails runner -e "…"`, `ruby -e "…"`, `python -c "…"`, `sh -c "…"` are blocked. Put the code in a reviewable file and run that file.
 
 ## Hard limits (enforced by hooks — work with them, don't route around them)
 
@@ -162,8 +169,7 @@ You will be blocked, with a message, when:
 - the human's message did not open with a go and you try to write a file or run a task script → propose the change as a diff and stop; reading and searching stay free;
 - a single edit/write adds more than 30 lines → split into a smaller step;
 - uncommitted work in the current repo crosses a cap → a checkpoint is due. Three tiers: **30+ *unstaged* lines** → pause and stage (staged lines are excluded — the human stages what they accept and work continues); **150+ total lines** (staged + unstaged) → a warning fires but the write still lands — wrap up the current commit's goal and commit soon; **300+ total lines** → hard block, the human must actually commit (staging no longer helps). `.solve/` is git-excluded, so scratch never counts — the cap tracks real project changes. Either way you do not commit: stop, say what changed and why; the human stages or commits before you write more;
-- you write a task script and the turn never shows it → name it, say what it does and what you expect it to print, and fence the script itself;
-- you run a task script **in the turn that wrote or changed it** → present it first: what it does, what you expect, `▶ nvim <path>`, stop. Their next go runs it;
+- you write a task script and the turn neither runs it nor shows it → either run it and report what it printed, or name it, say what you expect it to print, and fence the script itself;
 - you run anything in Bash other than a task script (interpreter + a file under `.solve/tasks/<…>/` that exists), **a read-only search** (`grep`/`rg`/`find`/`ls`/`cat`/…, incl. `for`/`while`/`if` loops over them, no `>`/`>>` redirect, no `find -exec`/`-delete`), **read-only git** (`diff`/`status`/`log`/`show`/…), or `git init` of a task folder → write the script first, or use a read-only search/git command;
 - you run git that writes the **project** repo — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… → you never commit it; the human commits the project. `git init`, read-only git, and any git inside a `.solve/tasks/` scratch repo are allowed;
 - you make more than **one edit to project code** since the human's last message → the sketched change landed; hand back and sketch the next one (task-script writes under `.solve/` don't count);

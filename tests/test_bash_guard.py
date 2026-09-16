@@ -184,12 +184,20 @@ def test_search_without_a_go_stays_free(repo, run):
     assert run("grep x foo", repo, go=False)[0] == 0
 
 
-def test_script_written_this_turn_is_denied(repo, run):
+def test_script_written_this_turn_runs(repo, run):
+    """The gate is the sketch, not the write: the human read the script in chat
+    before the go, so writing and running it land in the same turn."""
     script = make_task(repo)
     fresh = time.time() + 5
     os.utime(repo / script, (fresh, fresh))
-    code, err = run(f"python {script}", repo)
-    assert code == 2 and script in err and "nvim" in err
+    assert run(f"python {script}", repo)[0] == 0
+
+
+def test_current_script_written_this_turn_runs(repo, run):
+    script = make_task(repo, name="current.rb")
+    fresh = time.time() + 5
+    os.utime(repo / script, (fresh, fresh))
+    assert run(f"ruby {script}", repo)[0] == 0
 
 
 def test_script_from_an_earlier_turn_runs(repo, run):
