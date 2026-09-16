@@ -21,12 +21,13 @@ A command is allowed only if every segment is one of:
     Each such command is appended to reads.log so the human sees what was read;
   - read-only git inspection: git diff/status/log/show/blame/ls-files/... — for
     looking at changes; no output redirection; also appended to reads.log;
-  - `git init` of a task folder — to make it its own scratch repo; commits NOTHING;
+  - `git init` anywhere, and ANY git inside a .solve/tasks/ folder (`git -C
+    .solve/tasks/<f> add/commit/...`) — that scratch repo is not the project;
   - `cd <path>` (navigation); `mv` within .solve/tasks/ (renaming the folder).
-The agent NEVER commits — not the main repo, not its own task folders; the
-human commits everything, leaving the tree DIRTY for review. Anything else is
-blocked: ad-hoc mutating commands, test runners, installs, and git that writes
-other than init (add/commit/--amend/checkout/reset/...). Fails open on any error.
+The agent NEVER commits the PROJECT repo; the human commits everything there,
+leaving the tree DIRTY for review. Anything else is blocked: ad-hoc mutating
+commands, test runners, installs, and project git that writes (add/commit/
+--amend/checkout/reset/...). Fails open on any error.
 """
 import datetime
 import json
@@ -98,7 +99,7 @@ BUNDLE_READONLY = {
     "doctor", "version",
 }
 
-COMMIT_MSG = "SolveIt: you never commit or amend, anywhere. Say what changed and why, then stop."
+COMMIT_MSG = "SolveIt: you never commit or amend the project repo. Say what changed and why, then stop."
 GENERIC_MSG = (
     "SolveIt: Bash runs task scripts + read-only search. Put it under .solve/tasks/<f>/ "
     "and run that file, or look with grep/rg/find/ls/cat/head/awk."
@@ -119,8 +120,9 @@ FRESH_MSG = (
     "hand over `▶ nvim {path}`, and stop. Their next go runs it."
 )
 GIT_MSG = (
-    "SolveIt: git may only LOOK — diff/status/log/show/blame/ls-files/rev-parse, plus "
-    "`git init` for a task folder. You never stage, commit, or mutate the repo."
+    "SolveIt: in the project repo git may only LOOK — diff/status/log/show/blame/"
+    "ls-files/rev-parse. Staging and committing are free inside a .solve/tasks/ "
+    "scratch repo (`git -C .solve/tasks/<f> ...`), never in the project."
 )
 
 
@@ -227,6 +229,8 @@ def segment_ok(toks, cwd):
             return (True, None, False)
         return (False, "SolveIt: `mv` is only allowed to rename within .solve/tasks/ (e.g. a task folder).", False)
     if base == "git":
+        if under_tasks(git_target_dir(toks, cwd), cwd):
+            return (True, None, False)
         sub = git_subcommand(toks)
         if sub == "init":  # optionally make a task folder its own scratch repo;
             return (True, None, False)  # `init` commits NOTHING

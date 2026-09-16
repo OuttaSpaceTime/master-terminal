@@ -80,6 +80,8 @@ ALLOWED = [
     "grep x foo | head",
     "for f in a b; do grep x $f; done",
     "git init",
+    "git -C .solve/tasks/t add -A",
+    "git -C .solve/tasks/t commit -m scratch",
 ]
 
 BLOCKED = [

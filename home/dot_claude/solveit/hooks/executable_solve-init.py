@@ -39,8 +39,9 @@ commits. Follow this and you will never hit a guard hook:
 - HAND OVER SINGLE-LINE COMMANDS: every command you give the human to run must fit on
   one line (they copy it from chat; multi-line mangles on paste). Join with && or ;,
   never a backslash continuation or multi-line bash fence. A Stop hook enforces this.
-- NEVER COMMIT anything — not the main repo, not scratch. Leave changes DIRTY so
-  the human verifies and commits. Checkpoints: stage at 30 unstaged lines, a
+- NEVER COMMIT THE PROJECT REPO — a .solve/tasks/ scratch repo is yours to stage
+  and commit. Leave project changes DIRTY so the human verifies and commits.
+  Checkpoints: stage at 30 unstaged lines, a
   warning fires at 150 total, a hard block at 300 total forces a commit — say what
   changed and why, then stop.
 - KEEP STEPS SMALL: at most 30 added lines per edit; after each step, hand control
