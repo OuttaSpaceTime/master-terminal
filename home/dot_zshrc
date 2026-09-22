@@ -196,6 +196,7 @@ bindkey '^[[13;5u' autosuggest-accept
 # Ctrl+Space fetches a suggestion on demand.
 bindkey '^ ' autosuggest-fetch
 
+export PATH="$HOME/.local/bin:$PATH"
 FZF_CTRL_T_COMMAND='' FZF_ALT_C_COMMAND='' eval "$(fzf --zsh)"
 bindkey '^I' fzf-tab-complete
 
@@ -355,4 +356,3 @@ unset PAGER
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
