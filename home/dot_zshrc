@@ -356,3 +356,6 @@ unset PAGER
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# hunk
+export PATH="$HOME/.hunk/bin:$PATH"
