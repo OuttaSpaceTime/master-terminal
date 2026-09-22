@@ -3,6 +3,12 @@
 require 'json'
 require 'open3'
 
+def next_input(answer)
+  fenced = answer.scan(/```[a-z]*\n(.*?)```/m).last&.first
+  inline = answer.scan(/\u25B6[^\n`]*`([^`\n]+)`/).last&.first
+  (fenced || inline)&.strip
+end
+
 payload = JSON.parse($stdin.read)
 
 question = payload.fetch('question')
@@ -33,6 +39,8 @@ instruction =
       Session metadata: #{JSON.generate(metadata)}
 
       Question: #{question}
+
+      End your reply with the single most useful next Ruby probe in a fenced code block.
     PROMPT
   else
     <<~PROMPT
@@ -66,6 +74,8 @@ instruction =
 
       User question:
       #{question}
+
+      End your reply with the single most useful next Ruby probe in a fenced code block.
     PROMPT
   end
 
@@ -99,7 +109,7 @@ if result_line
 
   print JSON.generate({
     'text' => answer,
-    'next_input' => answer[/```(?:ruby|rb)\n(.*?)```/m, 1]&.strip,
+    'next_input' => next_input(answer),
     'session_id' => result_line['session_id']
   })
 else

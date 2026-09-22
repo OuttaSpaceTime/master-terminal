@@ -57,11 +57,20 @@ module RdbgClaudePrompt
         response = JSON.parse(stdout)
         RdbgClaudePrompt.session_id = response['session_id'] if response['session_id']
         puts response['text'].to_s.strip
+        arm_prefill(response['next_input']) if response['next_input']
       rescue JSON::ParserError
         puts stdout.strip
       end
     rescue SystemCallError => err
       puts "claude prompt failed: #{err.class}: #{err.message}"
+    end
+
+    def arm_prefill(code)
+      Reline.pre_input_hook = -> {
+        Reline.insert_text(code)
+        Reline.redisplay
+        Reline.pre_input_hook = nil
+      }
     end
 
     def render_context

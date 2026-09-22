@@ -3,6 +3,12 @@
 require 'json'
 require 'open3'
 
+def next_input(answer)
+  fenced = answer.scan(/```[a-z]*\n(.*?)```/m).last&.first
+  inline = answer.scan(/\u25B6[^\n`]*`([^`\n]+)`/).last&.first
+  (fenced || inline)&.strip
+end
+
 payload = JSON.parse($stdin.read)
 
 question = payload.fetch('question')
@@ -32,6 +38,8 @@ instruction =
       Session metadata: #{JSON.generate(metadata)}
 
       Question: #{question}
+
+      End your reply with the single most useful next rdbg command in a fenced code block.
     PROMPT
     else
       <<~PROMPT
@@ -63,6 +71,8 @@ instruction =
 
       User question:
       #{question}
+
+      End your reply with the single most useful next rdbg command in a fenced code block.
     PROMPT
   end
 
@@ -93,7 +103,13 @@ end
 result_line = stdout.each_line.filter_map { |l| JSON.parse(l.strip) rescue nil }.find { |obj| obj['type'] == 'result' }
 
 if result_line
-  print JSON.generate({ 'text' => result_line['result'], 'session_id' => result_line['session_id'] })
+  answer = result_line['result'].to_s
+
+  print JSON.generate({
+    'text' => answer,
+    'next_input' => next_input(answer),
+    'session_id' => result_line['session_id']
+  })
 else
   warn 'Could not parse claude response'
   print JSON.generate({ 'text' => stdout.strip, 'session_id' => nil })
