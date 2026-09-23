@@ -1,0 +1,20 @@
+onboarding = false
+
+[theme]
+name = "catppuccin-latte"
+
+[theme.custom]
+panel_bg = "#fafafa"
+sidebar_bg = "#f0f0f2"
+active_row_bg = "#e2e4ea"
+selection_bg = "#ccd0da"
+text = "#1c1e2a"
+subtext0 = "#3c3f54"
+accent = "#3277f5"
+blue = "#3277f5"
+red = "#fa0032"
+green = "#0da04d"
+yellow = "#e06100"
+peach = "#d65a05"
+teal = "#0f898f"
+mauve = "#9e4bec"

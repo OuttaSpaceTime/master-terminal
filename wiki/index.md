@@ -1,7 +1,7 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-09-11
+updated: 2026-09-22
 ---
 
 # Wiki Index
@@ -31,4 +31,5 @@ updated: 2026-09-11
 - [Bluetooth Audio Toggle](bluetooth-audio-toggle.md) — Super+Shift+i WH-1000XM5 profile switch, codec ceiling, GNOME grab quirks
 - [Solveit Method](solveit-method.md) — fast.ai/Answer.AI methodology and platform, design vocabulary for our own agent skills
 - [Ruby debug gem](ruby-debug-gem.md) — Rails test/server rdbg workflows, record/replay, IRB inspection, and agent-change verification
+- [Herdr](herdr.md) — agent terminal workspace: install, the dark-by-default `catppuccin` theme trap, light theme config, and the PTY render probe
 - [Light Theme Palette](light-theme-palette.md) — the soft-white high-contrast theme: font, core hex palette, where every color lives (kitty/nvim/Claude Code/fzf/lazygit), and the viewport-border/backdrop gotchas

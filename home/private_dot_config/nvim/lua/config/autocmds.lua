@@ -120,3 +120,38 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
   end,
 })
+
+local ruby_def_references = vim.api.nvim_create_namespace("ruby_def_references")
+
+local function is_def_name(node)
+  local def = node:parent()
+  return (def:type() == "method" or def:type() == "singleton_method") and def:field("name")[1]:equal(node)
+end
+
+vim.api.nvim_create_autocmd("CursorMoved", {
+  group = vim.api.nvim_create_augroup("ruby_def_references", { clear = true }),
+  callback = function(ev)
+    if vim.bo[ev.buf].filetype ~= "ruby" then
+      return
+    end
+    vim.api.nvim_buf_clear_namespace(ev.buf, ruby_def_references, 0, -1)
+
+    local node = vim.treesitter.get_node()
+    if node:type() ~= "identifier" or not is_def_name(node) then
+      return
+    end
+
+    local name = vim.treesitter.get_node_text(node, ev.buf)
+    local query = vim.treesitter.query.parse("ruby", "(identifier) @id")
+    for _, id in query:iter_captures(node:tree():root(), ev.buf) do
+      if vim.treesitter.get_node_text(id, ev.buf) == name then
+        local row, col, end_row, end_col = id:range()
+        vim.api.nvim_buf_set_extmark(ev.buf, ruby_def_references, row, col, {
+          end_row = end_row,
+          end_col = end_col,
+          hl_group = is_def_name(id) and "LspReferenceWrite" or "LspReferenceRead",
+        })
+      end
+    end
+  end,
+})
