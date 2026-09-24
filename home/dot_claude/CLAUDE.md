@@ -33,7 +33,7 @@ When the user asks to "walk through", "step through", or "manually QA" something
 - Favor the simplest approach: avoid alias methods, separate migrations with dedup SQL, or over-engineered abstractions unless explicitly requested. Inline and simplify by default; ask before adding complexity.
 - When introducing a new API or method, keep it as minimal as possible and never abstract prematurely. The final shape depends on the developer's taste — I will give the direction on how to structure it. Minimal, literal code helps me and reviewers understand and verify how it works. Favor JRY (Just Repeat Yourself) over DRY here: prefer repetition over speculative abstraction.
 - Simplicity is also *removing* code, not only avoiding abstraction. Don't add `if` guards, defensive re-checks, or parsing for cases the underlying call or surrounding code already handles correctly (e.g. checking `HEAD` exists before `git diff`, which already handles an empty repo). When a branch can't be reached or a check the callee already makes, delete it.
-- Never add comments to new code. Write code that is self-explanatory through naming and structure instead. Only add a comment if I explicitly ask for one.
+- Default to no comments on new code; make it self-explanatory through naming and structure. Where a project rule allows a narrow exception (e.g. a 1–2 line note on a non-obvious workaround), follow that rule.
 
 ## Rails / Database Conventions
 
@@ -41,7 +41,7 @@ When the user asks to "walk through", "step through", or "manually QA" something
 
 ## Testing & Fixtures
 
-- When testing migrations/fixtures, fold index/constraint changes into the existing migration and treat schema issues as fixture-only problems where possible; use the `_fixture model_class` approach for non-conventional table names.
+- When a fixture breaks on a schema change, treat it as a fixture-only problem where possible; use the `_fixture model_class` approach for non-conventional table names. How migrations are split is the project's migration rule's call.
 - Every bug fix needs its own explicit regression test. Incidental fixture coverage does not count as coverage.
 - Prefer dedicated focused unit tests over extending large cascade tests.
 - Run RuboCop only against Ruby files; never against `.yml` fixtures.

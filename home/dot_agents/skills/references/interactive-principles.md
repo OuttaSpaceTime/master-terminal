@@ -9,7 +9,7 @@ Card-based skills in project-local trees (e.g. study-card) also follow these pri
 - Each checkpoint may contain one or more **steps** when the material is too long to present at once. Use steps only when splitting genuinely helps — a checkpoint that fits in one message needs no steps.
 - Each step covers ONE concept, ONE code path, or ONE question.
 - After each step (or single-step checkpoint), pause for back-and-forth discussion before advancing.
-- Keep each message under 150-200 words of prose (plus any code excerpts). Depth comes from multiple exchanges, not long monologues.
+- Keep each message short enough to take in without scrolling (code excerpts aside). Depth comes from multiple exchanges, not long monologues.
 - The developer should never have to scroll back to process what was said.
 
 ## Progress Footer
@@ -21,7 +21,7 @@ Generic format (reference only):
 - **With steps:** `Step 1/2 · Checkpoint 3/4 — <checkpoint title>: <step description>`
 - **Without steps:** `Checkpoint 3/4 — <checkpoint title>`
 
-The footer is a single line at the bottom of each message. Keep descriptions short (under 10 words each).
+The footer is a single line at the bottom of each message; its description is a short phrase, not a sentence.
 
 ## Respecting Developer Expertise
 
@@ -42,8 +42,7 @@ The footer is a single line at the bottom of each message. Keep descriptions sho
 
 ## Message Length
 
-- Each interactive message: aim for 3-12 lines of prose plus any code excerpts.
-- If you need more than 12 lines to explain one concept, you are probably covering multiple concepts — split into separate steps.
+- If one concept takes more than a few short paragraphs to explain, you are probably covering several — split into separate steps.
 - Code excerpts can be longer but should be trimmed to the relevant lines with context.
 
 ## Code Snippet Format

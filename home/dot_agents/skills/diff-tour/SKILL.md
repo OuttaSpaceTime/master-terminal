@@ -297,7 +297,7 @@ You read this part if you are the orchestrator and the workers are running.
 
 The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context.
 
-**The whole summary is under 400 words**, the before/after table's cells not counted. The last tour's ran to 944 and read as a wall of text; a reader spent four minutes on it before the first chapter. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
+**Keep the whole summary short**: the reader takes it in before the first chapter, so it must never read as a wall of text. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
 
 **The enumeration guard applies here too, and matters most here**, because at this zoom level the reader has no diff beside the prose to anchor names to. Describe what a solution or a mechanism changes about the system, never the classes, methods or files it would touch. "Trusted devices become records instead of a cookie" is a mechanism; a list of the six classes that would change is not.
 
@@ -338,7 +338,7 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 
 ### The problem
 
-One paragraph, at most 80 words, about the world *before* this change: what was wrong or missing, for whom, what it cost them, and what constraint shaped the solution that follows. End it with the one sentence that is the whole change in a breath: "The identity provider, which knew the moment the person left, had no way to tell Cards." The page sets this paragraph larger than body copy; it is the only part of the tour whose job is to make the reader care. For a user-facing change, what a user could not do or had to work around. For a refactoring, what was hard, slow or risky to work on, and for whom. For a performance change, what was slow and where that showed. It never describes the solution; the table under the next heading does that. The test for every sentence: if it could be a row in that table, it is one, and it comes out of this paragraph. If you cannot name a problem the change solves, say so; that is a finding.
+One short paragraph about the world *before* this change: what was wrong or missing, for whom, what it cost them, and what constraint shaped the solution that follows. End it with the one sentence that is the whole change in a breath: "The identity provider, which knew the moment the person left, had no way to tell Cards." The page sets this paragraph larger than body copy; it is the only part of the tour whose job is to make the reader care. For a user-facing change, what a user could not do or had to work around. For a refactoring, what was hard, slow or risky to work on, and for whom. For a performance change, what was slow and where that showed. It never describes the solution; the table under the next heading does that. The test for every sentence: if it could be a row in that table, it is one, and it comes out of this paragraph. If you cannot name a problem the change solves, say so; that is a finding.
 
 ### What changes
 
@@ -350,7 +350,7 @@ A bullet list of what the change leaves alone that a reviewer would otherwise wo
 
 ### How it was built
 
-At most 100 words. The mechanisms that carry the change, one list item each, and nothing before the list: no lead sentence. As many as there really are, typically two to four; do not pad to three or merge two real ones to reach three. A change with one mechanism gets one sentence, not a list of one. Tests are never a mechanism: they are expected with every change and belong to the chapter of what they test, so "added tests" or "covered by specs" is not a bullet here. If nothing of substance is left to say, stop; do not invent a bullet to fill the list. "Three mechanisms carry the load" tells the reader what they are about to read instead of reading it, and every such lead has been drivel. If the mechanisms interact in a way the bullets cannot show, say so in one sentence *after* the list, where it has something to point at. This is the mental model a reader needs before the chapters make sense: the shape of the solution, not a list of what was touched.
+The mechanisms that carry the change, one list item each, and nothing before the list: no lead sentence. As many as there really are, typically two to four; do not pad to three or merge two real ones to reach three. A change with one mechanism gets one sentence, not a list of one. Tests are never a mechanism: they are expected with every change and belong to the chapter of what they test, so "added tests" or "covered by specs" is not a bullet here. If nothing of substance is left to say, stop; do not invent a bullet to fill the list. "Three mechanisms carry the load" tells the reader what they are about to read instead of reading it, and every such lead has been drivel. If the mechanisms interact in a way the bullets cannot show, say so in one sentence *after* the list, where it has something to point at. This is the mental model a reader needs before the chapters make sense: the shape of the solution, not a list of what was touched.
 
 ### The spectrum of solutions
 
@@ -358,7 +358,7 @@ The most useful thing a tour can give a reviewer is a sense of where this soluti
 
 The budget is the limit, not the workers. If they return before you are done, finish the spectrum within the budget, then assemble. Never hand the reader a partial spectrum; two solutions and a missing third reads as a judgement that there is no third.
 
-Lay out three alternatives, an exercise borrowed from [Caleb Porzio's deconstructed pull requests](https://calebporzio.com/), under the three fixed headings above, **at most 60 words each**: what the alternative changes about the system, what it buys, what it costs.
+Lay out three alternatives, an exercise borrowed from [Caleb Porzio's deconstructed pull requests](https://calebporzio.com/), under the three fixed headings above, a few sentences each: what the alternative changes about the system, what it buys, what it costs.
 
 - **The minimal solution.** The smallest patch that gets by: minimal blast radius, possibly incomplete scope, possibly code nobody would be proud of.
 - **The maximal solution.** The pure, fundamental fix that solves the problem completely, restructuring other parts of the system where they stand in the way, to leave a thorough and harmonious new world.
@@ -368,7 +368,7 @@ Each of the three has to be a realistic, workable change to *this* repository, o
 
 **Each solution is one paragraph in three parts**, so the reader can weigh the three against each other at a glance: a description of one to three sentences, then `<strong>Buys:</strong>` with one to three strengths, then `<strong>Costs:</strong>` with one to three weaknesses, all in one flowing paragraph. Strengths and weaknesses are phrases, not sentences: "two lines, no migration" or "every reader still leaks". The page tints the strengths green and the weaknesses red, label included, so the two labels have to be exactly these; the script recognises them.
 
-Then, under **Where this change sits**, at most 80 words: which of the three the toured change is closest to, where it deviates, and what that position means for the reviewer. A minimal change invites the question "what did it leave out"; a maximal one invites "was all of this necessary"; a change that sits between them invites both, at the seams. It comes last because it refers to the three the reader has just met.
+Then, under **Where this change sits**, in a few sentences: which of the three the toured change is closest to, where it deviates, and what that position means for the reviewer. A minimal change invites the question "what did it leave out"; a maximal one invites "was all of this necessary"; a change that sits between them invites both, at the seams. It comes last because it refers to the three the reader has just met.
 
 The spectrum is context, not judgement. You are not saying the author chose wrong. You are giving the reviewer the room the author was standing in when they chose.
 

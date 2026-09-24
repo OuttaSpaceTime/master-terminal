@@ -50,12 +50,24 @@ vim.keymap.set("n", "<leader>gR", function()
   Snacks.picker.resume("git_diff")
 end, { desc = "Resume Git Diff" })
 vim.keymap.set("n", "<leader>gg", function()
-  Snacks.lazygit({ cwd = LazyVim.root.git() })
+  Snacks.lazygit({ cwd = git_root() })
 end, { desc = "Lazygit (Root Dir)" })
 
 vim.keymap.set("n", "<leader>gG", function()
   Snacks.lazygit()
 end, { desc = "Lazygit (cwd)" })
+
+vim.keymap.set("n", "<leader>Sc", function()
+  local git_dir = vim.system({ "git", "rev-parse", "--path-format=absolute", "--git-common-dir" }, { text = true }):wait().stdout
+  local tasks = vim.fs.dirname(vim.trim(git_dir)) .. "/.solve/tasks"
+  local files = vim.fn.glob(tasks .. "/*/current.*", false, true)
+  if #files == 0 then
+    vim.notify("No current.* in " .. tasks, vim.log.levels.WARN)
+    return
+  end
+  table.sort(files, function(a, b) return vim.fn.getftime(a) > vim.fn.getftime(b) end)
+  vim.cmd.edit(vim.fn.fnameescape(files[1]))
+end, { desc = "Open Current Solve File" })
 
 -- Trackball tab-switch gesture (BTN_EXTRA + ball left/right)
 vim.keymap.set({ "n", "i", "t" }, "<C-Tab>", "<Cmd>bnext<CR>", { desc = "Next Buffer" })

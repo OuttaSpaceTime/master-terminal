@@ -111,7 +111,7 @@ and forking costs more than it saves:
 1. Cluster the hunks into topics by reason, in a reading order where each topic relies only on what
    came before. A sketch usually has two to five. Follow *On finding topics* and *Reading order* in
    diff-tour's Part 2.
-2. Write `$WORK/00-intro.html`: an `<h1>` and a summary under 400 words. For a sketch the summary
+2. Write `$WORK/00-intro.html`: an `<h1>` and a short summary. For a sketch the summary
    answers three things — what problem this solves, what the approach is, and what it costs (the
    migration, the new dependency, the behaviour that changes for everyone).
 3. Write one `$WORK/topic-NN/fragment.html` per topic, in the shape given in diff-tour's Part 5.
