@@ -282,6 +282,7 @@ gcam() {
   fi
 }
 alias killrails='lsof -t -i :3000 -s TCP:LISTEN | xargs kill -9'
+alias newrails='killrails 2>/dev/null; bin/rails server'
 alias fixup='git log --oneline | fzf | awk '\''{print $1}'\'' | xargs -I '\''{}'\'' git commit --fixup {}'
 alias merge-conflicts='git diff --name-status --diff-filter=U'
 alias dew='docker compose exec web'
