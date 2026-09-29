@@ -13,26 +13,26 @@ Skills copied into this repo from external sources, with their origin so they ca
 
 Source: https://github.com/triskweline/skills (`skills/<name>/SKILL.md`)
 
-A planning + autonomous-implementation skill set. Upstream defines 9 skills; the three below are vendored here:
+A planning + autonomous-implementation skill set. Upstream defines 9 skills; the two below are vendored here:
 
 - `agree-on-everything` — resolve every implementation decision with the user before any code is written (decision table with numbers/slugs, recommended options, explicit agreement).
-- `diff-tour` — narrated HTML walkthrough of a diff you did not write: hunks clustered into themed chapters in a reading order, each beside prose, each carrying a heat level. **Vendored whole**, including `bin/difftour.py`, `bin/difftour_html.py`, `assets/`, `tests/` and the 52-file `vendor/prism/` bundle — the script resolves `assets/` and `vendor/prism/` relative to the skill directory, so those three must stay siblings of `bin/`. Pinned at upstream `e59d677`. Upstream's `bin/difftour.py` is `executable_difftour.py` in the chezmoi source; nothing else was renamed or edited.
 - `implement-autonomously` — carry requirements to a tested, self-reviewed implementation. **Vendored copy is simplified**: the upstream version chains 5 more skills (`work-in-branch`, `find-verification-tools`, `full-verification`, `effective-rails-testing`, `self-review`) that we did not vendor, so those calls were stripped.
 
 Not vendored (upstream only): `work-in-branch`, `find-verification-tools`, `full-verification`, `effective-rails-testing`, `self-review`, `build-alone`.
 
-### Re-syncing diff-tour
+### diff-tour is installed with `npx skills`, not vendored
+
+Since 2026-09-29, `diff-tour` is no longer in `home/`. The `skills` CLI owns it (lock entry in
+`~/.agents/.skill-lock.json`):
 
 ```bash
-git clone --depth 1 https://github.com/triskweline/skills.git /tmp/tris
-rsync -a --delete /tmp/tris/skills/diff-tour/ home/dot_agents/skills/diff-tour/
-mv home/dot_agents/skills/diff-tour/bin/difftour.py home/dot_agents/skills/diff-tour/bin/executable_difftour.py
-chezmoi -S home diff && chezmoi -S home apply
-uv run pytest ~/.agents/skills/diff-tour/tests/test_difftour.py -q
+npx skills add triskweline/skills -g -s diff-tour -a claude-code codex -y   # install
+npx skills update --global diff-tour                                         # update
 ```
 
-The vendored tests do not join this repo's suite: `pyproject.toml` sets `testpaths = ["tests"]`, so they
-only run when pointed at explicitly, as above. Last verified 2026-09-10: 37 passed.
+The canonical copy is `~/.agents/skills/diff-tour`. Codex reads it there ("universal"), and Claude Code
+gets the symlink `~/.claude/skills/diff-tour -> ../../.agents/skills/diff-tour`. Running
+`agent-skills-sync --source claude --apply` would pull it back into `home/`, so exclude it from that sync.
 
 ## local-review.nvim
 
@@ -72,7 +72,8 @@ Two fixes, neither applied as of 2026-09-18:
 - `sketch-diff-tour` (local, not upstream) drives `diff-tour`'s script over a change that does not exist
   yet: it drafts into a throwaway `git worktree` off `HEAD`, runs `difftour.py --setup dirty` inside it,
   and assembles the tour **outside** the worktree so the page outlives its removal. It hard-depends on
-  `~/.agents/skills/diff-tour/bin/difftour.py`; if `diff-tour` is ever unvendored, that skill breaks.
+  `~/.agents/skills/diff-tour/bin/difftour.py`, which the `npx skills` install still provides; if upstream
+  renames the script or its `--setup`/`--assemble` flags, that skill breaks.
   Note that `difftour_html.py` finds `assets/` via `os.path.abspath(__file__)`, which does *not* resolve
   symlinks — so the script must be called at its real path, never through a symlink placed in another
   skill's `bin/`.
