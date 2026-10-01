@@ -11,7 +11,7 @@ updated: 2026-09-22
 - [Repo Purpose](repo-purpose.md) — what this repo is and how it's structured
 - [Chezmoi](chezmoi.md) — commands, workflow, decisions
 - [Chrome](chrome.md) — tab switching, tab numbers, side panel behavior
-- [Kitty](kitty.md) — shortcuts, sessions, tab titles
+- [Kitty](kitty.md) — update, shortcuts, sessions, sidebar tab bar (custom `tab_bar.py`, layouts, width keys), tab titles incl. agent state (Claude/opencode)
 - [Neovim](neovim.md) — LazyVim shortcuts, navigation, and heredoc syntax highlighting
 - [Zsh Completion](zsh-completion.md) — `zsh-autocomplete` freeze note and the `fzf-tab` replacement
 - [GNOME](gnome.md) — hotkeys, workspace navigation, window switching, known collisions
@@ -31,5 +31,5 @@ updated: 2026-09-22
 - [Bluetooth Audio Toggle](bluetooth-audio-toggle.md) — Super+Shift+i WH-1000XM5 profile switch, codec ceiling, GNOME grab quirks
 - [Solveit Method](solveit-method.md) — fast.ai/Answer.AI methodology and platform, design vocabulary for our own agent skills
 - [Ruby debug gem](ruby-debug-gem.md) — Rails test/server rdbg workflows, record/replay, IRB inspection, and agent-change verification
-- [Herdr](herdr.md) — agent terminal workspace: install, the dark-by-default `catppuccin` theme trap, light theme config, and the PTY render probe
+- [Herdr](herdr.md) — agent terminal workspace: install, where to find the full keymap, the dark-by-default `catppuccin` theme trap, light theme config, and the PTY render probe
 - [Light Theme Palette](light-theme-palette.md) — the soft-white high-contrast theme: font, core hex palette, where every color lives (kitty/nvim/Claude Code/fzf/lazygit), and the viewport-border/backdrop gotchas

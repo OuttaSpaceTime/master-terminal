@@ -34,6 +34,8 @@ The canonical copy is `~/.agents/skills/diff-tour`. Codex reads it there ("unive
 gets the symlink `~/.claude/skills/diff-tour -> ../../.agents/skills/diff-tour`. Running
 `agent-skills-sync --source claude --apply` would pull it back into `home/`, so exclude it from that sync.
 
+`trim-code` from the same repo is installed the same way (`-s trim-code`), and was never vendored.
+
 ## local-review.nvim
 
 Source: https://github.com/ssundarraj/local-review.nvim (`skills/<name>/SKILL.md`). The plugin

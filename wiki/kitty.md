@@ -2,21 +2,24 @@
 title: Kitty
 tags: [kitty, terminal]
 created: 2026-04-07
-updated: 2026-05-20
+updated: 2026-10-01
 ---
 
 # Kitty
 
 ## Update
 
-- This machine uses the official binary install: `kitty 0.46.0` at `~/.local/kitty.app`
-- Update it by re-running the installer:
+- This machine uses the official binary install: `kitty 0.49.2` at `~/.local/kitty.app`
+- Update it by re-running the installer. `launch=n` stops it from opening a new kitty when done:
 
 ```bash
-curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin
+curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n
 ```
 
+- The installer deletes and replaces `~/.local/kitty.app`, so restart kitty afterwards. The running instance may lazily load modules from the new version.
 - Kitty’s own update check only applies to official binary builds; distro packages do not use it
+- Kitty silently ignores bad option values (`tab_bar_edge sideways` falls back to the default) and logs unknown keys as `Ignoring unknown config key`. Check a config against the installed version with `kitty +runpy "from kitty.config import load_config; o = load_config('<path>'); print(o.tab_bar_edge)"`. `tab_bar_edge` comes out as a number: top 2, bottom 8, left 1, right 4.
+- Renamed options: `tab_bar_drag_threshold` (≤ 0.46) became `drag_threshold` (0.47+), and a value of `0` now disables *all* tab and window dragging
 
 ## Shortcuts
 
@@ -41,7 +44,7 @@ Split *navigation* is remapped to `Ctrl+H/J/K/L` (`neighboring_window`), which w
 - `Ctrl+Alt+Shift+H/J/K/L` — `move_window left/down/up/right`. **Directional swap only works in the `splits` layout** — it's a silent no-op in `fat`/`tall`/`grid`, which are auto-tiled (kitty owns geometry, no real left/right neighbor).
 - `Alt+Shift+N` / `Alt+Shift+P` — `move_window_forward` / `_backward`. Non-directional; rotates the window through the position list, so it works in any layout (this is how you "cycle" in `grid`).
 
-`enabled_layouts` is unset → all layouts enabled; active default is not `splits`. Switch a tab live without editing config: `kitten @ goto-layout splits` (needs remote control, which is on). Reload config after edits with `Ctrl+Shift+F5`.
+`enabled_layouts splits,fat,grid,horizontal,stack,tall,vertical` keeps every layout but makes `splits` the startup layout for new tabs (the first listed wins). Existing tabs keep their layout across a config reload; switch one live with `kitten @ goto-layout splits` (needs remote control, which is on). Reload config after edits with `Ctrl+Shift+F5`.
 
 ## Line Editing
 
@@ -89,9 +92,35 @@ This repo also binds kitty-scrollback.nvim for vim-style browsing:
 ## Tab Titles
 
 - `kitty @ set-tab-title` is what the shell uses to rename the active tab
-- `home/dot_zshrc` auto-updates kitty tab and window titles from the prompt and from `codex`/`claude` command wrappers
+- The tab bar is a left sidebar: `tab_bar_edge left`, which needs kitty 0.48+ (0.47 accepts only top/bottom). Its width follows `tab_title_max_length` one cell per step (24 here; about 20 when unset). `tab_title_max_lines 2` is what lets a tab be two rows tall; `tab_title_wrap yes` only affects titles drawn by the `fade` fallback.
+- `Ctrl+Alt+Shift+Right` / `Left` set the width to 35 / 20 via `remote_control load-config -o tab_title_max_length=N`. The last key pressed wins, each press reloads the whole config, and a restart goes back to the `kitty.conf` value.
+- zsh sets no titles itself (`DISABLE_AUTO_TITLE="true"`)
+- Agent tabs get titles with repo, raw branch and state, e.g. `C vilocify-portal/1123-keyset ❓` (`C` Claude, `O` opencode; 🌱 start, 💭 thinking, ⚙ tool, ❓ needs you, ✔ done, 🧹 compacting). Based on [flurdy's recipe](https://flurdy.com/docs/kitty-ai-tabs/):
+  - `~/.local/bin/kitty-agent-title <agent>` reads hook JSON on stdin and runs `kitten @ set-tab-title`; in a worktree it names the main repo via `--git-common-dir`. It writes the branch unshortened (`main`, `feature/x`); the sidebar shortens it
+  - Claude: hooks in the `MANAGED` blob of `home/dot_claude/modify_settings.json`; opencode: `home/private_dot_config/opencode/plugins/kitty-agent-title.js` pipes Claude-shaped JSON into the same script
+  - The script touches `$XDG_RUNTIME_DIR/kitty-agent-title.$KITTY_WINDOW_ID`; the zsh `precmd` hook `reset-kitty-agent-title` clears the tab title only in that window, so a command in a sibling split doesn't wipe the agent's state
+  - Skipped when `HERDR_ENV=1`: herdr panes inherit the herdr server's stale `KITTY_WINDOW_ID`
+  - Tests: `tests/test_kitty_agent_title.py`
 - `shell_integration enabled no-title` prevents kitty shell integration from changing titles based on the running foreground command
 - `tab_title_template "{title}"` lets the tab bar show restored/manual tab titles from sessions instead of forcing a numeric index
+
+### Sidebar (`tab_bar_style custom`)
+
+`home/private_dot_config/kitty/tab_bar.py` draws herdr-style two-row entries; tests in `tests/test_kitty_tab_bar.py`.
+
+- Agent title (`C|O repo[/branch] mark`): ` ● repo` / `   branch · state · agent`. Dot colour from the herdr palette: red blocked ❓, orange working ⚙💭🧹, green done ✔, grey idle 🌱
+- Any other tab without an explicit name (`Tab.name` empty) whose active window's cwd is in git: mauve ` ● repo` / `   branch`. Worktrees show the main repo. The label follows `cd` without a tab switch
+- Everything else (named tabs, no repo) is drawn by kitty's `draw_tab_with_fade`
+- `short_branch` strips `feature/` `fix/` `bugfix/` `chore/` for both kinds; `main`/`master` are shown
+- Repo/branch come from reading `.git`, `gitdir:`, `commondir` and `HEAD` directly, not `git`: two `git` calls take ~7 ms and kitty calls `draw_tab` twice per tab on every redraw, on its main thread
+
+Gotchas (kitty 0.49.2, found by `dis`-ing its frozen Python via `kitty +launch probe.py`):
+
+- The blank row between tabs is hard-coded (`TabBar.update_vertical`: `spacing = 1`, dropped only when the tabs don't fit). No option or `draw_tab` can remove it. It is painted with `tab_bar_background`, so that is set to the inactive-tab grey `#e2e4ea` to avoid white stripes
+- `draw_tab` must end with `screen.cursor.bg = 0`: kitty paints the gaps and the empty area with whatever background the last drawn tab left set (the active tab's blue leaked when the last tab was active)
+- `draw_tab` must cut rows to `screen.columns` itself (`fit`); kitty doesn't
+- `tab_bar.py` is loaded once per kitty process and title rendering already tries at startup, so a kitty started before the file existed caches "no `draw_tab`". `Boss.load_config_file` applies options *before* `tab_bar.clear_caches`, so after creating or editing `tab_bar.py` run `kitten @ load-config` **twice**
+- A `tab_bar.py` that fails to load makes kitty fall back to `fade` and log `Failed to load custom tab_bar.py`; kitty's stderr goes to the journal via gnome-shell's stream, not under kitty's PID
 
 ## Moving And Reordering Tabs
 

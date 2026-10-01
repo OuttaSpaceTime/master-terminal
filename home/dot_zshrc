@@ -44,6 +44,15 @@ load-nvmrc() {
 add-zsh-hook chpwd load-nvmrc
 load-nvmrc
 
+reset-kitty-agent-title() {
+  local marker="${XDG_RUNTIME_DIR:-/tmp}/kitty-agent-title.$KITTY_WINDOW_ID"
+  [[ -e $marker ]] || return 0
+  rm -f "$marker"
+  kitten @ set-tab-title "" >/dev/null 2>&1
+}
+
+add-zsh-hook precmd reset-kitty-agent-title
+
 eval "$(direnv hook zsh)"
 
 typeset -g POWERLEVEL9K_INSTANT_PROMPT=off
@@ -291,7 +300,7 @@ alias vilcb='cd ~/Code/Vilocify/vilocify-portal'
 alias vilcf='cd ~/Code/Vilocify/vilocify-frontend'
 vilcw() {
   local base=~/Code/Vilocify/worktrees dir
-  dir=$(find "$base" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | fzf) && cd "$base/$dir"
+  dir=$(find "$base" -mindepth 2 -maxdepth 2 -type d ! -name '.*' -printf '%P\n' | sort | fzf) && cd "$base/$dir"
 }
 alias study='cd ~/Code/Misc/study'
 alias master='cd ~/Code/Misc/master-terminal'

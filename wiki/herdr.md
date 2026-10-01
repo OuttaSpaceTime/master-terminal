@@ -1,8 +1,8 @@
 ---
 title: Herdr
-tags: [herdr, terminal, agents, theme, colors, chezmoi]
+tags: [herdr, terminal, agents, theme, colors, chezmoi, keybindings]
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-30
 ---
 
 # Herdr
@@ -19,6 +19,22 @@ curl -fsSL https://herdr.dev/install.sh | sh
 Installs to `~/.local/bin/herdr` (already on PATH), verifies a SHA-256 from
 `herdr.dev/latest.json`, needs no sudo and edits no shell rc. Update with
 `herdr update`; channel is `stable` by default (`herdr channel set preview`).
+
+## Keybindings
+
+`prefix+?` (then `/` to filter) shows the active keymap. `herdr --default-config`
+leaves some actions out: in 0.9.1 it omits `copy_mode` (`prefix+[`) and
+`swap_pane_*` (`prefix+shift+h/j/k/l`), even though `herdr config check` accepts
+them. The full list of defaults for the installed version:
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/herdrdev/herdr/v$(herdr --version | cut -d' ' -f2)/docs/next/website/src/data/config-reference.json" \
+  | jq -r '.sections[].keys[] | select(.key|startswith("keys.")) | "\(.key)\t\(.default|tostring)"'
+```
+
+Navigate mode is `prefix+w` ("workspace navigation"): `up`/`down` switch workspaces,
+`h/j/k/l` or `left`/`right` switch panes. The only custom bindings are direct
+`ctrl+h/j/k/l` → `smart-splits.nvim.*` (see the nvim gotcha below).
 
 ## Theme
 
@@ -75,3 +91,19 @@ Script kept at `.solve/tasks/2026-09-22-herdr-theme/`.
   show up as drift, like `~/.claude/settings.json` used to.
 - `herdr config check` only validates keys/values. It does not tell you whether
   the result is readable; that needs the render probe.
+- nvim `ctrl+h/j/k/l` dies inside herdr. kitty maps those keys to
+  `neighboring_window` and only passes them through when the focused window has
+  `var:IS_NVIM`, which smart-splits sets with `OSC 1337 SetUserVar`. herdr
+  emulates its panes, so that OSC never reaches kitty: `kitten @ ls` showed
+  `user_vars: {}` on the herdr window with three nvims inside, while a plain kitty
+  tab printing the same bytes got `IS_NVIM`. On top of that, forcing
+  `smart_splits_multiplexer_integration = "kitty"` skips smart-splits' herdr
+  auto-detection. kitty's `cmdline:` match sees the window's initial zsh, not the
+  foreground herdr, so it can't target the herdr window.
+  Fix: herdr `ui.window_title = "herdr: {workspace}"` + kitty
+  `map --when-focus-on title:^herdr: ctrl+h` (etc.) passes the keys to herdr;
+  smart-splits' herdr plugin (`[[keys.command]]` → `smart-splits.nvim.left` etc.)
+  forwards them to nvim or moves herdr focus; no forced kitty backend in
+  `smart-splits.lua`. The plugin link lives in `~/.config/herdr/plugins.json`,
+  outside chezmoi: redo `herdr plugin link ~/.local/share/nvim/lazy/smart-splits.nvim`
+  on a new machine.

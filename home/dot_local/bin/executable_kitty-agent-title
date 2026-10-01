@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+AGENT=${1:-agent}
+PAYLOAD=$(cat)
+
+# herdr panes inherit a stale KITTY_WINDOW_ID from the herdr server.
+[ -n "$KITTY_WINDOW_ID" ] && [ "$HERDR_ENV" != 1 ] || exit 0
+
+json_value() {
+  printf '%s' "$PAYLOAD" | jq -r --arg key "$1" '.[$key] // empty' 2>/dev/null
+}
+
+EVENT=$(json_value hook_event_name)
+CWD=$(json_value cwd)
+[ -z "$CWD" ] && CWD="$PWD"
+
+GIT_COMMON_DIR=$(git -C "$CWD" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null)
+
+if [ -n "$GIT_COMMON_DIR" ]; then
+  REPO=$(basename "$(dirname "$GIT_COMMON_DIR")")
+else
+  REPO=$(basename "$CWD")
+fi
+
+case "$AGENT" in
+  claude)   LABEL="C $REPO" ;;
+  opencode) LABEL="O $REPO" ;;
+  *)        LABEL="$AGENT $REPO" ;;
+esac
+
+[ -n "$BRANCH" ] && LABEL="$LABEL/$BRANCH"
+
+case "$EVENT" in
+  SessionStart)                 MARK="🌱" ;;
+  UserPromptSubmit|PostToolUse) MARK="💭" ;;
+  PreToolUse)                   MARK="⚙" ;;
+  PermissionRequest)            MARK="❓" ;;
+  Stop|SubagentStop)            MARK="✔" ;;
+  PreCompact|PostCompact)       MARK="🧹" ;;
+  *)                            MARK="" ;;
+esac
+
+TITLE="$LABEL"
+[ -n "$MARK" ] && TITLE="$TITLE $MARK"
+
+kitten @ set-tab-title "$TITLE" >/dev/null 2>&1
+touch "${XDG_RUNTIME_DIR:-/tmp}/kitty-agent-title.$KITTY_WINDOW_ID"
+exit 0

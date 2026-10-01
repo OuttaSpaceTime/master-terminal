@@ -1,5 +1,8 @@
 onboarding = false
 
+[ui]
+window_title = "herdr: {workspace}"
+
 [theme]
 name = "catppuccin-latte"
 
@@ -18,3 +21,30 @@ yellow = "#e06100"
 peach = "#d65a05"
 teal = "#0f898f"
 mauve = "#9e4bec"
+
+[worktrees]
+directory = "~/Code/Vilocify/worktrees"
+
+[[keys.command]]
+key = "ctrl+h"
+type = "plugin_action"
+command = "smart-splits.nvim.left"
+description = "navigate left (vim/herdr)"
+
+[[keys.command]]
+key = "ctrl+j"
+type = "plugin_action"
+command = "smart-splits.nvim.down"
+description = "navigate down (vim/herdr)"
+
+[[keys.command]]
+key = "ctrl+k"
+type = "plugin_action"
+command = "smart-splits.nvim.up"
+description = "navigate up (vim/herdr)"
+
+[[keys.command]]
+key = "ctrl+l"
+type = "plugin_action"
+command = "smart-splits.nvim.right"
+description = "navigate right (vim/herdr)"

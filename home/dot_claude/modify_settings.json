@@ -36,6 +36,14 @@ MANAGED = json.loads(r'''
             "command": "python3 ~/.claude/solveit/hooks/solve-init.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/kitty-agent-title claude"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -65,6 +73,25 @@ MANAGED = json.loads(r'''
             "command": "python3 ~/.claude/solveit/hooks/log-reads.py"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/kitty-agent-title claude"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/kitty-agent-title claude"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -84,6 +111,34 @@ MANAGED = json.loads(r'''
           {
             "type": "command",
             "command": "python3 ~/.claude/solveit/hooks/stop-affordance-guard.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/kitty-agent-title claude"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "^(startup|resume|clear|compact|fork)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/felix/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/kitty-agent-title claude"
           }
         ]
       }
