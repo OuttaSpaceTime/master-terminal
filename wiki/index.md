@@ -31,5 +31,5 @@ updated: 2026-09-22
 - [Bluetooth Audio Toggle](bluetooth-audio-toggle.md) — Super+Shift+i WH-1000XM5 profile switch, codec ceiling, GNOME grab quirks
 - [Solveit Method](solveit-method.md) — fast.ai/Answer.AI methodology and platform, design vocabulary for our own agent skills
 - [Ruby debug gem](ruby-debug-gem.md) — Rails test/server rdbg workflows, record/replay, IRB inspection, and agent-change verification
-- [Herdr](herdr.md) — agent terminal workspace: install, where to find the full keymap, the dark-by-default `catppuccin` theme trap, light theme config, and the PTY render probe
+- [Herdr](herdr.md) — agent terminal workspace: install, where to find the full keymap, kitty keys passed through to herdr, the dark-by-default `catppuccin` theme trap, light theme config, and the PTY render probe
 - [Light Theme Palette](light-theme-palette.md) — the soft-white high-contrast theme: font, core hex palette, where every color lives (kitty/nvim/Claude Code/fzf/lazygit), and the viewport-border/backdrop gotchas

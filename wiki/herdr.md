@@ -2,7 +2,7 @@
 title: Herdr
 tags: [herdr, terminal, agents, theme, colors, chezmoi, keybindings]
 created: 2026-09-22
-updated: 2026-09-30
+updated: 2026-10-02
 ---
 
 # Herdr
@@ -33,8 +33,67 @@ curl -fsSL "https://raw.githubusercontent.com/herdrdev/herdr/v$(herdr --version 
 ```
 
 Navigate mode is `prefix+w` ("workspace navigation"): `up`/`down` switch workspaces,
-`h/j/k/l` or `left`/`right` switch panes. The only custom bindings are direct
-`ctrl+h/j/k/l` → `smart-splits.nvim.*` (see the nvim gotcha below).
+`h/j/k/l` or `left`/`right` switch panes.
+
+### Kitty keys inside herdr
+
+Inside herdr, kitty's split and tab keys drive herdr instead (prefix bindings
+still work). A kitty tab maps to a herdr workspace, since both are the sidebar rows.
+A kitty split maps to a herdr pane.
+
+| Key | herdr action |
+|---|---|
+| `ctrl+h/j/k/l` | `smart-splits.nvim.*` (see the nvim gotcha below) |
+| `ctrl+shift+d` / `ctrl+shift+enter` / `ctrl+shift+s` | `split_vertical` / `split_vertical` / `split_horizontal` |
+| `ctrl+shift+w` | `close_pane` |
+| `ctrl+shift+[` / `]` | `cycle_pane_previous` / `next` |
+| `ctrl+alt+shift+h/j/k/l` | `swap_pane_*` |
+| `alt+h` / `alt+l` | `previous_agent` / `next_agent` |
+| `alt+j` / `alt+k` | `resize_pane_down` / `resize_pane_up` |
+| `f6` / `ctrl+shift+r` | `zoom` / `resize_mode` |
+| `ctrl+shift+h` / `ctrl+shift+l` | `previous_tab` / `next_tab` (herdr tabs) |
+| `ctrl+shift+n` | `new_tab` (asks for a name; Enter keeps the number) |
+| `ctrl+shift+m` | `rename_tab` |
+| `ctrl+1..9` | `switch_workspace` |
+| `ctrl+alt+h` / `ctrl+alt+l` | `previous_workspace` / `next_workspace` |
+| `ctrl+shift+t` / `ctrl+shift+q` / `ctrl+alt+shift+t` | `new_workspace` / `close_workspace` / `rename_workspace` |
+| `ctrl+shift+g` / `ctrl+shift+o` / `ctrl+shift+x` | `new_worktree` / `open_worktree` / `remove_worktree` |
+
+`ctrl+shift+left/right` and `ctrl+tab` stay with kitty, so they still switch kitty tabs
+from a herdr window.
+
+A worktree is an ordinary herdr workspace. Its menu "Close" is `close_workspace`, which keeps the
+checkout and branch. "Delete worktree checkout..." (`remove_worktree`) runs `git worktree remove`
+and keeps the branch (`src/client/shell/context_menu.rs`).
+
+`ctrl+alt+?` is a kitty map, not a herdr key. It opens `home/private_dot_config/kitty/herdr-keys.txt`
+in `less` as a kitty overlay, so it works inside herdr and in plain kitty. Herdr's own help
+(`ctrl+b ?`) doesn't list these keys. kitty matches `ctrl+alt+?` against a real
+`ctrl+alt+shift+/` through its default `allow_fallback shifted`. The sheet is hand-written:
+update it along with the table above.
+
+Every key needs both halves, the same as the nvim fix:
+- kitty: `map --when-focus-on title:^herdr: <key>` (no action, so the key passes
+  through). It has to come *after* the map it overrides: of the matching maps,
+  `kitty/keys.py` `matching_key_actions` keeps the last one defined.
+- herdr: the same chord as a direct binding (`new_workspace = ["prefix+shift+n", "ctrl+shift+t"]`).
+
+`tests/test_kitty_herdr_keys.py` fails if the two sets drift apart. herdr pushes
+kitty's keyboard flags (`DISAMBIGUATE_ESCAPE_CODES`, `src/input/model.rs`), so
+`ctrl+shift+t` and `ctrl+1` reach it intact.
+
+`herdr config check` reads `$HERDR_CONFIG_PATH` (not `$HERDR_CONFIG`). Point that
+variable at the chezmoi source to validate before applying. To check that herdr
+really acts on each key, run `.solve/tasks/2026-10-02-herdr-kitty-keys/probe.py`. It
+starts an isolated herdr (its own `XDG_CONFIG_HOME`, worktree directory and cwd inside the
+sandbox, so worktree steps never touch a real repo) in a separate minimized `kitty --config NONE`,
+presses each chord with `kitten @ send-key` and compares `herdr api snapshot`. Keep
+`PROBE_DIR` short (`mktemp -d /tmp/claude-1000/hk.XXXX`): Unix socket paths
+over ~108 chars fail silently and the herdr API never answers. For the agent steps, a copy of
+`sleep` named `claude` counts as a Claude agent (`herdr agent explain` shows it).
+About 1 run in 4, kitty sends a few keys to the sandbox herdr in the legacy encoding
+(`^[^L` or a bare `1` at the prompt instead of `ctrl+alt+l` / `ctrl+1`) and those steps fail;
+cause unknown (not herdr's focus handling), rerun.
 
 ## Theme
 

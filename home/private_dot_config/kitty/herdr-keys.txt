@@ -1,0 +1,39 @@
+Keys inside herdr                                     q closes this
+
+Panes
+  ctrl+h/j/k/l              move focus (also between nvim splits)
+  ctrl+shift+d              split side by side
+  ctrl+shift+enter          split side by side
+  ctrl+shift+s              split stacked
+  ctrl+shift+w              close pane
+  ctrl+shift+[ / ]          previous / next pane
+  ctrl+alt+shift+h/j/k/l    swap pane
+  alt+j / alt+k             resize down / up
+  ctrl+shift+r              resize mode (h/l width, j/k height, esc)
+  f6                        zoom
+
+Agents
+  alt+h / alt+l             previous / next agent
+
+Tabs
+  ctrl+shift+n              new tab (Enter keeps the number)
+  ctrl+shift+m              rename tab
+  ctrl+shift+h / l          previous / next tab
+
+Workspaces (sidebar rows)
+  ctrl+1..9                 jump to workspace
+  ctrl+alt+h / l            previous / next workspace
+  ctrl+shift+t              new workspace
+  ctrl+alt+shift+t          rename workspace
+  ctrl+shift+q              close workspace (a worktree keeps its checkout)
+
+Worktrees
+  ctrl+shift+g              new worktree
+  ctrl+shift+o              open worktree (/ filters)
+  ctrl+shift+x              delete worktree checkout (asks; branch is kept)
+
+Back to kitty
+  ctrl+shift+left / right   previous / next kitty tab
+  ctrl+tab                  next kitty tab
+
+herdr's own prefix keys: ctrl+b ?

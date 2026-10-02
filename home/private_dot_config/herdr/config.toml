@@ -25,6 +25,36 @@ mauve = "#9e4bec"
 [worktrees]
 directory = "~/Code/Vilocify/worktrees"
 
+[keys]
+switch_workspace = "ctrl+1..9"
+previous_workspace = "ctrl+alt+h"
+next_workspace = "ctrl+alt+l"
+new_workspace = ["prefix+shift+n", "ctrl+shift+t"]
+close_workspace = ["prefix+shift+d", "ctrl+shift+q"]
+rename_workspace = ["prefix+shift+w", "ctrl+alt+shift+t"]
+new_worktree = ["prefix+shift+g", "ctrl+shift+g"]
+open_worktree = "ctrl+shift+o"
+remove_worktree = "ctrl+shift+x"
+new_tab = ["prefix+c", "ctrl+shift+n"]
+rename_tab = ["prefix+shift+t", "ctrl+shift+m"]
+previous_tab = ["prefix+p", "ctrl+shift+h"]
+next_tab = ["prefix+n", "ctrl+shift+l"]
+split_vertical = ["prefix+v", "ctrl+shift+d", "ctrl+shift+enter"]
+split_horizontal = ["prefix+minus", "ctrl+shift+s"]
+close_pane = ["prefix+x", "ctrl+shift+w"]
+swap_pane_left = ["prefix+shift+h", "ctrl+alt+shift+h"]
+swap_pane_down = ["prefix+shift+j", "ctrl+alt+shift+j"]
+swap_pane_up = ["prefix+shift+k", "ctrl+alt+shift+k"]
+swap_pane_right = ["prefix+shift+l", "ctrl+alt+shift+l"]
+previous_agent = "alt+h"
+next_agent = "alt+l"
+resize_pane_down = "alt+j"
+resize_pane_up = "alt+k"
+cycle_pane_previous = ["prefix+shift+tab", "ctrl+shift+["]
+cycle_pane_next = ["prefix+tab", "ctrl+shift+]"]
+zoom = ["prefix+z", "f6"]
+resize_mode = ["prefix+r", "ctrl+shift+r"]
+
 [[keys.command]]
 key = "ctrl+h"
 type = "plugin_action"
