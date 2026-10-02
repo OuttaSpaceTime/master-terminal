@@ -16,9 +16,9 @@ local function load_viewed_store()
   return viewed_store
 end
 
-local function viewed_for(view)
+local function viewed_for(panel)
   local store = load_viewed_store()
-  local root = view.adapter.ctx.toplevel
+  local root = panel.adapter.ctx.toplevel
   store[root] = store[root] or {}
   return store[root]
 end
@@ -27,15 +27,53 @@ local function save_viewed_store()
   vim.fn.writefile({ vim.json.encode(load_viewed_store()) }, viewed_state_path)
 end
 
-local function render_viewed(view)
-  if not view.panel.bufid or not vim.api.nvim_buf_is_valid(view.panel.bufid) then
+local viewed_filter
+
+local function shown(panel, file)
+  local viewed = viewed_for(panel)[file.path] == true
+  if viewed_filter == "unviewed" then
+    return not viewed
+  end
+  if viewed_filter == "viewed" then
+    return viewed
+  end
+  return true
+end
+
+local function some_file(comp, predicate)
+  local found = false
+  comp:deep_some(function(child)
+    found = child.name == "file" and predicate(child.context)
+    return found
+  end)
+  return found
+end
+
+local function hide_filtered(panel)
+  panel.components.comp:deep_some(function(comp)
+    if comp.name == "file" and not shown(panel, comp.context) then
+      comp:clear()
+    end
+    if comp.name == "directory" and not some_file(comp, function(file) return shown(panel, file) end) then
+      comp:clear()
+    end
+    return false
+  end)
+end
+
+local function render_viewed(panel)
+  if not panel.bufid or not vim.api.nvim_buf_is_valid(panel.bufid) then
     return
   end
-  local viewed = viewed_for(view)
-  vim.api.nvim_buf_clear_namespace(view.panel.bufid, viewed_ns, 0, -1)
-  view.panel.components.comp:deep_some(function(comp)
-    if comp.name == "file" and viewed[comp.context.path] then
-      vim.api.nvim_buf_set_extmark(view.panel.bufid, viewed_ns, comp.lstart, 2, {
+  local viewed = viewed_for(panel)
+  vim.api.nvim_buf_clear_namespace(panel.bufid, viewed_ns, 0, -1)
+  panel.components.comp:deep_some(function(comp)
+    local file_viewed = comp.name == "file" and viewed[comp.context.path]
+    local folder_viewed = comp.name == "directory"
+      and comp.context.collapsed
+      and not some_file(comp, function(file) return not viewed[file.path] end)
+    if comp.height > 0 and (file_viewed or folder_viewed) then
+      vim.api.nvim_buf_set_extmark(panel.bufid, viewed_ns, comp.lstart, 2, {
         virt_text = { { "✓", "DiffviewFilePanelInserted" } },
         virt_text_pos = "overlay",
       })
@@ -61,14 +99,15 @@ local function toggle_viewed()
   if not path then
     return
   end
-  local viewed = viewed_for(view)
+  local viewed = viewed_for(view.panel)
   if viewed[path] then
     viewed[path] = nil
   else
     viewed[path] = true
   end
   save_viewed_store()
-  render_viewed(view)
+  view.panel:render()
+  view.panel:redraw()
 end
 
 local function clear_viewed()
@@ -78,21 +117,26 @@ local function clear_viewed()
   end
   load_viewed_store()[view.adapter.ctx.toplevel] = nil
   save_viewed_store()
-  render_viewed(view)
+  view.panel:render()
+  view.panel:redraw()
 end
 
-vim.api.nvim_create_autocmd({ "BufEnter", "CursorMoved" }, {
-  group = vim.api.nvim_create_augroup("diffview-viewed", { clear = true }),
-  callback = function()
-    if vim.bo.filetype ~= "DiffviewFiles" then
-      return
-    end
-    local view = require("diffview.lib").get_current_view()
-    if view then
-      render_viewed(view)
-    end
-  end,
-})
+local function cycle_viewed_filter()
+  local view = require("diffview.lib").get_current_view()
+  if not view then
+    return
+  end
+  if viewed_filter == nil then
+    viewed_filter = "unviewed"
+  elseif viewed_filter == "unviewed" then
+    viewed_filter = "viewed"
+  else
+    viewed_filter = nil
+  end
+  vim.notify("Diffview: showing " .. (viewed_filter and ("only " .. viewed_filter) or "all") .. " files")
+  view.panel:render()
+  view.panel:redraw()
+end
 
 local function goto_open_diffview()
   local views = require("diffview.lib").views
@@ -134,6 +178,7 @@ return {
       { "<leader>Dr", "<cmd>DiffviewRefresh<cr>", desc = "Refresh Diffview" },
       { "<leader>Dv", toggle_viewed, desc = "Toggle Viewed Mark" },
       { "<leader>DV", clear_viewed, desc = "Clear Viewed Marks" },
+      { "<leader>Dm", cycle_viewed_filter, desc = "Cycle All / Unviewed / Viewed Files" },
       {
         "<leader>Dl",
         "<cmd>DiffviewOpen main...HEAD --imply-local<cr>",
@@ -181,6 +226,19 @@ return {
       { "<leader>gt", "<cmd>DiffviewToggleFiles<cr>", desc = "Git Diffview Toggle Files" },
       { "<leader>gV", "<cmd>DiffviewFileHistory %<cr>", desc = "Git File History" },
     },
+    config = function(_, opts)
+      require("diffview").setup(opts)
+      local FilePanel = require("diffview.scene.views.diff.file_panel").FilePanel
+      local render, redraw = FilePanel.render, FilePanel.redraw
+      function FilePanel:render()
+        render(self)
+        hide_filtered(self)
+      end
+      function FilePanel:redraw()
+        redraw(self)
+        render_viewed(self)
+      end
+    end,
     opts = {
       enhanced_diff_hl = true,
       use_icons = true,
