@@ -108,7 +108,8 @@ This repo also binds kitty-scrollback.nvim for vim-style browsing:
 
 `home/private_dot_config/kitty/tab_bar.py` draws herdr-style two-row entries; tests in `tests/test_kitty_tab_bar.py`.
 
-- Agent title (`C|O repo[/branch] mark`): ` ● repo` / `   branch · state · agent`. Dot colour from the herdr palette: red blocked ❓, orange working ⚙💭🧹, green done ✔, grey idle 🌱
+- Agent title (`C|O repo[/branch] mark`): ` ● repo` / `   branch · state · agent`. Dot colour from the herdr palette: orange working ⚙💭🧹, green done ✔, grey idle 🌱
+- ❓ (permission prompt, or Claude asking via `AskUserQuestion`, which the script detects from the `PreToolUse` `tool_name`): `❓ repo` / bold `   branch · needs you · agent`. The 2-cell emoji takes the place of ` ●`, so names stay aligned
 - Any other tab without an explicit name (`Tab.name` empty) whose active window's cwd is in git: mauve ` ● repo` / `   branch`. Worktrees show the main repo. The label follows `cd` without a tab switch
 - Everything else (named tabs, no repo) is drawn by kitty's `draw_tab_with_fade`
 - `short_branch` strips `feature/` `fix/` `bugfix/` `chore/` for both kinds; `main`/`master` are shown

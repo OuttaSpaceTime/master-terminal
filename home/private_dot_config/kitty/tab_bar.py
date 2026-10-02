@@ -7,7 +7,7 @@ from kitty.tab_bar import as_rgb, draw_tab_with_fade
 AGENT_TITLE = re.compile(r"(?P<agent>[CO]) (?P<repo>[^/ ]+)(?:/(?P<branch>\S+))? (?P<mark>❓|⚙|💭|🧹|✔|🌱)")
 
 STATES = {
-    "❓": ("blocked", 0xFA0032),
+    "❓": ("needs you", 0xFA0032),
     "⚙": ("working", 0xE06100),
     "💭": ("working", 0xE06100),
     "🧹": ("working", 0xE06100),
@@ -63,15 +63,21 @@ def draw_tab(draw_data, screen, tab, before, max_tab_length, index, is_last, ext
         repo, branch = label
         details = short_branch(branch)
 
-    fg = screen.cursor.fg
-    screen.draw(" ")
-    screen.cursor.fg = as_rgb(color)
-    screen.draw("●")
-    screen.cursor.fg = fg
+    needs_you = match and match["mark"] == "❓"
+    if needs_you:
+        screen.draw("❓")
+    else:
+        fg = screen.cursor.fg
+        screen.draw(" ")
+        screen.cursor.fg = as_rgb(color)
+        screen.draw("●")
+        screen.cursor.fg = fg
     screen.draw(fit(" " + repo, screen.columns - 2))
     if details:
         screen.cursor.x = 0
         screen.cursor.y += 1
+        if needs_you:
+            screen.cursor.bold = True
         screen.draw(fit("   " + details, screen.columns))
     screen.cursor.bg = 0
     return screen.cursor.x

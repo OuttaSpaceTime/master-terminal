@@ -34,7 +34,9 @@ esac
 case "$EVENT" in
   SessionStart)                 MARK="🌱" ;;
   UserPromptSubmit|PostToolUse) MARK="💭" ;;
-  PreToolUse)                   MARK="⚙" ;;
+  PreToolUse)
+    MARK="⚙"
+    [ "$(json_value tool_name)" = AskUserQuestion ] && MARK="❓" ;;
   PermissionRequest)            MARK="❓" ;;
   Stop|SubagentStop)            MARK="✔" ;;
   PreCompact|PostCompact)       MARK="🧹" ;;

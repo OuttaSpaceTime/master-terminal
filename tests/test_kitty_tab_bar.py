@@ -37,6 +37,7 @@ print(json.dumps({
     "ansi": screen.line(0).as_ansi(),
     "cursor_y": screen.cursor.y,
     "bg_after": screen.cursor.bg,
+    "bold": [screen.line(y).cursor_from(4).bold for y in range(2)],
 }))
 """
 
@@ -63,8 +64,8 @@ def git(*args):
 
 
 def test_agent_tab_shows_repo_then_branch_state_and_agent(draw):
-    tab = draw("C vilocify-portal/1123-keyset ❓")
-    assert tab["rows"] == [" ● vilocify-portal", "   1123-keyset · blocked · C", ""]
+    tab = draw("C vilocify-portal/1123-keyset ⚙")
+    assert tab["rows"] == [" ● vilocify-portal", "   1123-keyset · working · C", ""]
     assert tab["cursor_y"] == 1
 
 
@@ -87,7 +88,6 @@ def test_branch_keeps_its_slashes(draw):
 @pytest.mark.parametrize(
     "mark, state, rgb",
     [
-        ("❓", "blocked", "250:0:50"),
         ("⚙", "working", "224:97:0"),
         ("💭", "working", "224:97:0"),
         ("🧹", "working", "224:97:0"),
@@ -102,8 +102,18 @@ def test_marker_sets_state_word_and_dot_color(draw, mark, state, rgb):
 
 
 def test_long_lines_are_cut_with_an_ellipsis_instead_of_wrapping(draw):
-    tab = draw("C vilocify-portal/1123-keyset ❓", columns=20)
-    assert tab["rows"] == [" ● vilocify-portal", "   1123-keyset · bl…", ""]
+    tab = draw("C vilocify-portal/1123-keyset ⚙", columns=20)
+    assert tab["rows"] == [" ● vilocify-portal", "   1123-keyset · wo…", ""]
+
+
+def test_blocked_tab_shows_a_question_mark_and_a_bold_needs_you_row(draw):
+    tab = draw("C vilocify-portal/1123-keyset ❓")
+    assert tab["rows"] == ["❓ vilocify-portal", "   1123-keyset · needs you · C", ""]
+    assert tab["bold"] == [False, True]
+
+
+def test_blocked_tab_counts_the_wide_question_mark_when_cutting(draw):
+    assert draw("C vilocify-portal/x ❓", columns=16)["rows"][0] == "❓ vilocify-por…"
 
 
 def test_tab_background_does_not_leak_into_the_rest_of_the_sidebar(draw):

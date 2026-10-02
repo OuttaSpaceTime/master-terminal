@@ -30,10 +30,10 @@ def env(tmp_path, monkeypatch):
     return e
 
 
-def title(env, tmp_path, agent, event, cwd):
+def title(env, tmp_path, agent, event, cwd, tool=""):
     out = subprocess.run(
         ["bash", str(SCRIPT), agent],
-        input=json.dumps({"hook_event_name": event, "cwd": str(cwd)}),
+        input=json.dumps({"hook_event_name": event, "cwd": str(cwd), "tool_name": tool}),
         capture_output=True,
         text=True,
         env=env,
@@ -48,6 +48,12 @@ def test_branch_and_state_in_title(env, tmp_path):
     repo = tmp_path / "shop"
     git("init", "-q", "-b", "feature/login", str(repo))
     assert title(env, tmp_path, "claude", "PreToolUse", repo) == ["@|set-tab-title|C shop/feature/login ⚙|"]
+
+
+def test_question_to_the_user_counts_as_needs_you(env, tmp_path):
+    repo = tmp_path / "shop"
+    git("init", "-q", "-b", "main", str(repo))
+    assert title(env, tmp_path, "claude", "PreToolUse", repo, tool="AskUserQuestion") == ["@|set-tab-title|C shop/main ❓|"]
 
 
 def test_main_branch_is_kept(env, tmp_path):
