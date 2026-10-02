@@ -243,10 +243,6 @@ if ( ENV['RAILS_ENV'] || defined? Rails ) && File.exist?( railsrc_path )
   end
 end
 
-def me
-  User.unscoped.find_by(email: 'escheyfelix@gmail.com')
-end
-
 def set_current(membership_or_id)
   membership =
     membership_or_id.is_a?(Membership) ? membership_or_id : Membership.unscoped.find(membership_or_id)
