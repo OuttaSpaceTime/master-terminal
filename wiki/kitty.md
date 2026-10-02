@@ -43,6 +43,10 @@ Split *navigation* is remapped to `Ctrl+H/J/K/L` (`neighboring_window`), which w
 
 - `Ctrl+Alt+Shift+H/J/K/L` — `move_window left/down/up/right`. **Directional swap only works in the `splits` layout** — it's a silent no-op in `fat`/`tall`/`grid`, which are auto-tiled (kitty owns geometry, no real left/right neighbor).
 - `Alt+Shift+N` / `Alt+Shift+P` — `move_window_forward` / `_backward`. Non-directional; rotates the window through the position list, so it works in any layout (this is how you "cycle" in `grid`).
+- `Super+Alt+H/J/K/L` — `layout_action move_to_screen_edge left/bottom/top/right`. Moves the active split to that edge of the tab, spanning its full height or width. `splits` layout only.
+- `Super+Alt+R` — `layout_action rotate`. Flips the current split between side-by-side and stacked. `splits` layout only.
+
+Why `Super+Alt`: no other modifier combo has all four of H/J/K/L free. Pop Shell owns `Super+H/J/K/L`, `Super+Shift+H/J/K/L` and `Super+Shift+Ctrl+J/K`. GNOME owns `Shift+Alt+H/L` and `Ctrl+Super+J/K`. This config uses at least one of the four keys with every remaining combo. Extension shortcuts don't show up in plain `gsettings list-recursively`. Query them with `gsettings --schemadir ~/.local/share/gnome-shell/extensions/<ext>/schemas list-recursively <schema-id>`.
 
 `enabled_layouts splits,fat,grid,horizontal,stack,tall,vertical` keeps every layout but makes `splits` the startup layout for new tabs (the first listed wins). Existing tabs keep their layout across a config reload; switch one live with `kitten @ goto-layout splits` (needs remote control, which is on). Reload config after edits with `Ctrl+Shift+F5`.
 
