@@ -2,7 +2,7 @@
 title: GNOME
 tags: [gnome, hotkeys, shortcuts, desktop]
 created: 2026-04-10
-updated: 2026-09-11
+updated: 2026-10-05
 ---
 
 # GNOME
@@ -17,12 +17,14 @@ Custom hotkeys for the GNOME desktop environment.
 
 | Shortcut | Action |
 |---|---|
-| Alt 1–4 | Switch to workspace 1–4 |
-| Shift Alt 1–4 | Move window to workspace 1–4 |
+| Super 1–4 | Switch to workspace 1–4 |
+| Shift Super 1–4 | Move window to workspace 1–4 |
 | Ctrl Super J / K | Switch workspace down / up (set by Pop Shell) |
 
 Workspaces are static, not dynamic: `dynamic-workspaces false` with `num-workspaces 4`,
-applied by `apply-gnome-shortcuts`.
+applied by `apply-gnome-shortcuts`. The script also pins the Super 1–4 keys above and
+clears the old `Shift Alt h / l` `move-to-workspace-left/right` (Super Shift H / L is Pop
+Shell's move-to-monitor).
 
 ## Window Switching
 
@@ -43,12 +45,10 @@ applied by `apply-gnome-shortcuts`.
 
 ## Dock & Panels
 
-| Shortcut | Action |
-|---|---|
-| Super 1–9 | Toggle apps in dash-to-panel |
-
-GNOME Shell's own `switch-to-application-1..9` bindings are cleared by
-`apply-gnome-shortcuts` so dash-to-panel owns `Super+1–9` without collision.
+Super 1–9 no longer switches apps. `apply-gnome-shortcuts` clears GNOME Shell's
+`switch-to-application-1..9` and sets dash-to-panel's `hot-keys false`. That schema only
+ships inside the extension, so it needs
+`gsettings --schemadir ~/.local/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com/schemas`.
 
 ## System
 
@@ -78,5 +78,6 @@ is reachable via the Right Super overlay key.
 - That retry loop is aggressive enough to beat other extensions, which is why every
   binding Pop Shell owns was **removed** from the script — otherwise it silently undid
   Pop Shell about a minute after each login. See [Pop Shell](pop-shell.md).
-- What the script still pins: static workspaces, cleared `switch-to-application-1..9`,
-  kitty as default terminal, and the Super+Shift+I headset toggle.
+- What the script still pins: static workspaces, Super 1–4 workspace keys, cleared
+  `switch-to-application-1..9`, dash-to-panel `hot-keys false`, kitty as default terminal,
+  and the Super+Shift+I headset toggle.

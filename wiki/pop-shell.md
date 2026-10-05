@@ -123,7 +123,7 @@ Resolution: the colliding block was deleted from
 monitor, workspace and tiling movement. The script kept only what Pop Shell does not touch:
 
 - `dynamic-workspaces false`, `num-workspaces 4`
-- clearing `switch-to-application-1..9` so dash-to-panel owns Super+1–9
+- clearing `switch-to-application-1..9` (Super+1–4 now switch workspaces, see [GNOME](gnome.md))
 - kitty as `default-applications.terminal`
 - the Super+Shift+I headset toggle (`custom0`)
 

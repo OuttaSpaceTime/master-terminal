@@ -14,8 +14,20 @@ apply_bindings() {
   gsettings set org.gnome.mutter dynamic-workspaces false
   gsettings set org.gnome.desktop.wm.preferences num-workspaces 4
 
-  # Let dash-to-panel own the Super+1-9 app hotkeys without GNOME Shell also
-  # binding them to the app switcher.
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-1 "['<Super>1']"
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-2 "['<Super>2']"
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-3 "['<Super>3']"
+  set_binding org.gnome.desktop.wm.keybindings switch-to-workspace-4 "['<Super>4']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-1 "['<Shift><Super>1']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-2 "['<Shift><Super>2']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-3 "['<Shift><Super>3']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-4 "['<Shift><Super>4']"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-left "@as []"
+  set_binding org.gnome.desktop.wm.keybindings move-to-workspace-right "@as []"
+
+  gsettings --schemadir "${HOME}/.local/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com/schemas" \
+    set org.gnome.shell.extensions.dash-to-panel hot-keys false
+
   set_binding org.gnome.shell.keybindings switch-to-application-1 "@as []"
   set_binding org.gnome.shell.keybindings switch-to-application-2 "@as []"
   set_binding org.gnome.shell.keybindings switch-to-application-3 "@as []"

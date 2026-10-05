@@ -2,7 +2,7 @@
 title: Claude Code
 tags: [claude-code, chezmoi, settings, hooks]
 created: 2026-04-11
-updated: 2026-09-01
+updated: 2026-10-05
 ---
 
 # Claude Code
@@ -59,3 +59,5 @@ For the agent-teams flag, the source file should contain:
 | Hook event | Action |
 |---|---|
 | `PostToolUse` (`Edit\|Write\|MultiEdit`) | `chezmoi-guard.sh` — block accidental edits outside `home/` |
+
+Humans: the `git()` wrapper in `.zshrc` refuses `commit --amend` (`gcam` was removed).
