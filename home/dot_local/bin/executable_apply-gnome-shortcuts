@@ -25,6 +25,19 @@ apply_bindings() {
   set_binding org.gnome.desktop.wm.keybindings move-to-workspace-left "@as []"
   set_binding org.gnome.desktop.wm.keybindings move-to-workspace-right "@as []"
 
+  set_binding org.gnome.desktop.wm.keybindings switch-windows "['<Super>Tab']"
+  set_binding org.gnome.desktop.wm.keybindings switch-windows-backward "['<Shift><Super>Tab']"
+  set_binding org.gnome.desktop.wm.keybindings switch-applications "@as []"
+  set_binding org.gnome.desktop.wm.keybindings switch-applications-backward "@as []"
+  set_binding org.gnome.desktop.wm.keybindings switch-group "@as []"
+  set_binding org.gnome.desktop.wm.keybindings switch-group-backward "@as []"
+  set_binding org.gnome.desktop.wm.keybindings cycle-group "['<Shift><Super>grave']"
+  set_binding org.gnome.desktop.wm.keybindings cycle-group-backward "['<Super>grave']"
+  set_binding org.gnome.desktop.wm.keybindings cycle-windows "['<Super>Escape']"
+  set_binding org.gnome.desktop.wm.keybindings cycle-windows-backward "@as []"
+  set_binding org.gnome.settings-daemon.plugins.media-keys screensaver "['<Alt>Escape']"
+  set_binding org.gnome.desktop.wm.keybindings close "['<Super>q', '<Super><Shift>q', '<Alt>F4', '<Super>w']"
+
   gsettings --schemadir "${HOME}/.local/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com/schemas" \
     set org.gnome.shell.extensions.dash-to-panel hot-keys false
 

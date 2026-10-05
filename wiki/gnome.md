@@ -30,11 +30,14 @@ Shell's move-to-monitor).
 
 | Shortcut | Action |
 |---|---|
-| Alt Tab | Switch windows |
-| Super Tab | Switch applications |
-| Super ` / Alt ` | Switch windows of an application |
-| Alt Escape | Switch windows directly |
+| Super Tab | Switch windows |
+| Super ` / Shift Super ` | Cycle windows of the current app directly (`cycle-group`) |
+| Super Escape | Cycle windows directly (`cycle-windows`) |
 | Alt F2 | Run dialog |
+
+The Alt variants, the app switcher (`switch-applications`) and the popup app-window
+switcher (`switch-group`) are cleared by `apply-gnome-shortcuts`. Shift Super Escape is
+left unbound for `cycle-windows-backward`: it is mutter's `cancel-input-capture`.
 
 ## Mouse
 
@@ -56,7 +59,8 @@ ships inside the extension, so it needs
 |---|---|
 | Super V | Show notifications |
 | Super S | Quick settings — **collides with Pop Shell**, see below |
-| Super Escape | Lock screen |
+| Alt Escape | Lock screen (overrides Pop Shell's Super Escape) |
+| Super W | Close window (alongside Pop Shell's Super Q, Super Shift Q and Alt F4) |
 | Super Shift I | Toggle WH-1000XM5 headset profile |
 | Right Super | Overview |
 
@@ -78,6 +82,6 @@ is reachable via the Right Super overlay key.
 - That retry loop is aggressive enough to beat other extensions, which is why every
   binding Pop Shell owns was **removed** from the script — otherwise it silently undid
   Pop Shell about a minute after each login. See [Pop Shell](pop-shell.md).
-- What the script still pins: static workspaces, Super 1–4 workspace keys, cleared
-  `switch-to-application-1..9`, dash-to-panel `hot-keys false`, kitty as default terminal,
-  and the Super+Shift+I headset toggle.
+- What the script still pins: static workspaces, Super 1–4 workspace keys, Super window
+  switchers, the lock keys, cleared `switch-to-application-1..9`, dash-to-panel
+  `hot-keys false`, kitty as default terminal, and the Super+Shift+I headset toggle.

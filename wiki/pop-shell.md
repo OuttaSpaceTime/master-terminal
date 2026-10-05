@@ -100,7 +100,7 @@ Arrow keys and keypad work everywhere `h/j/k/l` do.
 | Super M | Toggle maximized |
 | Super comma | Minimize |
 | Super V | Toggle message tray |
-| Super Escape | Lock screen (was Super B) |
+| Super Escape | Lock screen (was Super B; now Alt Escape, see [GNOME](gnome.md)) |
 | Super T | Terminal (launches kitty) |
 | Super B | Web browser |
 | Super E | Email |
