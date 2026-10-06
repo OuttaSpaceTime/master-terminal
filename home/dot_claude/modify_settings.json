@@ -7,6 +7,10 @@ MANAGED = json.loads(r'''
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "tui": "fullscreen",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "permissions": {
     "allow": [
       "Bash(solve-allow list)",

@@ -27,6 +27,11 @@ def test_repo_wins_for_structural_keys():
     assert "PreToolUse" in got["hooks"]
 
 
+def test_repo_hides_commit_and_pr_attribution():
+    got = run('{"attribution": {"commit": "Co-Authored-By: Claude"}}')
+    assert got["attribution"] == {"commit": "", "pr": ""}
+
+
 def test_empty_stdin_produces_a_complete_settings_file():
     got = run("")
     for key in ("$schema", "permissions", "hooks", "statusLine", "model", "outputStyle"):
