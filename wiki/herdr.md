@@ -1,8 +1,8 @@
 ---
 title: Herdr
-tags: [herdr, terminal, agents, theme, colors, chezmoi, keybindings]
+tags: [herdr, terminal, agents, theme, colors, chezmoi, keybindings, mouse]
 created: 2026-09-22
-updated: 2026-10-02
+updated: 2026-10-06
 ---
 
 # Herdr
@@ -48,8 +48,8 @@ A kitty split maps to a herdr pane.
 | `ctrl+shift+w` | `close_pane` |
 | `ctrl+shift+[` / `]` | `cycle_pane_previous` / `next` |
 | `ctrl+alt+shift+h/j/k/l` | `swap_pane_*` |
-| `alt+h` / `alt+l` | `previous_agent` / `next_agent` |
-| `alt+j` / `alt+k` | `resize_pane_down` / `resize_pane_up` |
+| `alt+shift+h` / `alt+shift+l` | `previous_agent` / `next_agent` |
+| `alt+h/j/k/l` | `smart-resize.*`: resizes the nvim split when nvim is focused, else the herdr pane |
 | `f6` / `ctrl+shift+r` | `zoom` / `resize_mode` |
 | `ctrl+shift+h` / `ctrl+shift+l` | `previous_tab` / `next_tab` (herdr tabs) |
 | `ctrl+shift+n` | `new_tab` (asks for a name; Enter keeps the number) |
@@ -94,6 +94,21 @@ over ~108 chars fail silently and the herdr API never answers. For the agent ste
 About 1 run in 4, kitty sends a few keys to the sandbox herdr in the legacy encoding
 (`^[^L` or a bare `1` at the prompt instead of `ctrl+alt+l` / `ctrl+1`) and those steps fail;
 cause unknown (not herdr's focus handling), rerun.
+
+### Focus on hover (not available)
+
+Up to 0.9.3 there is no focus-follows-mouse option: only a left click focuses a pane. Pointer
+motion over a pane is forwarded to the app inside and never changes focus
+(`src/client/shell/mouse.rs`, `MouseEventKind::Moved`). kitty's `focus_follows_mouse yes`
+stops at the herdr window. A plugin can't add it either: the plugin and socket APIs emit
+no mouse events.
+
+Tracked upstream in Discussion [#1259](https://github.com/herdrdev/herdr/discussions/1259)
+(upvoted and commented 2026-10-06, subscribed). Feature requests go to Discussions, not
+Issues; new duplicates get closed. Several forks implement it behind
+`ui.focus_follows_mouse` (default off), e.g. `noomz/herdr` branch `feat/focus-follows-mouse`
+with a 200 ms dwell. Building one locally needs Zig 0.16 for the vendored libghostty-vt,
+on top of the pinned Rust toolchain, and `herdr update` would overwrite the result.
 
 ## Theme
 
@@ -166,3 +181,6 @@ Script kept at `.solve/tasks/2026-09-22-herdr-theme/`.
   `smart-splits.lua`. The plugin link lives in `~/.config/herdr/plugins.json`,
   outside chezmoi: redo `herdr plugin link ~/.local/share/nvim/lazy/smart-splits.nvim`
   on a new machine.
+- `alt+h/j/k/l` resize works the same way through the repo's own plugin
+  `home/private_dot_config/herdr/smart-resize/` (tested by `tests/test_herdr_smart_resize.py`).
+  Link it once per machine: `herdr plugin link ~/.config/herdr/smart-resize`.

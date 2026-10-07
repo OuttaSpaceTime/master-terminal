@@ -8,12 +8,12 @@ Panes
   ctrl+shift+w              close pane
   ctrl+shift+[ / ]          previous / next pane
   ctrl+alt+shift+h/j/k/l    swap pane
-  alt+j / alt+k             resize down / up
+  alt+h/j/k/l               resize (nvim split inside nvim)
   ctrl+shift+r              resize mode (h/l width, j/k height, esc)
   f6                        zoom
 
 Agents
-  alt+h / alt+l             previous / next agent
+  alt+shift+h / l           previous / next agent
 
 Tabs
   ctrl+shift+n              new tab (Enter keeps the number)

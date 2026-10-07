@@ -1,0 +1,30 @@
+id = "smart-resize"
+name = "smart-resize"
+version = "0.1.0"
+min_herdr_version = "0.9.1"
+description = "Alt+h/j/k/l resizes Neovim splits in a Neovim pane and herdr panes everywhere else"
+platforms = ["linux"]
+
+[[actions]]
+id = "left"
+title = "Resize left (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/herdr-resize.sh", "left"]
+
+[[actions]]
+id = "down"
+title = "Resize down (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/herdr-resize.sh", "down"]
+
+[[actions]]
+id = "up"
+title = "Resize up (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/herdr-resize.sh", "up"]
+
+[[actions]]
+id = "right"
+title = "Resize right (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/herdr-resize.sh", "right"]

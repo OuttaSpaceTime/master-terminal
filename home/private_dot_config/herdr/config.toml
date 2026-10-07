@@ -3,6 +3,9 @@ onboarding = false
 [ui]
 window_title = "herdr: {workspace}"
 
+[ui.toast.clipboard]
+enabled = false
+
 [theme]
 name = "catppuccin-latte"
 
@@ -46,10 +49,8 @@ swap_pane_left = ["prefix+shift+h", "ctrl+alt+shift+h"]
 swap_pane_down = ["prefix+shift+j", "ctrl+alt+shift+j"]
 swap_pane_up = ["prefix+shift+k", "ctrl+alt+shift+k"]
 swap_pane_right = ["prefix+shift+l", "ctrl+alt+shift+l"]
-previous_agent = "alt+h"
-next_agent = "alt+l"
-resize_pane_down = "alt+j"
-resize_pane_up = "alt+k"
+previous_agent = "alt+shift+h"
+next_agent = "alt+shift+l"
 cycle_pane_previous = ["prefix+shift+tab", "ctrl+shift+["]
 cycle_pane_next = ["prefix+tab", "ctrl+shift+]"]
 zoom = ["prefix+z", "f6"]
@@ -78,3 +79,27 @@ key = "ctrl+l"
 type = "plugin_action"
 command = "smart-splits.nvim.right"
 description = "navigate right (vim/herdr)"
+
+[[keys.command]]
+key = "alt+h"
+type = "plugin_action"
+command = "smart-resize.left"
+description = "resize left (vim/herdr)"
+
+[[keys.command]]
+key = "alt+j"
+type = "plugin_action"
+command = "smart-resize.down"
+description = "resize down (vim/herdr)"
+
+[[keys.command]]
+key = "alt+k"
+type = "plugin_action"
+command = "smart-resize.up"
+description = "resize up (vim/herdr)"
+
+[[keys.command]]
+key = "alt+l"
+type = "plugin_action"
+command = "smart-resize.right"
+description = "resize right (vim/herdr)"
