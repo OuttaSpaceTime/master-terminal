@@ -79,4 +79,3 @@ When running as a subagent, in report-only mode, or when the developer explicitl
 - Compress checkpoint structure into clearly labeled sections rather than eliminating it — the sections still organize the thinking.
 - Omit interactive questions but preserve decision gates and open questions as labeled items in the output.
 - If a tool is unavailable (e.g., Bash blocked, file write denied), note the limitation and continue with what's available. Never halt the entire skill because one tool failed.
-- Prioritize the highest-risk areas when context budget is limited — read the most important files first, not all files equally.

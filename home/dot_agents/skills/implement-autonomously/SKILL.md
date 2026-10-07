@@ -21,8 +21,8 @@ Non-trivial requirements should be implemented in a feature branch.
 
 ## Implement everything autonomously
 
-Implement your entire requirements autonomously. Avoid stopping for user input if possible.
-You might encounter new questions while implementing, try to answer and decide for yourself first.
+Implement your entire requirements autonomously.
+When new questions come up while implementing, answer and decide them yourself.
 Only ask the user when you encounter true showstoppers, or when choosing wrong on a hard decision would waste a large portion of follow-up work.
 
 ## Verify with tests

@@ -103,5 +103,5 @@ Draft diffs with context, a file-impact table, and affected tests for a small-sc
 </critical>
 
 - **No fabricated context.** Every code snippet must come from a file you Read in this session.
-- **Brevity.** Target a 3-6 minute read. Prefer tables and diff blocks over prose. Omit empty sections. If the sketch outgrows this, escalate to `/plan`.
+- **Brevity.** Keep the sketch a quick read. Prefer tables and diff blocks over prose. Omit empty sections. If the sketch outgrows a quick read, escalate to `/plan`.
 - Keep technical claims precise and verifiable against the code you read.

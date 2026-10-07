@@ -4,14 +4,13 @@ description: >
   Pick and apply a new theme color for master-terminal's light dotfiles theme by building
   a live HTML artifact that renders real candidates against the actual kitty background and
   font, with WCAG contrast ratios computed live against both the background and the body
-  text color — never eyeballed or guessed from a screenshot. Trigger whenever the user says
-  a terminal/diff/syntax color is "hard to read", "doesn't differentiate well", or "looks
-  almost black/white" next to text, asks to "suggest a different green/color/accent", wants
-  to "check contrast" for the kitty/nvim/statusline theme, says "I don't like these options"
-  or "any other options" while reviewing color candidates, or wants a chosen color applied
-  everywhere it's used (kitty, nvim, fzf, statusline, p10k, lazygit) via chezmoi. Also
-  covers "is our font good/bad for light mode" and "can we use a bolder font" questions that
-  come up during the same readability discussion.
+  text color — never eyeballed or guessed from a screenshot. Use whenever a terminal, diff,
+  syntax, statusline or prompt color is hard to read or hard to tell apart from body text,
+  whenever the user wants other color candidates or a contrast check for the theme
+  (including mid-review, when they reject the current options), or wants a chosen color
+  applied everywhere it's used (kitty, nvim, fzf, statusline, p10k, lazygit) via chezmoi.
+  Also covers font questions (light-mode readability, a bolder weight) that come up in the
+  same readability discussion.
 ---
 
 # Theme Color

@@ -42,7 +42,7 @@ This repository has three responsibilities:
 3. Run `chezmoi -S home diff` again to preview the changes that will be deployed
 4. Run `chezmoi -S home apply` to deploy (add `--force` if drift was reviewed and is safe to overwrite)
 
-**`~/.claude/settings.json` cannot drift any more.** Its chezmoi source is a `modify_` script (`home/dot_claude/modify_settings.json`), not a plain file: chezmoi feeds it the deployed file on stdin and uses its stdout as the target contents. Keys you toggle in the UI (`model`, `outputStyle`, `effortLevel`, `theme`, …) are passed straight through from the live file, so `chezmoi -S home diff` stays empty; `permissions`, `hooks`, `statusLine` and `enabledPlugins` are still enforced from the repo. Edit the `MANAGED` blob to change those — `DEFAULTS` only seeds a machine that lacks the key. Details in `wiki/claude-code.md`.
+**`~/.claude/settings.json` does not drift.** Its chezmoi source is a `modify_` script (`home/dot_claude/modify_settings.json`), not a plain file: chezmoi feeds it the deployed file on stdin and uses its stdout as the target contents. Keys you toggle in the UI (`model`, `outputStyle`, `effortLevel`, `theme`, …) are passed straight through from the live file, so `chezmoi -S home diff` stays empty; `permissions`, `hooks`, `statusLine` and `enabledPlugins` are still enforced from the repo. Edit the `MANAGED` blob to change those — `DEFAULTS` only seeds a machine that lacks the key. Details in `wiki/claude-code.md`.
 
 ## Working With Agent Skills
 

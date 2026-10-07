@@ -11,7 +11,7 @@ Use the skill's existing Proportional Depth classification to decide whether to 
 - **Small** (single execution path, one layer, no design decisions): Single-pass discovery. No agents.
 - **Medium+** (2+ execution paths, touches 2+ layers, or has design decisions): Spawn upfront agents from the skill's roster.
 
-**Threshold tiebreaker:** When a skill uses file count as a secondary activation signal (e.g., 15+ files), changes in the 10-14 file range that clearly satisfy medium+ on the layer criterion should still spawn agents. When in doubt near the threshold, default to spawning.
+**Threshold tiebreaker:** When a skill uses file count as a secondary activation signal (e.g., 15+ files), changes in the 10-14 file range that clearly satisfy medium+ on the layer criterion should still spawn agents.
 
 **Override flags:**
 - `--parallel` — force upfront agents regardless of complexity assessment.

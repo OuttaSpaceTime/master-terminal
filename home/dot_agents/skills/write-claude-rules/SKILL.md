@@ -26,7 +26,7 @@ When rules conflict, higher-precedence rules win. Path-scoped rules are the most
 
 ## Rule File Template
 
-Use this structure for every `.claude/rules/` file:
+An illustrative structure for a `.claude/rules/` file. Only the `paths:` frontmatter format is fixed; drop the sections a rule does not need:
 
 ```markdown
 ---
@@ -259,8 +259,8 @@ When rules seem to be ignored, work through this decision tree:
 - Conflicting rules? More specific location wins; project rules beat user rules.
 - Instructions ignored? Make them more specific, check for contradictions.
 
-<critical>
-  - NEVER put behavioral guidance in settings.json — that's for tool permissions and env vars only
-  - NEVER use verbose explanations in rules; high information density, minimal tokens
-  - Keep each rule file focused on ONE topic
-</critical>
+## Key Constraints
+
+- Behavioral guidance belongs in CLAUDE.md or `.claude/rules/`; settings.json holds tool permissions, env vars, and hooks.
+- Keep rules dense and concrete. A short reason beside a non-obvious rule earns its tokens; filler and restated defaults do not.
+- Keep each rule file focused on one topic.

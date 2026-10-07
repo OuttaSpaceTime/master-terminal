@@ -18,7 +18,7 @@ Walk the developer through material using interactive explanation until they can
 
 ### Output Contract — Progress Footer (mandatory)
 
-Every assistant message in this skill **must end with a progress footer as the LAST line**. No exceptions while the walkthrough is active — this includes clarifying questions, short acknowledgements, and messages that contain only code. A message without this footer is a contract violation.
+End every assistant message in this skill with a progress footer as its last line. While the walkthrough is active, that includes clarifying questions, short acknowledgements, and messages that contain only code.
 
 **Format:** `Phase: <Orient | Walk | Synthesize> — <current concept>`
 
@@ -161,23 +161,3 @@ Not every question needs an interactive walkthrough. Just answer directly when:
 - **Implementation requests**: If the developer wants code written, not understanding built, just implement it
 
 Use walkthrough when the topic has enough depth that the developer's mental model needs building or correcting — multiple interconnected concepts, non-obvious behavior, or a system they need to reason about independently later.
-
-## Example Exchanges
-
-### Gap Detected → Targeted Challenge
-
-**Context**: Walking through an Angular HTTP interceptor chain after `/review`
-
-> **Claude**: "The `refreshSessionInterceptor` checks if the session is stale — meaning older than 30 seconds — and silently fetches a fresh session before forwarding. What do you think happens to the original request while that refresh is in flight?"
->
-> **Developer**: "It waits? The interceptor probably queues it."
->
-> **Claude**: "Close — it does wait, but there's no queue. Look at `refreshSessionInterceptor` line 12: it uses `switchMap`, which means if a second request arrives while the refresh is in flight, it would cancel the first refresh and start a new one. In practice this rarely matters because the refresh takes <100ms, but it's worth knowing the mechanism. Can you think of a scenario where this could cause an issue?"
-
-### Solid Understanding → Move On
-
-> **Claude**: "The `CUSTOM_ERROR_HANDLING` context token opts a request out of the global error interceptor. Why would a service need this?"
->
-> **Developer**: "Because `withRequestState()` needs to see the error to put it in the loading/error/success state. If the interceptor redirects to /500 first, the component never gets the error."
->
-> **Claude**: "Exactly right. Let's move on to how `withRequestState()` actually transforms the observable."
