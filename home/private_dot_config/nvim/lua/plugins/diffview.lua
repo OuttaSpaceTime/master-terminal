@@ -200,6 +200,20 @@ return {
         desc = "Diffview Since Commit (local files)",
       },
       {
+        "<leader>Dh",
+        function()
+          Snacks.picker.git_log({
+            confirm = function(picker, item)
+              picker:close()
+              if item and item.commit then
+                vim.cmd("DiffviewOpen " .. item.commit .. "^!")
+              end
+            end,
+          })
+        end,
+        desc = "Diffview Single Commit",
+      },
+      {
         "<leader>gj",
         goto_open_diffview,
         desc = "Go to open Diffview",
