@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# gh: pick the GitHub account from the current folder, then run the real gh.
+# ~/Code/Misc/** -> OuttaSpaceTime, rest of ~/Code/** -> felix-eschey (makandra).
+# Elsewhere, or when GH_TOKEN is already set, the real gh decides as usual.
+case "$PWD/" in
+  "$HOME"/Code/Misc/*) user=OuttaSpaceTime ;;
+  "$HOME"/Code/*) user=felix-eschey ;;
+esac
+
+if [[ -n $user && -z $GH_TOKEN ]]; then
+  GH_TOKEN=$(/usr/bin/gh auth token --user "$user") && export GH_TOKEN
+fi
+
+exec /usr/bin/gh "$@"
