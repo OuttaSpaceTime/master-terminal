@@ -290,6 +290,8 @@ git() {
 }
 alias killrails='lsof -t -i :3000 -s TCP:LISTEN | xargs kill -9'
 alias newrails='killrails 2>/dev/null; pkill -9 -f -F tmp/pids/server.pid puma 2>/dev/null; rm -f tmp/pids/server.pid; bin/rails server'
+alias killng='fuser -k 4200/tcp'
+alias newng='killng 2>/dev/null; npx ng serve'
 alias fixup='git log --oneline | fzf | awk '\''{print $1}'\'' | xargs -I '\''{}'\'' git commit --fixup {}'
 alias merge-conflicts='git diff --name-status --diff-filter=U'
 alias dew='docker compose exec web'
