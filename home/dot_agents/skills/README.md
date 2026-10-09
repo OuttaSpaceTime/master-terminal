@@ -50,13 +50,14 @@ Skills can be chained — the output of one feeds the next:
 - `/sketch` → `/sketch-diff-tour` (the sketch's file list and decisions seed the draft)
 - `/explore-solutions` → `/sketch-diff-tour` (one worktree and one tour per candidate approach)
 - `/sketch-diff-tour` → `/diff-tour` (same page, once the change is really built)
+- `/shape-code` → `/trim-code` (where code lives first, then how much of it; trimming first can delete evidence for a move)
 
 When chaining, the downstream skill reads the most recent artifact from the upstream skill's directory.
 Exception: `/walkthrough` consumes upstream artifacts but produces none itself.
 
 ## Skill Categories
 
-**Interactive (checkpoint-based)**: scout, plan, review, walkthrough, diff-review, explore-solutions, control-flow-trace
+**Interactive (checkpoint-based)**: scout, plan, review, walkthrough, diff-review, explore-solutions, control-flow-trace, shape-code
 **Autonomous loop**: autoresearch
 **Single-pass**: sketch, strict-diff, research, diff-tour, sketch-diff-tour
 **Workspace-local orchestration**: dot-manage
