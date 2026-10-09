@@ -10,7 +10,8 @@ often and are large are hot spots where placement matters most.
 Usage: cochange.py [BASE] [--commits N] [--min-shared K] [--top T]
   BASE         diff base (default: HEAD, i.e. uncommitted work; a branch works too)
   --commits    how many recent non-merge commits to read (default 1000)
-  --min-shared ignore pairs with fewer shared commits (default 3)
+  --min-shared ignore pairs with fewer shared commits (default 3: one or two
+               shared commits happen by coincidence, three start a pattern)
   --top        co-changes to show per file (default 6)
 
 Commits touching more than 30 files are skipped: mass renames and formatting runs

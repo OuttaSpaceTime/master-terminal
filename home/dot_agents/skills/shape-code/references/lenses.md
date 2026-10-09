@@ -51,8 +51,8 @@ sum it.
 
 1. **List the behavior cases** once, from the requirements and the branches of the rule:
    each distinct input class with its expected outcome (eligible, not eligible, at the
-   threshold, no orders). Add hostile-input checks and the integration that wires it up
-   as cases of their own.
+   threshold, no orders). Hostile-input checks and the integration that wires the
+   feature up are cases of their own.
 2. **For each version and case:** the cheapest level that can verify it, and the lines of
    that test, setup included (records or factories built, mocks, TestBed configuration,
    requests made, assertions).
@@ -78,51 +78,3 @@ files don't count. Every version uses the same question.
 
 More files is worse even when each file is small. A version that wins Change and Test
 but adds files to Read has split something that a reader needs together.
-
-## Thresholds
-
-- **A win:** at least 2 units, or about 30% of the lines, summed over the scenarios; or
-  about 30% fewer test lines; with no lens worse beyond noise.
-- **Worse:** one more file on Read, or more lockstep edits.
-- **A tie:** anything smaller. Report it as `–`.
-
-## Sensitive code
-
-Judge it yourself from these signals. One strong signal is enough; say which one in the
-report.
-
-- **Money and access:** payments, prices, invoices, balances; authentication, sessions,
-  permissions, authorization checks; tokens and secrets.
-- **Persistent data:** writes to the database, migrations, background jobs that change
-  records, imports and exports, deletion.
-- **Contracts:** public API endpoints and response shapes, webhooks, events other systems
-  consume, URLs people bookmark, file formats.
-- **Input from outside:** validation, sanitizing, limits on what a client may send.
-- **Concurrency:** locks, transactions, retries, caching and its invalidation.
-- **History:** a hot spot in the cochange output (many commits, many partners), or code
-  with a history of bug-fix commits (`git log --grep` for fix, bug, revert on the file).
-- **No safety net:** code no test covers.
-- **The code says so:** comments warning about it, unusual care like extra logging,
-  defensive checks or feature flags.
-
-## Why counts, not opinions
-
-These rules come from studies of how well language models judge design:
-
-- LLMs detect size and structure problems well (large class, long method: F1 0.80–0.95),
-  but context-dependent ones poorly (feature envy F1 0.11–0.71, refused bequest below
-  0.40, shotgun surgery at most 0.63). Hence: counts the main agent can redo, and git
-  history for change coupling.
-  [Beyond Strict Rules, 2026](https://arxiv.org/html/2601.09873v1)
-- Up to 80% of unfiltered LLM suggestions to move a method elsewhere were invalid: classes
-  that don't exist, moves that can't work. Mechanical checks plus self-critique made them
-  useful; LLMs were better at judging a target than at finding what to move. Hence step
-  4's verification. [MM-assist, ICSME 2025](https://arxiv.org/html/2503.20934v2)
-- Developers acted on 1–19% of review bots' comments, against 60% of human comments,
-  mostly because of noise. Hence the caps and the one-line report.
-  [Code review agents in pull requests](https://arxiv.org/html/2604.03196v1)
-- AI refactorings were correct in 37% of cases without guidance. Hence pin-down tests,
-  the measured check and the test run.
-  [CodeScene, Refactoring vs Refuctoring](https://codescene.com/hubfs/whitepapers/Refactoring-vs-Refuctoring-Advancing-the-state-of-AI-automated-code-improvements.pdf)
-- Counting how many components a likely change touches is scenario-based architecture
-  evaluation (SAAM, Kazman et al. 1994), applied here to a single diff.

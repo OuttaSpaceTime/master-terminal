@@ -1,7 +1,7 @@
 ---
 name: shape-code
 description: >-
-  Measure whether a working change is shaped well for what comes next, with counts
+  Measures whether a working change is shaped well for what comes next, with counts
   instead of opinions. Writes three likely future feature requests, then counts for the
   change as written and for alternative designs: the units and lines each request would
   touch, the test lines and test levels needed to cover the behavior, and the files a
@@ -11,6 +11,7 @@ description: >-
   whether code is in the right place (MVC layer, model vs controller vs service, how to
   split a component), whether a design pattern pays off, how to make code easier to test,
   or to train one's own design judgement on real diffs.
+argument-hint: "[base ref or commit range]"
 ---
 
 # Shape code
@@ -31,6 +32,9 @@ is a failed run, however good the analysis behind it.
 - **The diff** is the change being shaped: a commit range or uncommitted work, as it was
   before this skill began.
 - **Existing code** is every line the diff neither adds nor modifies.
+- **Existing churn** is the lines of existing code a version modifies, moves or deletes,
+  renames and updated call sites included. Code a version writes inside the diff doesn't
+  count.
 - **Intended behavior** is what the requirements, specifications or docs ask for, what
   tests pin down, and what code in this codebase relies on. A detail nobody could sensibly
   rely on (key order, whitespace, a typo in a message) doesn't count.
@@ -46,12 +50,12 @@ is a failed run, however good the analysis behind it.
   through where it lands.
 - **An area** is a part of the diff that can be judged on its own, like a rule and its
   consumers, or a screen. Most diffs are one area.
-- **Sensitive code** is code where a small mistake is expensive. You judge it yourself,
-  from the signals in [references/lenses.md](references/lenses.md#sensitive-code).
+- **Sensitive code** is code where a small mistake is expensive. You judge it yourself;
+  see Sensitive code below.
 
 ## The three lenses
 
-Each lens is a count. How to count: [references/lenses.md](references/lenses.md).
+Each lens is a count. The sub-agents count by [references/lenses.md](references/lenses.md).
 
 1. **Change.** For each scenario: the units touched, the lines of logic changed, and the
    lockstep edits (edits that break something when one of them is forgotten).
@@ -64,8 +68,8 @@ Each lens is a count. How to count: [references/lenses.md](references/lenses.md)
 
 **A version beats V0** when it is better on Change by at least 2 units or about 30% of
 the lines summed over the scenarios, or better on Test by about 30% of the lines, and no
-worse on any lens beyond noise. One more file on Read is worse. Smaller differences are
-ties: estimates are rough, and a tie is reported as one.
+worse on any lens beyond noise. One more file on Read, or one more lockstep edit, is
+worse. Smaller differences are ties: estimates are rough, and a tie is reported as one.
 
 **Counts can be gamed.** Shorter but denser doesn't count: several statements packed
 into a line, long call chains, clever tricks, metaprogramming where two plain cases would
@@ -90,28 +94,51 @@ Every version ends on one list.
 - 🚫 **Not pursued.** No win beyond noise, worse on a lens, a prediction that failed,
   evidence that didn't hold, or it contradicts a decision. One line each.
 
-Sensitive code never goes on Apply, however small the edit: small edits in sensitive
-code are where review pain comes from.
+## Sensitive code
+
+Sensitive code never goes on Apply, however small the edit: small edits in sensitive code
+are where review pain comes from. Judge it from these signals. One strong signal is
+enough; the report names it.
+
+- **Money and access:** payments, prices, invoices, balances; authentication, sessions,
+  permissions, authorization checks; tokens and secrets.
+- **Persistent data:** writes to the database, migrations, background jobs that change
+  records, imports and exports, deletion.
+- **Contracts:** public API endpoints and response shapes, webhooks, events other systems
+  consume, URLs people bookmark, file formats.
+- **Input from outside:** validation, sanitizing, limits on what a client may send.
+- **Concurrency:** locks, transactions, retries, caching and its invalidation.
+- **History:** a hot spot in the cochange output (many commits, many partners), or code
+  with a history of bug-fix commits (`git log --grep` for fix, bug or revert on the file).
+- **No safety net:** code no test covers.
+- **The code says so:** comments warning about it, or unusual care like extra logging,
+  defensive checks or feature flags.
 
 ## Steps
 
-1. Scope (main agent).
-2. Scenarios (a sub-agent, then the human).
-3. Versions and counts (two sub-agents).
-4. Verify and sort (main agent).
-5. Apply and clean up (main agent).
-6. Report (main agent).
-7. Your call (human, then main agent).
+Track these steps in your todo list, so that verification and cleanup don't get skipped:
+
+```
+- [ ] 1. Scope: the diff, the reach, sensitive code, cochange output
+- [ ] 2. Scenarios written, then confirmed by the human
+- [ ] 3. Versions counted by both passes
+- [ ] 4. Counts verified, predictions checked, versions sorted
+- [ ] 5. Apply versions measured, applied, cleaned up, tests passing
+- [ ] 6. Report
+- [ ] 7. Your call versions applied as the human approves them
+```
 
 ### 1. Scope
 
-- **The diff:** uncommitted work against `HEAD`. If there is none, the branch against
-  its merge-base with the default branch. If both are empty, say so and stop.
+- **The diff:** the base or commit range the human named, if any. Otherwise uncommitted
+  work against `HEAD`, and if there is none, the branch against its merge-base with the
+  default branch. If the diff is empty, say so and stop.
 - **Trivial diffs stop here** with one line, like `Nothing to shape: rename only.`
   Trivial means a typo, a config value, a pure rename, or only tests or docs. Size alone
   is never a reason to stop.
-- Run `scripts/cochange.py <base>` from the repository root. Its output shows hot spots
-  and the files that change together with the diff's files.
+- From the repository root, run `<skill dir>/scripts/cochange.py <base>`, where
+  `<skill dir>` is this skill's base directory and `<base>` the diff's base or range. It
+  prints the hot spots and the files that change together with the diff's files.
 - Read the project's written rules: `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
   `REVIEW.md`, `docs/adr/`, architecture docs. Decisions recorded there are settled. A
   version that contradicts one goes to Your call only when its counts show a real cost,
@@ -131,9 +158,9 @@ change gets the full method; only the report gets shorter.
 ### 2. Scenarios
 
 Spawn one fresh sub-agent, not a fork of your context. Give it the brief, the Terms, and
-[references/lenses.md](references/lenses.md#scenarios). It returns 3 scenarios per area.
-It never sees an alternative design: scenarios chosen after the designs flatter a
-favorite.
+the absolute path of `references/lenses.md` in this skill's base directory, with the
+task to follow its Scenarios section. It returns 3 scenarios per area. It never sees an
+alternative design: scenarios chosen after the designs flatter a favorite.
 
 Show the scenarios to the human, one line each with where its likelihood comes from
 (git history, the ticket, a requirement), and ask them to confirm, edit or replace them.
@@ -144,8 +171,8 @@ the scenarios as unconfirmed in the report.
 ### 3. Versions and counts
 
 Spawn two fresh sub-agents in parallel, per area. Give both the brief, the confirmed
-scenarios, this skill's intro, Terms, The three lenses, the rules below, and the paths of
-[references/lenses.md](references/lenses.md) and [references/moves.md](references/moves.md).
+scenarios, this skill's intro, Terms, The three lenses, the rules below, and the absolute
+paths of `references/lenses.md` and `references/moves.md` in this skill's base directory.
 
 - **The layer pass** looks for versions that move knowledge to the layer or object that
   owns it: a rule next to the data it reads, a side effect out of a callback, fetching
@@ -165,10 +192,8 @@ Rules for both passes:
   a written rule), follow it. A version that introduces a new way says so, and counts the
   siblings that would then do it differently.
 - Count V0 yourself, independently of the other pass.
-- For each scenario and version, write the edit list (file, unit, about how many lines,
-  whether it is a lockstep edit) and sum it. For Test, list the behavior cases once, then
-  give each version's test level and lines per case. For Read, state the question and
-  the files.
+- Count every version as `references/lenses.md` describes: the edit list per scenario,
+  the behavior cases and their test levels, the read question and its files.
 - Then state, per version, the principles or patterns it relies on as predictions:
   "<principle> predicts <which count> improves for <scenario>".
 - Mark what touches sensitive code, what changes intended behavior (what changes, and
@@ -192,14 +217,14 @@ V1 <short name>: <what changes: units added, moved, merged, deleted, with paths>
   S1 … S2 … S3 …   Test …   Read …
   Concepts: +Order::Checkout −DiscountService
   Predictions: <principle> predicts <count> for <scenario>
-  Touches: existing code <files, ~churn>; sensitive <none or what>; behavior <kept, or what changes>
+  Touches: existing churn <files, ~lines>; sensitive <none or what>; behavior <kept, or what changes>
 Bugs: …
 Local waste: …
 ```
 
 ### 4. Verify and sort
 
-- **Noise check.** Compare the two passes' V0 counts. If they differ beyond the
+- **Noise check.** Compare the two passes' V0 counts. If they differ beyond the win
   threshold, recount V0 yourself and use your count.
 - **Merge** versions the two passes both found. Number the rest V1, V2, … across all
   areas.
@@ -254,7 +279,8 @@ Rules:
 - One block per area, at most about 12 lines each, under one heading for the whole diff.
 - In the matrix, V0 shows absolute counts, like `4u 35l`. Other versions show the
   difference from V0, like `−3u −25l`, and `–` for a tie. `u` is units and `l` is lines
-  of logic. The Test column shows lines, then the cases per level as unit/integration/end-to-end.
+  of logic. The Test column shows lines, then the cases per level as
+  unit/integration/end-to-end.
 - One line per decision: its emoji, its code, its name, the numbers that decided it,
   then cost and risk where there are any. A line wraps at most once.
 - Predictions go on one line, and the takeaway on one line: the principle that held in
