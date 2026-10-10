@@ -43,8 +43,11 @@ the same decision.
 For each decision in more than one place, look up how often its places changed
 together: `git log --format=%h -- <files of its places>`, then count the commits that
 touched at least two of those places, checking with `git show <sha>` that the change
-was about this decision and not a mass reformat. For places inside one large file, use
-`git log -L :<method>:<file>` per method instead. Report it as 🔥n.
+was about this decision and not a mass reformat. Skip the commit that introduced the
+decision or copied it into a new place: only later changes to places that already
+existed show its cost coming due. For places inside one large file, use
+`git log -L :<method>:<file>` per method instead. Report it as 🔥n, or no mark when n
+is 0.
 
 History sets urgency, not importance. A decision in several places is worth bringing to
 one either way; 🔥 says its cost has been coming due. A decision in one place needs no

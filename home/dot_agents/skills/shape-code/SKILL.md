@@ -254,7 +254,9 @@ Rules:
   summarize the rest in one row, like `+5 decisions at 1 place in every version`. ⛓
   marks lockstep places, 🔥n the history. The last two rows are Tests and Read.
 - Every number carries its unit, so the matrix reads without a legend: `4 places`,
-  `120 lines · setup 3.4/case`, `5 files`.
+  `120 lines · 3.4 setup items/case`, `5 files`. Below the matrix, one line names what
+  the setup items are, like `setup items: records, login, mocks, TestBed providers`. Show
+  each version's own counts from the passes; never one blended figure for all columns.
 - One line per verdict: its emoji, its code, its name, the numbers that decided it, then
   cost and risk where there are any. A line wraps at most once.
 - Predictions go on one line, and the takeaway on one line: the question the human can
@@ -269,8 +271,9 @@ what "active account" means 🔥4   4 ⛓                   1                   
 how balances become series 🔥3    3                     3                     1
 which accounts are listed         2                     1                     1
 +4 decisions at 1 place in every version
-Tests (7 cases)                   140 lines · setup 3.4  90 lines · setup 1.6  85 lines · setup 1.6
+Tests (7 cases)                   140 lines · 3.4/case  90 lines · 1.6/case  85 lines · 1.6/case
 Read                              5 files               4 files               4 files
+setup items per case: records, login, request
 
 ✅ V2 series in one method: "active" 4→1 places 🔥, series 3→1 🔥, setup 3.4→1.6/case, −1 file.
 🛠️ V1 scope only: smaller step ("active" 4→1, listing 2→1), leaves the series in 3 places 🔥.
