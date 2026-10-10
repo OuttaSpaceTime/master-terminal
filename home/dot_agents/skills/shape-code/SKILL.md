@@ -1,16 +1,18 @@
 ---
 name: shape-code
 description: >-
-  Measures whether a working change is shaped well for what comes next, with counts
-  instead of opinions. Writes three likely future feature requests, then counts for the
-  change as written and for alternative designs: the units and lines each request would
-  touch, the test lines and test levels needed to cover the behavior, and the files a
-  reader opens to understand it. Applies the alternative that clearly wins, brings bigger
-  or riskier ones to the human, and states design principles only as predictions the
-  counts confirm or refute. Use after implementing a change that works, when asking
-  whether code is in the right place (MVC layer, model vs controller vs service, how to
-  split a component), whether a design pattern pays off, how to make code easier to test,
-  or to train one's own design judgement on real diffs.
+  Measures how robust a working change is for whatever comes next, with counts instead of
+  opinions. Lists every decision the code makes (rules, data fields, formats,
+  permissions, interfaces, outside libraries, the feature itself) and counts, for the
+  change as written and for alternative designs, how many places would change if each
+  decision changed, how much each test has to set up, and how many files a reader opens
+  to understand the behavior. Recommends the shape that puts decisions in one place
+  without making testing or reading harder, states design principles only as predictions
+  the counts confirm or refute, and changes code only when asked. Use after implementing
+  a change that works, when asking whether code is in the right place (MVC layer, model
+  vs controller vs service, how to split a component), whether a pattern like a service
+  object, form object or store pays off, how maintainable or testable a change is, or to
+  train one's own design judgement on real diffs.
 argument-hint: "[base ref or commit range]"
 ---
 
@@ -18,114 +20,126 @@ argument-hint: "[base ref or commit range]"
 
 Agents write code that works, and a reader checks it for correctness. Whether everything
 is in the right place rarely gets asked, and asked as "is X better than Z?" it has no
-answer anyone can check. This skill asks a question that does: **what will the next
-changes cost, in this design and in its alternatives?** It counts, and the counts decide.
-Principles and patterns come last, as predictions the counts confirm or refute for this
-code. A principle is never a reason on its own.
+answer anyone can check. This skill asks a question that does: **if something this code
+decides changes, how many places change with it?** A shape is robust for whatever comes
+next when each decision lives in one place, its rules can be tested with little setup,
+and a reader finds them without a tour. That needs no guess about the future: every
+future change touches some decision the code already makes.
 
-The report is the product. It is a matrix and one line per decision, scannable in a few
-seconds, with every line something the human can act on. A long or overwhelming report
-is a failed run, however good the analysis behind it.
+The skill counts, and the counts decide. Principles and patterns come last, as
+predictions the counts confirm or refute for this code; a principle is never a reason on
+its own. A pattern is neither good nor bad in itself: the same service object, form
+object or store wins in one diff and only adds files in another.
+
+The report is the product: a matrix and one line per verdict, scannable in a few
+seconds. A long or overwhelming report is a failed run, however good the analysis behind
+it. The skill analyzes; it changes code only when the human asks.
 
 ## Terms
 
-- **The diff** is the change being shaped: a commit range or uncommitted work, as it was
-  before this skill began.
+- **The diff** is the change being shaped: a commit range or uncommitted work.
 - **Existing code** is every line the diff neither adds nor modifies.
 - **Existing churn** is the lines of existing code a version modifies, moves or deletes,
-  renames and updated call sites included. Code a version writes inside the diff doesn't
-  count.
+  renames and updated call sites included.
 - **Intended behavior** is what the requirements, specifications or docs ask for, what
   tests pin down, and what code in this codebase relies on. A detail nobody could sensibly
   rely on (key order, whitespace, a typo in a message) doesn't count.
 - **A unit** is anything with a name a reader navigates to: a method, function, class,
-  module, component, template or config entry. A scenario touching a unit counts it once,
-  however many of its lines change.
+  module, component, template or config entry.
+- **A decision** is something the code commits to that could change on its own: a
+  business rule, a data field and where it flows, a display format, a permission, an
+  interface the diff creates or widens, an outside library the code calls directly, and
+  the existence of the feature itself.
+- **Places** of a decision are the units that would have to change if that decision
+  changed, anywhere in the codebase, not only in the diff's files. **Lockstep** places
+  must change together, or behavior breaks.
+- **The history** of a decision is how often git shows its places changing together in
+  past commits. It sets how urgent a spread decision is, not whether it matters: a
+  decision spread over several places is worth fixing either way, sooner when its places
+  keep changing together.
 - **A version** is a design of the diff. **V0** is the diff as written. V1, V2, … are
   alternatives.
-- **A scenario** is a concrete future change request, S1–S3.
 - **The reach** of the diff is the diff plus what it plugs into: its callers, the rules
-  and structures it extends, and the files git history shows changing with it. Analysis
-  and counts cover the reach, not only the diff's lines: a small change often costs
-  through where it lands.
+  and structures it extends, and the files git history shows changing with it. Counts
+  cover the reach: a small change often costs through where it lands.
 - **An area** is a part of the diff that can be judged on its own, like a rule and its
   consumers, or a screen. Most diffs are one area.
-- **Sensitive code** is code where a small mistake is expensive. You judge it yourself;
-  see Sensitive code below.
+- **Sensitive code** is code where a small mistake is expensive: money, access
+  (authentication, sessions, permissions), writes to persistent data and migrations,
+  public contracts (APIs, events, URLs, file formats), checks on outside input,
+  concurrency and caching, and untested hot spots. Judge it from the code and its
+  history.
 
 ## The three lenses
 
 Each lens is a count. The sub-agents count by [references/lenses.md](references/lenses.md).
 
-1. **Change.** For each scenario: the units touched, the lines of logic changed, and the
-   lockstep edits (edits that break something when one of them is forgotten).
-2. **Test.** The behavior cases the diff must cover, listed once. For each version: the
-   cheapest test level that verifies each case, and the lines of setup and assertion it
-   needs. Good isolation moves cases down the test pyramid and needs fewer lines.
+1. **Decisions** (the main lens). Every decision in the reach, with its places in each
+   version, which of them are lockstep, and its history: 🔥n when its places changed
+   together in n past commits.
+2. **Test.** The behavior cases, listed once. For each version: what a test of each case
+   has to set up (records, factories, logins, providers, mocks, spies, HTTP fakes,
+   fixtures) and its lines. Setup per case makes framework weight visible: a rule in a
+   plain function needs almost none, the same rule in a component under a test bed needs
+   a lot.
 3. **Read.** For one concrete question about the behavior ("what discount does order 42
-   get?"): the files a reader opens to answer it. Change and Test reward extracting more
-   units; Read is the counterweight against a maze of tiny ones.
+   get?"): the files a reader opens to answer it.
 
-**A version beats V0** when it is better on Change by at least 2 units or about 30% of
-the lines summed over the scenarios, or better on Test by about 30% of the lines, and no
-worse on any lens beyond noise. One more file on Read, or one more lockstep edit, is
-worse. Smaller differences are ties: estimates are rough, and a tie is reported as one.
+A supporting number, shown only when it applies: **invalid states**, when the diff adds
+flags or optional fields that together describe one state ("3 flags: 4 of 8 combinations
+valid").
 
-**Counts can be gamed.** Shorter but denser doesn't count: several statements packed
-into a line, long call chains, clever tricks, metaprogramming where two plain cases would
-do. Every concept a version adds (a class, an object, a flag or mode an abstraction
-branches on, a pattern) is listed next to its counts.
+**Decisions lead; Test and Read are guardrails.** A version beats V0 when:
+
+- it brings at least one decision from several places to one, or removes lockstep places,
+  or removes at least 2 places in total; or, on Test alone, it moves at least 5 cases to
+  a setup of about 1 or less;
+- it adds at most one file to Read for each decision it brings to one place;
+- and it is no worse on Test beyond noise.
+
+Smaller differences are ties. Counts are estimates; a tie is reported as one.
+
+**Urgency.** Among winning versions, the ones that bring a decision with history (🔥) to
+one place rank first: that cost has been coming due. A version that only fixes spread
+decisions without history still wins and is still recommended, marked as less urgent.
+
+**Counts can be gamed.** Shorter but denser doesn't count: packed lines, long call chains,
+clever tricks, metaprogramming where two plain cases would do. Every concept a version
+adds (a class, an object, a flag or mode an abstraction branches on, a pattern) is listed
+next to its counts.
+
+**No speculation.** A version must lower counts for decisions the code makes today. A
+seam, registry or strategy built for a variant that doesn't exist yet wins nothing here.
+Future work enters only when the human names it (step 1); it is then counted as an extra
+row and marked as such.
 
 ## Three lists
 
 Every version ends on one list.
 
-- ✅ **Apply.** It wins. It keeps the intended behavior, verifiably. It touches existing
-  code only where the diff needs it, and then states why in one sentence ("the diff
-  needed X because existing code does, lacks or is shaped as Y"), with existing churn at
-  most about twice the lines it saves. It touches no sensitive code, and the measured
-  check in step 5 confirmed the win. Applied without asking.
-- 🛠️ **Your call.** It is worth it, but not safe to apply unasked: it changes intended
-  behavior, reaches further into existing code, touches sensitive code, adds a dependency
-  or a schema change, introduces a way of doing things this repo doesn't use yet, or wins
-  some scenarios and loses others. Changes like these are welcome here when the counts
-  make them well worth it. Each one states its win, its cost, its risk and your
-  recommendation.
+- ✅ **Recommended.** It wins on the rules above and keeps the intended behavior. Its
+  existing churn stays at most about twice the lines it saves; for a version that brings
+  a decision with history (🔥) to one place, up to about five times, because history
+  shows that cost comes due anyway.
+- 🛠️ **Trade-off.** Worth considering, but the human has to weigh it: the lenses disagree,
+  it changes intended behavior, reaches far into existing code, touches sensitive code,
+  adds a dependency or a schema change, or introduces a way of doing things this repo
+  doesn't use yet. A new way is not a reason to drop a version: count the siblings that
+  would then do it differently, and let the human decide.
 - 🚫 **Not pursued.** No win beyond noise, worse on a lens, a prediction that failed,
-  evidence that didn't hold, or it contradicts a decision. One line each.
-
-## Sensitive code
-
-Sensitive code never goes on Apply, however small the edit: small edits in sensitive code
-are where review pain comes from. Judge it from these signals. One strong signal is
-enough; the report names it.
-
-- **Money and access:** payments, prices, invoices, balances; authentication, sessions,
-  permissions, authorization checks; tokens and secrets.
-- **Persistent data:** writes to the database, migrations, background jobs that change
-  records, imports and exports, deletion.
-- **Contracts:** public API endpoints and response shapes, webhooks, events other systems
-  consume, URLs people bookmark, file formats.
-- **Input from outside:** validation, sanitizing, limits on what a client may send.
-- **Concurrency:** locks, transactions, retries, caching and its invalidation.
-- **History:** a hot spot in the cochange output (many commits, many partners), or code
-  with a history of bug-fix commits (`git log --grep` for fix, bug or revert on the file).
-- **No safety net:** code no test covers.
-- **The code says so:** comments warning about it, or unusual care like extra logging,
-  defensive checks or feature flags.
+  evidence that didn't hold, or it contradicts a choice the human already made. One line
+  each.
 
 ## Steps
 
-Track these steps in your todo list, so that verification and cleanup don't get skipped:
+Track these steps in your todo list:
 
 ```
-- [ ] 1. Scope: the diff, the reach, sensitive code, cochange output
-- [ ] 2. Scenarios written, then confirmed by the human
-- [ ] 3. Versions counted by both passes
-- [ ] 4. Counts verified, predictions checked, versions sorted
-- [ ] 5. Apply versions measured, applied, cleaned up, tests passing
-- [ ] 6. Report
-- [ ] 7. Your call versions applied as the human approves them
+- [ ] 1. Scope: the diff, the reach, the decisions, sensitive code, cochange output
+- [ ] 2. Versions counted by both passes
+- [ ] 3. Counts verified, predictions checked, versions sorted
+- [ ] 4. Report
+- [ ] 5. Apply only what the human picks
 ```
 
 ### 1. Scope
@@ -138,40 +152,33 @@ Track these steps in your todo list, so that verification and cleanup don't get 
   is never a reason to stop.
 - From the repository root, run `<skill dir>/scripts/cochange.py <base>`, where
   `<skill dir>` is this skill's base directory and `<base>` the diff's base or range. It
-  prints the hot spots and the files that change together with the diff's files.
+  prints hot spots and the files that change together with the diff's files.
 - Read the project's written rules: `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
-  `REVIEW.md`, `docs/adr/`, architecture docs. Decisions recorded there are settled. A
-  version that contradicts one goes to Your call only when its counts show a real cost,
-  naming the decision.
+  `REVIEW.md`, `docs/adr/`, architecture docs. Choices recorded there are settled unless
+  a count shows a real cost; then the version is a Trade-off naming the choice.
 - Map the reach, and mark the sensitive code in it.
+- **List the decisions** in the reach, by the kinds in Terms, with their places in V0.
+  Search the whole codebase for each decision's places: a rule the diff touches often
+  lives on in older files too. Then look up each spread decision's history as
+  `references/lenses.md` describes. This list is shared by everyone, so every version is
+  counted against the same rows.
+- **Future work** counts only if the human named it ("we'll add multi-currency next").
+  Add it as a row marked `planned`. Don't invent future work.
 - **Areas:** most diffs are one area. Split a large diff into at most 3 areas, the ones
-  with the most units and the hottest files. Name the rest in the report as not shaped.
+  with the most decisions in several places. Name the rest in the report as not shaped.
 - **The brief** for every sub-agent: the requirements in the human's or the ticket's own
-  words; decisions already made (what, not why); questions the human asked, quoted; the
-  diff command; the reach; the cochange output; the sensitive code; the written rules.
-  Leave out your own reasoning about the design: the sub-agents should see the code, not
-  its justification.
+  words; choices the human already made (what, not why); questions the human asked,
+  quoted; the diff command; the reach; the decision list; the cochange output; the
+  sensitive code; the written rules. Leave out your own reasoning about the design: the
+  sub-agents should see the code, not its justification.
 
 The depth of the analysis follows the reach, not the size of the diff. A three-line
 change gets the full method; only the report gets shorter.
 
-### 2. Scenarios
+### 2. Versions and counts
 
-Spawn one fresh sub-agent, not a fork of your context. Give it the brief, the Terms, and
-the absolute path of `references/lenses.md` in this skill's base directory, with the
-task to follow its Scenarios section. It returns 3 scenarios per area. It never sees an
-alternative design: scenarios chosen after the designs flatter a favorite.
-
-Show the scenarios to the human, one line each with where its likelihood comes from
-(git history, the ticket, a requirement), and ask them to confirm, edit or replace them.
-Wait for the answer: the human knows the domain, and the scenarios decide what the
-counts mean. If the human said not to wait, or no human is in the loop, go on and mark
-the scenarios as unconfirmed in the report.
-
-### 3. Versions and counts
-
-Spawn two fresh sub-agents in parallel, per area. Give both the brief, the confirmed
-scenarios, this skill's intro, Terms, The three lenses, the rules below, and the absolute
+Spawn two fresh sub-agents in parallel, per area, not forks of your context. Give both
+the brief, this skill's intro, Terms, The three lenses, the rules below, and the absolute
 paths of `references/lenses.md` and `references/moves.md` in this skill's base directory.
 
 - **The layer pass** looks for versions that move knowledge to the layer or object that
@@ -179,152 +186,134 @@ paths of `references/lenses.md` and `references/moves.md` in this skill's base d
   out of display code, a framework's own home for that kind of code.
 - **The seam pass** looks for versions that split or merge units and change their
   interfaces: a split along groups of methods that share no state, a merged pass-through,
-  one state value instead of several flags, a value object, one map or polymorphism
-  instead of the same branch in several places.
+  one state value instead of several flags, a value object, one map instead of the same
+  branch in several places.
 
 Rules for both passes:
 
 - You report; you don't edit any file.
-- Propose at most 2 versions that lower the counts. A version is a concrete design that
-  names each unit it adds, moves, merges or deletes, with file paths. A principle is not
-  a version.
-- Where this repo has a way of doing this kind of thing (at least 3 existing siblings, or
-  a written rule), follow it. A version that introduces a new way says so, and counts the
-  siblings that would then do it differently.
-- Count V0 yourself, independently of the other pass.
-- Count every version as `references/lenses.md` describes: the edit list per scenario,
-  the behavior cases and their test levels, the read question and its files.
-- Then state, per version, the principles or patterns it relies on as predictions:
-  "<principle> predicts <which count> improves for <scenario>".
+- Propose at most 2 versions. A version is a concrete design that names each unit it
+  adds, moves, merges or deletes, with file paths. A principle is not a version.
+- Count V0 yourself, independently of the other pass. Add decisions the list missed, and
+  say so.
+- Count every version as `references/lenses.md` describes: places per decision, setup and
+  lines per test case, files to read.
+- Where this repo has a way of doing this kind of thing (at least 3 siblings, or a
+  written rule), say whether the version follows it. A version that introduces a new way
+  counts the siblings that would then differ.
+- State, per version, the principles or patterns it relies on as predictions:
+  "<principle> predicts <which count> improves".
 - Mark what touches sensitive code, what changes intended behavior (what changes, and
   who would notice), and the existing churn.
-- Note bugs you notice in one line each, with the input that triggers them. Note local
-  waste (dead checks, wrappers that only forward) in one line in total; trim-code covers
-  it.
 - Return the format below, and stay under 800 words.
 
 ```
 Area: <name>
+Decisions (V0 places; ⛓ = lockstep; 🔥n = places changed together in n past commits):
+  D1 what "active account" means: 4 places ⛓ 🔥4 (accounts_controller.rb#index, family.rb#series, …)
+  D2 …
 Behavior cases: C1 <case>, C2 <case>, …
 Read question: "<question>"
 
 V0 as written
-  S1 4u 35l: orders_controller.rb#create 12l, order_mailer.rb#confirm 8l (lockstep), …
-  S2 …   S3 …
-  Test: C1 request 25l, C2 request 22l, … = 120l; unit 0, integration 5, end-to-end 0
-  Read: 4 files: orders_controller.rb, order_mailer.rb, …
+  Test: C1 request, setup 3 (family, user, login), 22l; … = 120l, setup 3.0/case
+  Read: 4 files: …
 V1 <short name>: <what changes: units added, moved, merged, deleted, with paths>
-  S1 … S2 … S3 …   Test …   Read …
-  Concepts: +Order::Checkout −DiscountService
-  Predictions: <principle> predicts <count> for <scenario>
-  Touches: existing churn <files, ~lines>; sensitive <none or what>; behavior <kept, or what changes>
-Bugs: …
-Local waste: …
+  Decisions: D1 1 (account.rb scope :active), D2 …
+  Test …   Read …   Invalid states …
+  Concepts: +Account.active −Family#active_accounts
+  Predictions: <principle> predicts <count> improves
+  Touches: existing churn <files, ~lines>; sensitive <none or what>; behavior <kept, or what changes>; repo way <follows, or new: N siblings differ>
+Local waste: … (one line; trim-code covers it)
 ```
 
-### 4. Verify and sort
+### 3. Verify and sort
 
-- **Noise check.** Compare the two passes' V0 counts. If they differ beyond the win
-  threshold, recount V0 yourself and use your count.
-- **Merge** versions the two passes both found. Number the rest V1, V2, … across all
-  areas.
-- **Verify** every version that could be applied or recommended. The units it names
-  exist. Moved code can reach what it needs from its new home, without a circular
-  dependency, and is not a callback the framework calls by name. Recount the scenario
-  where it claims its biggest win. A claim that doesn't hold kills the version: "the
-  evidence didn't hold". Agent suggestions about where code belongs are often invalid
-  until checked like this.
+- **Noise check.** Compare the two passes' V0 counts. Where they differ by more than one
+  place on a decision, or more than about 30% on Test, recount it yourself.
+- **Merge** versions the two passes both found. Number the rest V1, V2, … across areas.
+- **Verify** every version you would recommend or offer. The units it names exist. Moved
+  code can reach what it needs from its new home, without a circular dependency, and is
+  not a callback the framework calls by name. Recount the decision where it claims its
+  biggest win. A claim that doesn't hold kills the version: "the evidence didn't hold".
+  Agent suggestions about where code belongs are often invalid until checked like this.
 - **Predictions:** mark each one ✔ held, ✘ failed, or ~ partly held.
-- **Sort** with the rules in Three lists. When two winning versions conflict, the larger
-  win without sensitive code goes on Apply. The other goes to Your call if it goes
-  further, otherwise to Not pursued.
-- **Cap:** at most 3 Your call versions per report. The others go to Not pursued as
-  "smaller win than V<n>".
-- A certain bug with a local fix in the diff goes on Apply, with a test that would have
-  caught it. Any other bug goes to Your call.
+- **Sort** with the rules in Three lists. When two recommended versions conflict, keep
+  the one with the larger win as Recommended and the other as Trade-off.
+- **Cap:** at most 3 versions in the matrix per area, Recommended and Trade-offs
+  together. Merge versions that build on each other into one; the others go to Not
+  pursued as "smaller win than V<n>".
 
-### 5. Apply and clean up
-
-For each Apply version, largest win first:
-
-1. **Measure.** In a throwaway git worktree with the diff applied, implement the version,
-   then the scenario with its biggest claimed win, and take the real line and unit
-   counts from `git diff --stat` and the edit itself. Do the same for that scenario on
-   V0. If the measured win falls under the threshold, move the version to Not pursued as
-   "measured: a tie". Remove the worktree afterwards.
-2. **Pin down.** Code that the version reshapes and no test covers gets tests capturing
-   its current behavior first.
-3. **Apply** it to the working tree. Tests move with the code, to the level the Test
-   lens promised: check that they really did.
-4. **Clean up, always:**
-   - The old path is gone: no forwarding methods, shims, aliases or re-exports left for
-     callers the diff already updated. Old and new side by side is more concepts than
-     before: finish the move or revert it.
-   - Nothing is orphaned: imports, helpers, fixtures, factories, translations, routes,
-     styles the move left behind.
-   - Tests of deleted code are deleted with it.
-   - Comments and docs that name the old location are updated.
-5. **Run** the tests for the touched files, the tests of their callers and the feature's
-   end-to-end tests, plus the linters for the touched files, using the project's fastest
-   runner. If they fail, find the version that broke them, revert only that one, and move
-   it to Your call with the failure. A test of intended behavior is never changed to
-   make it pass.
-
-Never discard the diff's own work. Don't commit unless the human asks.
-
-### 6. Report
+### 4. Report
 
 Rules:
 
-- One block per area, at most about 12 lines each, under one heading for the whole diff.
-- In the matrix, V0 shows absolute counts, like `4u 35l`. Other versions show the
-  difference from V0, like `−3u −25l`, and `–` for a tie. `u` is units and `l` is lines
-  of logic. The Test column shows lines, then the cases per level as
-  unit/integration/end-to-end.
-- One line per decision: its emoji, its code, its name, the numbers that decided it,
-  then cost and risk where there are any. A line wraps at most once.
-- Predictions go on one line, and the takeaway on one line: the principle that held in
-  this diff, phrased as the question the human can ask next time.
-- No prose paragraphs, no restating the method, no list of files read. Code names and
-  numbers carry the report.
+- One block per area, at most about 15 lines each, under one heading for the whole diff.
+- The matrix has a row per decision and a column per version, V0 and at most 3 more.
+  Show the decisions that differ between versions or sit in more than one place;
+  summarize the rest in one row, like `+5 decisions at 1 place in every version`. ⛓
+  marks lockstep places, 🔥n the history. The last two rows are Tests and Read.
+- Every number carries its unit, so the matrix reads without a legend: `4 places`,
+  `120 lines · setup 3.4/case`, `5 files`.
+- One line per verdict: its emoji, its code, its name, the numbers that decided it, then
+  cost and risk where there are any. A line wraps at most once.
+- Predictions go on one line, and the takeaway on one line: the question the human can
+  ask themselves next time, with this diff's answer.
+- No prose paragraphs, no restating the method, no list of files read.
 
 ```
-## Shape: loyalty discount (14 files, 2 areas)
-Scenarios: S1 seasonal discount · S2 discount via API · S3 cap per customer
+## Shape: accounts list (12 files, 1 area)
 
-Discount rule      S1         S2         S3         Tests (6 cases)   Read
-V0 as written      4u 35l     3u 40l     4u 30l     120l 0/5/0        4
-V1 rule on Order   −3u −25l   −2u −32l   −2u −15l   −75l 6/0/0        −2
-V2 + policy obj    −3u −23l   −2u −32l   −3u −20l   −70l 6/0/0        −1
+Decision (places)                 V0                    V1 scope on Account   V2 + series in one method
+what "active account" means 🔥4   4 ⛓                   1                     1
+how balances become series 🔥3    3                     3                     1
+which accounts are listed         2                     1                     1
++4 decisions at 1 place in every version
+Tests (7 cases)                   140 lines · setup 3.4  90 lines · setup 1.6  85 lines · setup 1.6
+Read                              5 files               4 files               4 files
 
-✅ V1 rule on Order: wins all three, tests leave the request level. Measured S2 −30l (est. −32l).
-🛠️ V2 policy object: −1u more on S3 only, +1 file on Read, +1 concept → worth it if per-customer caps are planned.
-🚫 Service object: +1 Read, no scenario gain · Concern: moves lines, changes no count
-Predictions: SRP → fewer units for S3 ✔ only S3 · Strategy pattern ✘ one kind, +2 concepts
-Takeaway: does the rule read only Order's data? Then it lives on Order (−3u for S1).
-Tests: order_spec, orders_request_spec, checkout e2e ✔
+✅ V2 series in one method: "active" 4→1 places 🔥, series 3→1 🔥, setup 3.4→1.6/case, −1 file.
+🛠️ V1 scope only: smaller step ("active" 4→1, listing 2→1), leaves the series in 3 places 🔥.
+🚫 Service object for the list: +1 Read file, no decision moves · Store/presenter: same
+Predictions: rule with its data → D1 one place ✔ · service object → fewer places ✘ none moved
+Takeaway: if "active" changed, how many files would you edit? 4 here; a scope on Account makes it 1.
 ```
 
-Below the areas, one line for areas not shaped, and one for bugs (🐞) and local waste
-if any: suggest `/trim-code` there, and run it after this skill, not before: trimming
-first can delete the duplication that is evidence for a move. If there are Your call
-versions, end with one line: `apply V2` to apply one.
+Below the areas: one line for areas not shaped, one for bugs noticed (🐞) if any, one
+for local waste with a pointer to `/trim-code` if any. End with one line:
+`apply V2` to have one applied.
 
 If another skill called this one, hand it the report.
 
-### 7. Your call
+### 5. Apply only what the human picks
 
-The human approves versions by code, like `apply V2`. Carry each one out as in step 5,
-measurement included. For a behavior change, the plan also names what exactly changes
-and which tests assert the old behavior: update those, and delete the ones that only
-covered it. If a version turns out weaker than reported, say so in one line and don't
-apply it.
+The human picks versions by code, like `apply V2`. For each:
+
+1. **Pin down.** Code that the version reshapes and no test covers gets tests capturing
+   its current behavior first: written against the code as it is, using only what
+   exists before the change, and run green on it before anything moves. A pin-down
+   test that calls the new code pins nothing. If tests can't run here, say so, and still
+   write them against the old code.
+2. **Apply** it. Tests move with the code, to the setup the Test lens promised: check
+   that they really did. For a behavior change, update the tests that assert the old
+   behavior and delete the ones that only covered it.
+3. **Clean up, always:**
+   - The old path is gone: no forwarding methods, shims, aliases or re-exports left.
+     Old and new side by side is more concepts than before: finish the move or revert it.
+   - Nothing is orphaned: imports, helpers, fixtures, factories, translations, routes,
+     styles the move left behind. Tests of deleted code go with it.
+   - Comments and docs that name the old location are updated.
+4. **Run** the tests for the touched files, the tests of their callers and the feature's
+   end-to-end tests, plus the linters for the touched files. If they fail, revert only
+   that version and say why. A test of intended behavior is never changed to make it
+   pass.
+
+If a version turns out weaker than reported while planning it, say so in one line and
+don't apply it. Never discard the diff's own work. Don't commit unless the human asks.
 
 ## Checking this skill
 
 Backtest before trusting it on a codebase. Take 3–5 older commits whose code later
-features changed, and run the skill as of each commit. Then compare with the real
-history: did the scenarios predict the kinds of change that came, and would the winning
-version have made the real later commits smaller? Scenarios that miss the real changes,
-or wins that don't show up in history, mean the scenario step or the counting needs
-work, not the report.
+changed, and run the skill as of each commit. Then compare with the real history: did
+the real later commits have to edit the decisions the report showed as spread over
+several places, and would the recommended version have made those commits smaller?
