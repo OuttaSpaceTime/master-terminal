@@ -77,9 +77,9 @@ Each lens is a count. The sub-agents count by [references/lenses.md](references/
 1. **Decisions** (the main lens). Every decision in the reach, with its places in each
    version, which of them are lockstep, and its history: 🔥n when its places changed
    together in n past commits.
-2. **Test.** The behavior cases, listed once. For each version: what a test of each case
-   has to set up (records, factories, logins, providers, mocks, spies, HTTP fakes,
-   fixtures) and its lines. Setup per case makes framework weight visible: a rule in a
+2. **Test.** The behavior cases, listed once, each assumed tested in every version. For
+   each version: what a test of each case has to set up (records, factories, logins,
+   providers, mocks, spies, HTTP fakes, fixtures) and its lines. Setup per case makes framework weight visible: a rule in a
    plain function needs almost none, the same rule in a component under a test bed needs
    a lot.
 3. **Read.** For one concrete question about the behavior ("what discount does order 42
@@ -216,7 +216,7 @@ Behavior cases: C1 <case>, C2 <case>, …
 Read question: "<question>"
 
 V0 as written
-  Test: C1 request, setup 3 (family, user, login), 22l; … = 120l, setup 3.0/case
+  Test: C1 request, setup 3 (family, user, login), 22l; … = 24 setup (6 int × 4) · 120l
   Read: 4 files: …
 V1 <short name>: <what changes: units added, moved, merged, deleted, with paths>
   Decisions: D1 1 (account.rb scope :active), D2 …
@@ -254,9 +254,10 @@ Rules:
   summarize the rest in one row, like `+5 decisions at 1 place in every version`. ⛓
   marks lockstep places, 🔥n the history. The last two rows are Tests and Read.
 - Every number carries its unit, so the matrix reads without a legend: `4 places`,
-  `120 lines · 3.4 setup items/case`, `5 files`. Below the matrix, one line names what
-  the setup items are, like `setup items: records, login, mocks, TestBed providers`. Show
-  each version's own counts from the passes; never one blended figure for all columns.
+  `28 setup (5 int × 4, 4 unit × 2) · avg 3.1 · 120 lines`, `5 files`. Below the matrix, one line
+  names what the setup items are, like `setup items: records, login, mocks, TestBed
+  providers`. Show each version's own counts from the passes; never one blended figure
+  for all columns.
 - One line per verdict: its emoji, its code, its name, the numbers that decided it, then
   cost and risk where there are any. A line wraps at most once.
 - Predictions go on one line, and the takeaway on one line: the question the human can
@@ -271,11 +272,11 @@ what "active account" means 🔥4   4 ⛓                   1                   
 how balances become series 🔥3    3                     3                     1
 which accounts are listed         2                     1                     1
 +4 decisions at 1 place in every version
-Tests (7 cases)                   140 lines · 3.4/case  90 lines · 1.6/case  85 lines · 1.6/case
+Tests (7 cases, all covered)      24 setup (6 int × 4) · avg 3.4  11 setup (1 int × 4, 6 unit × 1) · avg 1.6  11 setup · avg 1.6
 Read                              5 files               4 files               4 files
 setup items per case: records, login, request
 
-✅ V2 series in one method: "active" 4→1 places 🔥, series 3→1 🔥, setup 3.4→1.6/case, −1 file.
+✅ V2 series in one method: "active" 4→1 places 🔥, series 3→1 🔥, setup 24→11, −1 file.
 🛠️ V1 scope only: smaller step ("active" 4→1, listing 2→1), leaves the series in 3 places 🔥.
 🚫 Service object for the list: +1 Read file, no decision moves · Store/presenter: same
 Predictions: rule with its data → D1 one place ✔ · service object → fewer places ✘ none moved

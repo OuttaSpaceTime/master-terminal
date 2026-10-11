@@ -69,9 +69,16 @@ history lookup.
    - the plumbing to render and drive it: a component fixture, change detection, a
      request, a page visit.
    Then the lines of the test, setup included.
-3. **Report** the total test lines and the **average setup per case**. Setup per case is
-   the number that makes framework weight visible: a rule in a plain function or a model
-   method needs 0–2, the same rule inside a component under a test bed often 4–6.
+3. **Assume full coverage in every version:** every behavior case gets a test, whatever
+   tests exist today. The comparison is the same coverage at different costs, never a
+   version that looks cheap because it is less tested.
+4. **Report** the **total setup** over all cases, with its split by level, the average
+   per case, and the total test lines:
+   `28 setup (5 integration × 4, 4 unit × 2) · avg 3.1 · 120 lines`. The total counts
+   every case, so a version that needs more cases can't hide behind its average; the
+   split shows where the setup sits; the average shows how heavy a typical test is. Setup is the number that makes framework weight
+   visible: a rule in a plain function or a model method needs 0–2 items per case, the
+   same rule inside a component under a test bed often 4–6.
 
 A healthy shape tests most cases with little setup and has one heavier test per wiring.
 When a version needs heavy setup for every case, the rule is sitting in the layer the
