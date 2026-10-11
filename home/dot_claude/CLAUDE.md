@@ -27,11 +27,14 @@ When the user asks to "walk through", "step through", or "manually QA" something
 - For any config change, cite the exact doc section or source line that documents the option before proposing it. If you can't find documentation, say so explicitly rather than guessing.
 - For CI vs local discrepancies, verify tool versions and config on both sides before concluding.
 - If the user says "find it out" or similar, that's a signal you jumped to a guess — back up and investigate.
+- Before implementing, present the design decisions a reviewer will have opinions on as a short approach note and wait for direction: new data formats, where files live, new routes or top-level classes, and hand-rolling something an installed library or framework helper already does. A rejected design after review costs a full rewrite, and the rewrite restarts the review.
 
 ## Code Style / Simplicity
 
 - Favor the simplest approach: avoid alias methods, separate migrations with dedup SQL, or over-engineered abstractions unless explicitly requested. Inline and simplify by default; ask before adding complexity.
-- When introducing a new API or method, keep it as minimal as possible and never abstract prematurely. The final shape depends on the developer's taste — I will give the direction on how to structure it. Minimal, literal code helps me and reviewers understand and verify how it works. Favor JRY (Just Repeat Yourself) over DRY here: prefer repetition over speculative abstraction.
+- When introducing a new API or method, keep it as minimal as possible and never abstract prematurely. The final shape depends on the developer's taste — I will give the direction on how to structure it. Minimal, literal code helps me and reviewers understand and verify how it works.
+- Don't invent abstractions (new classes, modules, options, generic helpers) for reuse that hasn't happened yet; wait until the third repetition. Placing code where the framework's conventions put it is not abstraction; always do that: data lookups and sorting on the model/domain class, not in a controller; HTML in views, partials or helpers, not in a model. Project rules and the maintainer's conventions override these defaults.
+- Prefer an installed library or framework helper over a hand-rolled parser, regex or literal path (e.g. Rails asset helpers instead of `/favicon.png`). Prefer the conventional pattern over a clever one (e.g. BEM modifier classes over `:has()` selectors).
 - Simplicity is also *removing* code, not only avoiding abstraction. Don't add `if` guards, defensive re-checks, or parsing for cases the underlying call or surrounding code already handles correctly (e.g. checking `HEAD` exists before `git diff`, which already handles an empty repo). When a branch can't be reached or a check the callee already makes, delete it.
 - Default to no comments on new code; make it self-explanatory through naming and structure. Where a project rule allows a narrow exception (e.g. a 1–2 line note on a non-obvious workaround), follow that rule.
 
