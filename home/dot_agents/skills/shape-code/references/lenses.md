@@ -22,7 +22,11 @@ if that decision changed. Name them. Mark places as **lockstep** (⛓) when they
 change together or behavior breaks: a condition repeated in three queries, a field added
 to the form but not to the permitted params.
 
-- A decision in one place is robust, however untidy that place looks. Don't move it.
+- A decision in one place is robust against change. Check its **home** once: where this
+  repo keeps that kind of decision (at least 3 siblings: other validations in the model,
+  other lookups in a base-class hook, other mappings in the service, other rules in their
+  own class), or the framework's own place for it. Outside its home it is **misplaced**
+  (⌂): mark it and name the home. At home, leave it, however untidy it looks.
 - A decision in several places has no home yet. That is where versions earn their keep.
 - For the feature itself, count the units outside its own files that would need editing
   to remove it: that is how tangled the feature is with shared code.
@@ -37,6 +41,14 @@ Count edits in existing code too. The reach is in scope.
 Grep for the rule's tell-tale names, conditions, constants and columns: a filter the
 diff adds to one query often already exists in five older ones, and those are places of
 the same decision.
+
+**Check every unit and expression the diff adds against what exists.** For each one,
+ask whether the codebase already has something doing the same: a scope, helper, hook,
+validator, base-class method, the parent action the diff overrides, a list or condition
+built elsewhere in the same class. If so, the existing one and the diff's copy are two
+places of one decision, even when both sit in one file. What a value contains is the
+decision, whatever its callers then ask of it: two places that assemble the same list or
+condition, one to filter by id and one to match by name, are two places of one decision.
 
 ### History
 

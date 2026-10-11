@@ -53,6 +53,11 @@ it. The skill analyzes; it changes code only when the human asks.
 - **Places** of a decision are the units that would have to change if that decision
   changed, anywhere in the codebase, not only in the diff's files. **Lockstep** places
   must change together, or behavior breaks.
+- **The home** of a decision is where this repo keeps that kind of decision: the layer
+  and unit where at least 3 siblings live (a model validation or scope, a base-class
+  hook, a service, a rule class, a component method), or the framework's own place for
+  it. A decision outside its home is **misplaced** (⌂), even in one place: every sibling
+  change and every reader looks for it at home.
 - **The history** of a decision is how often git shows its places changing together in
   past commits. It sets how urgent a spread decision is, not whether it matters: a
   decision spread over several places is worth fixing either way, sooner when its places
@@ -72,11 +77,11 @@ it. The skill analyzes; it changes code only when the human asks.
 
 ## The three lenses
 
-Each lens is a count. The sub-agents count by [references/lenses.md](references/lenses.md).
+Each lens is a count. The passes count by [references/lenses.md](references/lenses.md).
 
 1. **Decisions** (the main lens). Every decision in the reach, with its places in each
-   version, which of them are lockstep, and its history: 🔥n when its places changed
-   together in n past commits.
+   version, which of them are lockstep, whether it is misplaced (⌂), and its history: 🔥n
+   when its places changed together in n past commits.
 2. **Test.** The behavior cases, listed once, each assumed tested in every version. For
    each version: what a test of each case has to set up (records, factories, logins,
    providers, mocks, spies, HTTP fakes, fixtures) and its lines. Setup per case makes framework weight visible: a rule in a
@@ -92,8 +97,8 @@ valid").
 **Decisions lead; Test and Read are guardrails.** A version beats V0 when:
 
 - it brings at least one decision from several places to one, or removes lockstep places,
-  or removes at least 2 places in total; or, on Test alone, it moves at least 5 cases to
-  a setup of about 1 or less;
+  or removes at least 2 places in total, or moves a misplaced decision (⌂) home; or, on
+  Test alone, it lowers the total setup by a third or more;
 - it adds at most one file to Read for each decision it brings to one place;
 - and it is no worse on Test beyond noise.
 
@@ -120,11 +125,15 @@ Every version ends on one list.
 - ✅ **Recommended.** It wins on the rules above and keeps the intended behavior. Its
   existing churn stays at most about twice the lines it saves; for a version that brings
   a decision with history (🔥) to one place, up to about five times, because history
-  shows that cost comes due anyway.
+  shows that cost comes due anyway. Sensitive code alone doesn't keep a version from
+  here: moving a sensitive rule home, where every caller passes through it, is
+  Recommended when behavior stays the same; name the risk in its line.
 - 🛠️ **Trade-off.** Worth considering, but the human has to weigh it: the lenses disagree,
-  it changes intended behavior, reaches far into existing code, touches sensitive code,
-  adds a dependency or a schema change, or introduces a way of doing things this repo
-  doesn't use yet. A new way is not a reason to drop a version: count the siblings that
+  it changes intended behavior (anything you would caveat with "except when …" counts),
+  changes an interface the requirement didn't ask for (an API response, a shared type, a
+  public signature), even to move a decision home, reaches far into existing code,
+  changes what sensitive code does, adds a dependency or a schema change, or introduces
+  a way of doing things this repo doesn't use yet. A new way is not a reason to drop a version: count the siblings that
   would then do it differently, and let the human decide.
 - 🚫 **Not pursued.** No win beyond noise, worse on a lens, a prediction that failed,
   evidence that didn't hold, or it contradicts a choice the human already made. One line
@@ -166,7 +175,7 @@ Track these steps in your todo list:
   Add it as a row marked `planned`. Don't invent future work.
 - **Areas:** most diffs are one area. Split a large diff into at most 3 areas, the ones
   with the most decisions in several places. Name the rest in the report as not shaped.
-- **The brief** for every sub-agent: the requirements in the human's or the ticket's own
+- **The brief** for the passes: the requirements in the human's or the ticket's own
   words; choices the human already made (what, not why); questions the human asked,
   quoted; the diff command; the reach; the decision list; the cochange output; the
   sensitive code; the written rules. Leave out your own reasoning about the design: the
@@ -177,13 +186,18 @@ change gets the full method; only the report gets shorter.
 
 ### 2. Versions and counts
 
-Spawn two fresh sub-agents in parallel, per area, not forks of your context. Give both
-the brief, this skill's intro, Terms, The three lenses, the rules below, and the absolute
-paths of `references/lenses.md` and `references/moves.md` in this skill's base directory.
+Run two passes per area. **One area: run both yourself**, one after the other, as
+working notes in the format below, not as a message to the human: you have read the code
+in step 1, and fresh sub-agents would read it all again. **Two or three areas:** spawn
+one fresh sub-agent per area, not a fork of your context, running both passes. Give it
+the brief, this skill's intro, Terms, The three lenses, the rules below, and the
+absolute paths of `references/lenses.md` and `references/moves.md` in this skill's base
+directory. Spawn them in one message and wait for all results before writing anything:
+no polling, no scheduled wake-ups. The report is written once, as your last message.
 
 - **The layer pass** looks for versions that move knowledge to the layer or object that
-  owns it: a rule next to the data it reads, a side effect out of a callback, fetching
-  out of display code, a framework's own home for that kind of code.
+  owns it: every misplaced decision (⌂) back home, a rule next to the data it reads, a
+  side effect out of a callback, fetching out of display code.
 - **The seam pass** looks for versions that split or merge units and change their
   interfaces: a split along groups of methods that share no state, a merged pass-through,
   one state value instead of several flags, a value object, one map instead of the same
@@ -193,9 +207,9 @@ Rules for both passes:
 
 - You report; you don't edit any file.
 - Propose at most 2 versions. A version is a concrete design that names each unit it
-  adds, moves, merges or deletes, with file paths. A principle is not a version.
-- Count V0 yourself, independently of the other pass. Add decisions the list missed, and
-  say so.
+  adds, moves, merges or deletes, with file paths, and the tests that move with it, to
+  which level. A principle is not a version.
+- Count V0 once per area. Add decisions the list missed, and say so.
 - Count every version as `references/lenses.md` describes: places per decision, setup and
   lines per test case, files to read.
 - Where this repo has a way of doing this kind of thing (at least 3 siblings, or a
@@ -209,8 +223,9 @@ Rules for both passes:
 
 ```
 Area: <name>
-Decisions (V0 places; ⛓ = lockstep; 🔥n = places changed together in n past commits):
+Decisions (V0 places; ⛓ = lockstep; ⌂ = misplaced, with its home; 🔥n = places changed together in n past commits):
   D1 what "active account" means: 4 places ⛓ 🔥4 (accounts_controller.rb#index, family.rb#series, …)
+  D2 how an invoice total is rounded: 1 place ⌂ (invoices_controller.rb#create; home: Invoice methods, 4 siblings)
   D2 …
 Behavior cases: C1 <case>, C2 <case>, …
 Read question: "<question>"
@@ -229,8 +244,6 @@ Local waste: … (one line; trim-code covers it)
 
 ### 3. Verify and sort
 
-- **Noise check.** Compare the two passes' V0 counts. Where they differ by more than one
-  place on a decision, or more than about 30% on Test, recount it yourself.
 - **Merge** versions the two passes both found. Number the rest V1, V2, … across areas.
 - **Verify** every version you would recommend or offer. The units it names exist. Moved
   code can reach what it needs from its new home, without a circular dependency, and is
@@ -250,9 +263,11 @@ Rules:
 
 - One block per area, at most about 15 lines each, under one heading for the whole diff.
 - The matrix has a row per decision and a column per version, V0 and at most 3 more.
-  Show the decisions that differ between versions or sit in more than one place;
-  summarize the rest in one row, like `+5 decisions at 1 place in every version`. ⛓
-  marks lockstep places, 🔥n the history. The last two rows are Tests and Read.
+  Show the decisions that differ between versions, sit in more than one place, or are
+  misplaced; summarize the rest in one row, like `+5 decisions at 1 place in every
+  version`. ⛓ marks lockstep places, ⌂ a misplaced decision, 🔥n the history. The last
+  two rows are Tests and Read. Every spread or misplaced decision in V0 shows up in the
+  matrix or in a 🚫 line: nothing the passes found is dropped.
 - Every number carries its unit, so the matrix reads without a legend: `4 places`,
   `28 setup (5 int × 4, 4 unit × 2) · avg 3.1 · 120 lines`, `5 files`. Below the matrix, one line
   names what the setup items are, like `setup items: records, login, mocks, TestBed

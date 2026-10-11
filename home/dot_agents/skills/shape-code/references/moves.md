@@ -6,6 +6,7 @@ lenses, or the prediction failed for this code. None of these is good or bad in 
 
 | Move | Predicts | Costs | Signal in the code |
 |---|---|---|---|
+| Move a misplaced decision home (⌂) | readers and sibling changes find it where its kind lives; every caller passes through it | usually none; tests move to the home's level | an action, job, endpoint handler or API client doing what its siblings do in a model, a base-class hook, a service or a component |
 | Put a rule with the data it reads | the rule's places drop to 1; tests need less setup | can bloat the data owner; watch Read | the rule reads mostly one other object's data |
 | Give one rule one home | lockstep places disappear | one more unit if the home is new | the same condition or constant in 2+ places |
 | Split by groups that share no state | smaller setup per case | +1 unit, maybe +1 Read file | methods fall into groups that share no fields, or the unit is described with "and" |
