@@ -248,13 +248,15 @@ gbr() {
 }
 
 gwr() {
-  local selection
+  local main selection
+  main=$(git worktree list | head -1 | awk '{print $1}')
   selection=$(git worktree list | awk '{n=split($1,a,"/"); print a[n]"\t"$1}' \
     | fzf -m --with-nth=1 --delimiter='\t' --prompt 'remove worktree> ') || return
-  echo "$selection" | cut -f2 | xargs -r -I{} git worktree remove --force {}
+  echo "$selection" | cut -f2 | xargs -r -I{} git -C "$main" worktree remove --force {}
+  [[ -d $PWD ]] || cd "$main"
 
   # Sweep orphaned per-worktree databases — vilocify-portal only.
-  [[ "$(git worktree list | head -1 | awk '{print $1}')" == "$HOME/Code/Vilocify/vilocify-portal" ]] || return
+  [[ "$main" == "$HOME/Code/Vilocify/vilocify-portal" ]] || return
   local live orphans db base
   live=$(git worktree list | awk 'NR>1{print $1}' | while read -r wt; do
     printf '%s_%s\n' \
