@@ -16,16 +16,18 @@ Blocks (exit 2, message to stderr) when:
      Escape valve for a deliberate multi-commit split — one pile built on purpose,
      then sliced into several commits: the human runs `touch .solve/splitting` in
      the session's cwd. That lifts CAP and all three tiers above, but never
-     EDIT_CAP (the hand-back rhythm stays) and never for a write inside
-     .solve/tasks/, where scratch keeps its own limits. The first project write
+     EDIT_CAP (the hand-back rhythm stays) and never CAP for a write inside
+     .solve/tasks/. The first project write
      stamps its session_id into the file; a later session finds a foreign id,
      deletes it and enforces the caps again — so the valve is off by default and
      dies with the chat. Writes to the marker itself are denied: the human drops
      it, never the agent.
      .solve/ is git-excluded, so task-folder scripts never inflate the main
-     repo's count — it tracks real project changes. Each .solve/tasks/<X> folder
-     is auto-git-init'd on first write, so it's its own repo with its own separate
-     dirty limit. Either way the agent never commits — it stops and the human commits.
+     repo's count — it tracks real project changes. A write inside .solve/tasks/
+     skips the three tiers: every step archives its current.<ext> there, so
+     scratch grows by design and only CAP bounds a write. Each .solve/tasks/<X>
+     folder is auto-git-init'd on first write so the human can commit its history.
+     Either way the agent never commits — it stops and the human commits.
   3. a write would create a SECOND .solve/tasks/<X> folder in one session. The
      first task folder written to is recorded per session_id (state file
      ~/.claude/solveit/state/<session>.taskdir); later writes must target that
@@ -75,17 +77,6 @@ def warn(msg):
     }))
 
 
-def is_task_repo(repo):
-    """True if `repo` is itself a .solve/tasks/<name> folder (the agent's own
-    scratch repo) rather than the main project repo. The agent still never
-    commits it — the human does — but it gets its own dirty limit."""
-    parts = repo.split(os.sep)
-    if ".solve" not in parts:
-        return False
-    i = parts.index(".solve")
-    return i + 2 < len(parts) and parts[i + 1] == "tasks"
-
-
 def task_folder_root(fp):
     """The .solve/tasks/<X> folder a path lives under, or None."""
     parts = fp.split(os.sep)
@@ -118,12 +109,6 @@ def main():
         )
 
     session = data.get("session_id") or "nosession"
-    if not os.path.exists(os.path.expanduser(f"~/.claude/solveit/state/{session}.go")):
-        deny(
-            "SolveIt: the human gave no go this turn. Nothing is written without "
-            "one — propose the exact change as a diff they can apply, then stop. "
-            "They unlock the next write by opening a message with go/ok/yes."
-        )
     splitting = False
     valve = os.path.join(cwd, ".solve", "splitting")
     if os.path.exists(valve) and not task_folder_root(fp):
@@ -154,9 +139,8 @@ def main():
             f"one idea at a time, and hand it back to verify."
         )
 
-    # Make each .solve/tasks/<X> folder its own scratch repo so the caps below
-    # scope to it (else it resolves up to the git-excluded main repo and never
-    # counts). The human still commits it; the agent never does.
+    # Make each .solve/tasks/<X> folder its own scratch repo so the human can
+    # commit its history; the agent never does.
     task_root = task_folder_root(fp)
     if task_root:
         session = data.get("session_id") or "nosession"
@@ -180,12 +164,14 @@ def main():
         if n > EDIT_CAP:
             deny(
                 f"SolveIt: {n} edits to project code since the human's last message "
-                f"(cap {EDIT_CAP}). One sketched change lands per go — hand back now, "
-                f"then sketch the next change as a diff so they verify this one first."
+                f"(cap {EDIT_CAP}). One step lands per turn — hand back now so they "
+                f"inspect this one in the diff and in current.<ext> first."
             )
     if task_root and not os.path.isdir(os.path.join(task_root, ".git")):
         os.makedirs(task_root, exist_ok=True)
         git(task_root, "init", "-q")
+    if task_root:
+        return
 
     # 2. cumulative uncommitted added lines in the enclosing repo (see docstring)
     d = os.path.dirname(fp) or cwd
@@ -216,10 +202,9 @@ def main():
     if splitting:
         return
 
-    where = "your task/scratch repo " + repo if is_task_repo(repo) else repo
     if total >= TOTAL_CAP:
         deny(
-            f"SolveIt: {total} lines uncommitted in {where} (staged {staged} + "
+            f"SolveIt: {total} lines uncommitted in {repo} (staged {staged} + "
             f"dirty {dirty}) — the {TOTAL_CAP}-line total cap is reached. Staging "
             f"won't help now; the human must commit before more is written. Tell "
             f"them what changed and why, then stop. You never commit."
@@ -227,7 +212,7 @@ def main():
 
     if dirty >= DIRTY_CAP:
         deny(
-            f"SolveIt: {dirty} unstaged lines in {where} (cap {DIRTY_CAP}; staged "
+            f"SolveIt: {dirty} unstaged lines in {repo} (cap {DIRTY_CAP}; staged "
             f"lines don't count). Checkpoint due — tell the human what changed and "
             f"why, then stop. They stage what they accept (then work continues) or "
             f"commit. You never commit."
@@ -235,7 +220,7 @@ def main():
 
     if total >= WARN_CAP:
         warn(
-            f"SolveIt: {total} lines uncommitted in {where} (warn at {WARN_CAP}, "
+            f"SolveIt: {total} lines uncommitted in {repo} (warn at {WARN_CAP}, "
             f"hard commit at {TOTAL_CAP}). Wrap up the current atomic step and "
             f"commit soon — keep the commit to one clear goal."
         )

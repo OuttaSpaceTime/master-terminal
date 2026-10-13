@@ -82,12 +82,3 @@ def test_every_prompt_resets_the_edits_per_turn_counter(repo, run, tmp_path):
 
 def test_solveit_off_noop(repo, run):
     assert run(repo, session="s4", off=True) == ""
-
-
-def test_is_go_only_on_a_leading_affirmation():
-    assert guard.is_go("go")
-    assert guard.is_go("ok go, but keep it small")
-    assert guard.is_go("do it")
-    assert not guard.is_go("gopher config is broken")
-    assert not guard.is_go("fix the typo in foo.py")
-    assert not guard.is_go("")

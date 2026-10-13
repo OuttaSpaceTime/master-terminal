@@ -32,15 +32,9 @@ def repo(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run(monkeypatch, capsys, tmp_path):
-    def _run(tool, ti, cwd, session="s", go=True):
+def run(monkeypatch, capsys):
+    def _run(tool, ti, cwd, session="s"):
         monkeypatch.delenv("SOLVEIT_OFF", raising=False)
-        flag = tmp_path / "home/.claude/solveit/state" / f"{session}.go"
-        flag.parent.mkdir(parents=True, exist_ok=True)
-        if go:
-            flag.write_text("1\n")
-        elif flag.exists():
-            flag.unlink()
         payload = {"tool_name": tool, "tool_input": ti, "cwd": str(cwd), "session_id": session}
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         try:
@@ -173,15 +167,13 @@ def test_splitting_marker_never_lifts_the_task_folder_edit_ceiling(repo, run):
     assert code == 2 and "ceiling" in err
 
 
-def test_splitting_marker_never_lifts_the_task_repo_dirty_cap(repo, run):
+def test_archived_task_scripts_never_block_the_next_current(repo, run):
     a = repo / ".solve" / "tasks" / "probe"
     a.mkdir(parents=True)
-    (a / "t.md").write_text("# probe\n")
     subprocess.run(["git", "-C", str(a), "init", "-q"], check=True)
-    (a / "big.py").write_text("l\n" * 35)
-    (repo / ".solve" / "splitting").touch()
-    code, err = run("Write", {"file_path": str(a / "02.py"), "content": "x\n"}, repo)
-    assert code == 2 and "unstaged" in err
+    for n in range(1, 6):
+        (a / f"0{n}-step.rb").write_text("l\n" * 8)
+    assert run("Write", {"file_path": str(a / "current.rb"), "content": "x\n" * 8}, repo)[0] == 0
 
 
 def test_warn_between_150_and_300(repo, run, capsys):
@@ -227,9 +219,8 @@ def test_same_task_folder_ok(repo, run):
     assert run("Write", {"file_path": str(a / "02.py"), "content": "x\n"}, repo, session="s2")[0] == 0
 
 
-def test_write_without_a_go_is_denied(repo, run):
-    code, err = run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n"}, repo, go=False)
-    assert code == 2 and "no go" in err
+def test_write_lands_without_a_go_from_the_human(repo, run):
+    assert run("Write", {"file_path": str(repo / "a.txt"), "content": "x\n"}, repo)[0] == 0
 
 
 def test_only_one_project_edit_lands_per_turn(repo, run):

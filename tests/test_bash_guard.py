@@ -34,15 +34,9 @@ def repo(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def run(monkeypatch, capsys, tmp_path):
-    def _run(cmd, cwd, go=True):
+def run(monkeypatch, capsys):
+    def _run(cmd, cwd):
         monkeypatch.delenv("SOLVEIT_OFF", raising=False)
-        flag = tmp_path / "home/.claude/solveit/state/s.go"
-        flag.parent.mkdir(parents=True, exist_ok=True)
-        if go:
-            flag.write_text("1\n")
-        elif flag.exists():
-            flag.unlink()
         payload = {"tool_input": {"command": cmd}, "cwd": str(cwd), "session_id": "s"}
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         try:
@@ -174,19 +168,12 @@ def test_allowlisted_matching():
     assert not guard.allowlisted("exact cmdx", ["exact cmd"])
 
 
-def test_task_script_run_without_a_go_is_denied(repo, run):
+def test_task_script_runs_without_a_go_from_the_human(repo, run):
     script = make_task(repo)
-    code, err = run(f"python {script}", repo, go=False)
-    assert code == 2 and "no go" in err
-
-
-def test_search_without_a_go_stays_free(repo, run):
-    assert run("grep x foo", repo, go=False)[0] == 0
+    assert run(f"python {script}", repo)[0] == 0
 
 
 def test_script_written_this_turn_runs(repo, run):
-    """The gate is the sketch, not the write: the human read the script in chat
-    before the go, so writing and running it land in the same turn."""
     script = make_task(repo)
     fresh = time.time() + 5
     os.utime(repo / script, (fresh, fresh))

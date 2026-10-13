@@ -78,8 +78,46 @@ def test_task_script_writes_are_not_counted_as_project_edits(tmp_path):
     assert health.scan(str(tmp_path), "2026-07-01")[0][1]["edits"] == 0
 
 
-def test_claim_turn_classification():
-    assert health.is_claim_turn("It is the cause because id is nil.")
-    assert not health.is_claim_turn("Which key do you mean?")
-    assert not health.is_claim_turn("Applied cleanly.")
-    assert not health.is_claim_turn("31 unstaged lines in the repo — stage what you accept.")
+def _turn_steps(*blocks_and_results):
+    entries = [_user("SolveIt is on (the default). go")]
+    for item in blocks_and_results:
+        entries.append(item if item.get("type") == "user" else _assistant(item))
+    return entries
+
+
+def _write(tid, path):
+    return {"type": "tool_use", "id": tid, "name": "Write", "input": {"file_path": path}}
+
+
+def _bash(tid, cmd):
+    return {"type": "tool_use", "id": tid, "name": "Bash", "input": {"command": cmd}}
+
+
+def _verified(tmp_path, *items):
+    _transcript(tmp_path, "proj", _turn_steps(*items))
+    return health.verified(health.scan(str(tmp_path), "2026-07-01")[0][0])
+
+
+def test_turn_without_a_landed_write_is_not_scored(tmp_path):
+    assert _verified(tmp_path, _bash("b1", "ruby .solve/tasks/t/current.rb")) is None
+
+
+def test_write_followed_by_a_run_of_current_is_verified(tmp_path):
+    assert _verified(tmp_path, _write("w1", "/r/app.rb"),
+                     _bash("b1", "ruby .solve/tasks/t/current.rb")) is True
+
+
+def test_write_after_the_last_run_of_current_is_unverified(tmp_path):
+    assert _verified(tmp_path, _bash("b1", "ruby .solve/tasks/t/current.rb"),
+                     _write("w1", "/r/app.rb")) is False
+
+
+def test_denied_write_is_not_scored(tmp_path):
+    denied = _result("w1", "SolveIt: hand back now")
+    denied["message"]["content"][0]["is_error"] = True
+    assert _verified(tmp_path, _write("w1", "/r/app.rb"), denied) is None
+
+
+def test_archiving_current_does_not_verify(tmp_path):
+    assert _verified(tmp_path, _write("w1", "/r/app.rb"),
+                     _bash("b1", "mv .solve/tasks/t/current.rb .solve/tasks/t/02-x.rb")) is False

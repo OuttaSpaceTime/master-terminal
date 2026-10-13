@@ -10,8 +10,8 @@ A command is allowed only if every segment is one of:
     npx tsx, rake, ...) that has such a task-script file among its arguments.
     The script path must be the LAST token — no args/flags/redirects may be
     passed at run time, so a script can't be a generic command forwarder. A
-    script may run in the same turn it was written: the agent sketches it in
-    chat BEFORE writing, so the human has already read it when they say go;
+    script may run in the same turn it was written: current.<ext> is the step's
+    verification, which the human reads in their open buffer;
   - read-only search/inspection: grep, rg, find, ls, cat, head, awk, ... — the
     shell stand-ins for the Read/Grep/Glob tools, which a tool-registration bug
     can drop entirely (issue #52121), leaving the agent no other way to look at
@@ -373,31 +373,20 @@ def main():
     if not cmd:
         return
     patterns = allow_patterns(cwd)
-    session = data.get("session_id") or "nosession"
-    go = os.path.expanduser(f"~/.claude/solveit/state/{session}.go")
     is_search = False
-    executes = False
     for toks in split_segments(cmd):
         ok, msg, search = segment_ok(toks, cwd)
         if not ok:
             seg = " ".join(toks).strip()
             if seg and allowlisted(seg, patterns):
-                ok, search, executes = True, False, True
+                ok, search = True, False
         if not ok:
             sys.stderr.write(msg)
             sys.exit(2)
-        tasks = [t for t in toks if under_tasks(t, cwd)]
-        executes = executes or bool(tasks)
         is_search = is_search or search
         target = cd_target(toks, cwd)
         if target is not None:
             cwd = target
-    if executes and not os.path.exists(go):
-        sys.stderr.write(
-            "SolveIt: no go from the human this turn — reading and searching stay "
-            "free, running does not. Say what you want to run and why, then stop."
-        )
-        sys.exit(2)
     if is_search:  # log the whole command once, like a Grep/Glob entry
         log_search(cmd, cwd)
 
