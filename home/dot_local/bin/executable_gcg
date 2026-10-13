@@ -1,0 +1,2 @@
+#!/bin/sh
+exec git commit --amend --only --no-edit --trailer "Generated-by: qwen-3.8-27b"
