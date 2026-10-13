@@ -21,6 +21,7 @@ Tabs
   ctrl+shift+h / l          previous / next tab
 
 Workspaces (sidebar rows)
+  ctrl+shift+b              collapse / expand sidebar
   ctrl+1..9                 jump to workspace
   ctrl+alt+h / l            previous / next workspace
   ctrl+shift+t              new workspace
