@@ -11,6 +11,15 @@ vim.opt.relativenumber = false
 -- scope the root to that single gem dir. Otherwise rbenv's own .git would make
 -- the `.git` detector resolve root to ~/.rbenv, breaking search in gem code.
 vim.g.root_spec = {
+  -- Inside a SolveIt scratch folder (.solve/tasks/<X>, possibly its own git repo),
+  -- use the main repo that holds .solve.
+  function(buf)
+    local name = vim.api.nvim_buf_get_name(buf or 0)
+    local main = name:match('^(.*)/%.solve/') or vim.fn.getcwd():match('^(.*)/%.solve/')
+    if main then
+      return { main }
+    end
+  end,
   function(buf)
     local name = vim.api.nvim_buf_get_name(buf or 0)
     local gem_root = name:match('^(.*/gems/[^/]+)/?')
