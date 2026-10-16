@@ -43,7 +43,7 @@ end
 local function some_file(comp, predicate)
   local found = false
   comp:deep_some(function(child)
-    found = child.name == "file" and predicate(child.context)
+    found = found or (child.name == "file" and predicate(child.context))
     return found
   end)
   return found
