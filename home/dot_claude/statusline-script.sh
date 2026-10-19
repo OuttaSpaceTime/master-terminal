@@ -12,7 +12,7 @@ if [ "$waiting" = "true" ] || [ -n "$waiting" ]; then
 fi
 
 # Colors — bold SGR (kitty bold_font/ExtraBold) on status values; plain weight
-# (kitty font_family/SemiBold) on labels: model tier, folder name, branch name
+# (kitty font_family/SemiBold) on labels: model tier, branch name
 CYAN=$'\033[38;2;15;137;143m'      # teal    #0f898f (model tier)
 GREEN=$'\033[1;38;2;13;160;77m'    # green   #0da04d
 GREEN_L=$'\033[38;2;13;160;77m'    # green, plain weight (model tier: Haiku)
@@ -20,9 +20,7 @@ BLUE=$'\033[38;2;50;119;245m'      # blue    #3277f5 (branch name)
 YELLOW=$'\033[1;38;2;224;97;0m'    # orange  #e06100
 RED=$'\033[1;38;2;250;0;50m'       # red     #fa0032
 WHITE=$'\033[1;38;2;28;30;42m'     # text    #1c1e2a
-WHITE_L=$'\033[38;2;28;30;42m'     # text, plain weight (folder name)
 MAGENTA=$'\033[38;2;221;34;174m'   # pink    #dd22ae (model tier: Opus)
-DIM=$'\033[1;38;2;140;144;160m'    # gray    #8c90a0
 RESET=$'\033[00m'
 
 # Debug: log full raw input for field inspection
@@ -91,6 +89,26 @@ if [ -n "$ctx_size_raw" ] && [[ "$ctx_size_raw" =~ ^[0-9]+$ ]]; then
   fi
 fi
 
+# Session tokens: summed over the transcript; one API response spans several
+# lines that repeat the same message id and usage, so each id counts once
+transcript=$(echo "$input" | jq -r '.transcript_path // empty' 2>/dev/null)
+tokens_fmt=""
+if [ -f "$transcript" ]; then
+  tokens=$(jq -n '[inputs | select(.type == "assistant") | .message] | unique_by(.id)
+    | map(.usage | .input_tokens + .output_tokens + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0))
+    | add // 0' "$transcript" 2>/dev/null)
+  [ -n "$tokens" ] && tokens_fmt=$(awk -v n="$tokens" 'BEGIN {
+    if (n >= 1000000) printf "%.1fM", n / 1000000
+    else if (n >= 1000) printf "%dK", int(n / 1000 + 0.5)
+    else printf "%d", n
+  }')
+fi
+
+# Session cost in USD (client-side estimate at list price)
+cost=$(echo "$input" | jq -r '.cost.total_cost_usd // empty' 2>/dev/null)
+cost_fmt=""
+[ -n "$cost" ] && cost_fmt=$(awk -v c="$cost" 'BEGIN { printf "$%.2f", c }')
+
 # Git
 branch=""
 git_flags=""
@@ -124,19 +142,6 @@ if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
   fi
 fi
 
-# Shorten path: ~/…/last-two-segments if under home, else last two segments
-home=$(eval echo "~")
-if [[ "$dir" == "$home"/* ]]; then
-  rel="${dir#"$home"/}"
-  IFS='/' read -ra segs <<< "$rel"
-  n=${#segs[@]}
-  if [ "$n" -le 2 ]; then
-    dir="~/$rel"
-  else
-    dir="~/…/${segs[$((n-2))]}/${segs[$((n-1))]}"
-  fi
-fi
-
 # Rate limits (Claude.ai subscription quota)
 five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty' 2>/dev/null)
 week_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty' 2>/dev/null)
@@ -152,9 +157,9 @@ if [ -n "$five_pct" ]; then
   five_reset_str=""
   if [ -n "$five_resets_at" ]; then
     five_reset_fmt=$(date -d "@${five_resets_at}" +%H:%M 2>/dev/null || date -r "${five_resets_at}" +%H:%M 2>/dev/null)
-    [ -n "$five_reset_fmt" ] && five_reset_str="↺${five_reset_fmt}"
+    [ -n "$five_reset_fmt" ] && five_reset_str=" ↺${five_reset_fmt}"
   fi
-  quota_str="${rl_color}5h:${five_fmt}%${five_reset_str}${RESET}"
+  quota_str="${rl_color}5h ${five_fmt}%${five_reset_str}${RESET}"
 fi
 if [ -n "$week_pct" ]; then
   week_fmt=$(printf "%.0f" "$week_pct" 2>/dev/null || echo "?")
@@ -162,11 +167,11 @@ if [ -n "$week_pct" ]; then
   elif [ "$week_fmt" -gt 50 ] 2>/dev/null; then rl_color="$YELLOW"
   else rl_color="$GREEN"
   fi
-  [ -n "$quota_str" ] && quota_str="${quota_str}${DIM}|${RESET}${rl_color}7d:${week_fmt}%${RESET}" || quota_str="${rl_color}7d:${week_fmt}%${RESET}"
+  [ -n "$quota_str" ] && quota_str="${quota_str}  ${rl_color}7d ${week_fmt}%${RESET}" || quota_str="${rl_color}7d ${week_fmt}%${RESET}"
 fi
 
-# Build: solve|Sonnet 4.6 [M]|[waiting_icon] c:N%/SZ|quota|branch+*↑N
-out="${mode_badge}${DIM}|${RESET}"
+# Build: solve  Sonnet 4.6 h  [waiting_icon]N%/SZ  ΣTOK $COST  quota  branch+*↑N
+out="${mode_badge}  "
 if [ -n "$model_id" ]; then
   # Tier color: Haiku=GREEN, Sonnet=CYAN, Opus=MAGENTA
   case "$model_tier" in
@@ -186,24 +191,26 @@ if [ -n "$model_id" ]; then
       max)    effort_letter="mx" ;;
       *)      effort_letter="$effort" ;;
     esac
-    out="${out}${tier_color}${tier_label}${RESET} ${YELLOW}[${effort_letter}]${RESET}"
+    out="${out}${tier_color}${tier_label}${RESET} ${YELLOW}${effort_letter}${RESET}"
   else
     out="${out}${tier_color}${tier_label}${RESET}"
   fi
-  out="${out}${DIM}|${RESET}"
+  out="${out}  "
 fi
 out="${out}${waiting_icon}"
 if [ -n "$ctx_size_fmt" ]; then
-  out="${out}${WHITE}c:${ctx_pct}%/${ctx_size_fmt}${RESET}"
+  out="${out}${WHITE}${ctx_pct}%/${ctx_size_fmt}${RESET}"
 else
-  out="${out}${WHITE}c:${ctx_pct}%${RESET}"
+  out="${out}${WHITE}${ctx_pct}%${RESET}"
 fi
-[ -n "$quota_str" ] && out="${out}${DIM}|${RESET}${quota_str}"
+session_str="${tokens_fmt:+Σ${tokens_fmt}}"
+[ -n "$cost_fmt" ] && session_str="${session_str:+${session_str} }${cost_fmt}"
+[ -n "$session_str" ] && out="${out}  ${WHITE}${session_str}${RESET}"
+[ -n "$quota_str" ] && out="${out}  ${quota_str}"
 if [ -n "$branch" ]; then
   flags_str=""
   [ -n "$git_flags" ] && flags_str="${YELLOW}${git_flags}${RESET}"
-  folder=$(basename "$dir")
   branch_sym=$(printf '\ue0a0')
-  out="${out}${DIM}|${RESET}${WHITE_L}${folder}${RESET} ${BLUE}${branch_sym} ${branch}${RESET}${flags_str}"
+  out="${out}  ${BLUE}${branch_sym} ${branch}${RESET}${flags_str}"
 fi
 printf "%s" "$out"
