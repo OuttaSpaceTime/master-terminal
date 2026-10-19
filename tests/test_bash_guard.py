@@ -180,11 +180,17 @@ def test_script_written_this_turn_runs(repo, run):
     assert run(f"python {script}", repo)[0] == 0
 
 
-def test_current_script_written_this_turn_runs(repo, run):
+@pytest.mark.parametrize("form", ["ruby {s}", "bin/rails runner {s}", "ruby {s} | tail -3", "./{s}"])
+def test_only_the_human_runs_current(form, repo, run):
     script = make_task(repo, name="current.rb")
-    fresh = time.time() + 5
-    os.utime(repo / script, (fresh, fresh))
-    assert run(f"ruby {script}", repo)[0] == 0
+    code, err = run(form.format(s=script), repo)
+    assert code == 2 and "`! " in err
+
+
+def test_reading_or_archiving_current_stays_allowed(repo, run):
+    script = make_task(repo, name="current.rb")
+    assert run(f"cat {script}", repo)[0] == 0
+    assert run(f"mv {script} .solve/tasks/t/02-step.rb", repo)[0] == 0
 
 
 def test_script_from_an_earlier_turn_runs(repo, run):
@@ -192,3 +198,12 @@ def test_script_from_an_earlier_turn_runs(repo, run):
     old = time.time() - 60
     os.utime(repo / script, (old, old))
     assert run(f"python {script}", repo)[0] == 0
+
+
+def test_allowlist_never_lets_claude_run_current(repo, run):
+    (repo / ".claude").mkdir()
+    (repo / ".claude" / "settings.json").write_text(
+        json.dumps({"permissions": {"allow": ["Bash(bin/rails test:*)"]}})
+    )
+    script = make_task(repo, name="current.rb")
+    assert run(f"bin/rails test {script}", repo)[0] == 2

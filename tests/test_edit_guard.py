@@ -33,9 +33,13 @@ def repo(tmp_path, monkeypatch):
 
 @pytest.fixture
 def run(monkeypatch, capsys):
-    def _run(tool, ti, cwd, session="s"):
+    def _run(tool, ti, cwd, session="s", transcript=None):
         monkeypatch.delenv("SOLVEIT_OFF", raising=False)
         payload = {"tool_name": tool, "tool_input": ti, "cwd": str(cwd), "session_id": session}
+        if transcript is not None:
+            path = cwd.parent / "transcript.jsonl"
+            path.write_text("".join(json.dumps(e) + "\n" for e in transcript))
+            payload["transcript_path"] = str(path)
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         try:
             guard.main()
@@ -228,3 +232,78 @@ def test_only_one_project_edit_lands_per_turn(repo, run):
     assert run("Write", ti, repo, session="one")[0] == 0
     code, err = run("Write", ti, repo, session="one")
     assert code == 2 and "hand back" in err
+
+
+def _prompt(text):
+    return {"type": "user", "message": {"role": "user", "content": text}}
+
+
+def _write_current(tid="c1"):
+    return {"type": "assistant", "message": {"role": "assistant", "content": [
+        {"type": "tool_use", "id": tid, "name": "Write",
+         "input": {"file_path": "/repo/.solve/tasks/t/current.rb"}}]}}
+
+
+def _result(tid="c1", is_error=False):
+    return {"type": "user", "message": {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": tid, "content": "ok", "is_error": is_error}]}}
+
+
+def _human(cmd, out=""):
+    return [_prompt(f"<bash-input>{cmd}</bash-input>"),
+            _prompt(f"<bash-stdout>{out}</bash-stdout><bash-stderr></bash-stderr>")]
+
+
+APP = "app.rb"
+
+
+def test_project_write_waits_for_the_human_to_run_current(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), _prompt("next")]
+    code, err = run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)
+    assert code == 2 and "current.rb" in err and "`! " in err
+
+
+def test_project_write_lands_once_the_human_ran_current(repo, run):
+    t = [_prompt("go"), _write_current(), _result(),
+         *_human("ruby .solve/tasks/t/current.rb", "total: 2"), _prompt("next")]
+    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+
+
+def test_another_human_command_is_not_a_run_of_current(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), *_human("git status"), _prompt("next")]
+    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 2
+
+
+def test_a_human_run_clears_a_current_written_after_the_last_prompt(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), _prompt("next"),
+         _write_current("c2"), _result("c2"), *_human("ruby .solve/tasks/t/current.rb"), _prompt("go on")]
+    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+
+
+def test_the_turn_a_human_run_starts_only_reads(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), *_human("ruby .solve/tasks/t/current.rb")]
+    code, err = run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)
+    assert code == 2 and "next message" in err
+
+
+def test_the_turn_a_human_run_starts_does_not_write_the_next_current(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), *_human("ruby .solve/tasks/t/current.rb")]
+    current = repo / ".solve/tasks/t/current.rb"
+    code, err = run("Write", {"file_path": str(current), "content": "x\n"}, repo, transcript=t)
+    assert code == 2 and "next message" in err
+
+
+def test_current_written_this_turn_does_not_hold_the_turn(repo, run):
+    t = [_prompt("go"), _write_current(), _result()]
+    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+
+
+def test_denied_current_write_holds_nothing(repo, run):
+    t = [_prompt("go"), _write_current(), _result(is_error=True), _prompt("next")]
+    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+
+
+def test_rewriting_current_is_never_held(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), _prompt("next")]
+    current = repo / ".solve/tasks/t/current.rb"
+    assert run("Write", {"file_path": str(current), "content": "x\n"}, repo, transcript=t)[0] == 0

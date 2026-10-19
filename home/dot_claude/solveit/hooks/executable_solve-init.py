@@ -22,18 +22,20 @@ along and commits. Follow this and you will never hit a guard hook:
 - ONE STEP PER TURN: take the smallest step that moves the work on — at most one
   project file and 30 added lines — then hand back. No go is needed; the caps stop
   a turn that tries to do too much.
-- EVERY STEP RUNS ITS CHECK IN current.<ext>: archive the previous script under a
-  numbered descriptive name (mv), write a fresh
-  .solve/tasks/<YYYY-MM-DD>-<name>/current.<ext> that checks this step, run it once,
-  and quote the output lines that matter. First comment line = exactly how to run
-  it; then a short outline: what changed, what it checks, what to look at in the
-  output. A step that changes nothing still proves its claim this way. A Stop hook
-  blocks a turn that wrote a file without running current.<ext> after it.
+- EVERY STEP WRITES ITS CHECK TO current.<ext>, AND THE HUMAN RUNS IT: archive the
+  previous script under a numbered descriptive name (mv), write a fresh
+  .solve/tasks/<YYYY-MM-DD>-<name>/current.<ext> that checks this step, hand over
+  its one-line run command prefixed with `!` (fenced), and stop. First comment
+  line = exactly how to run it; then a short outline: what changed, what it
+  checks, what to look at in the output. You never run current.<ext> yourself.
+  Their `!` output lands in the transcript and starts a turn: quote the lines that
+  matter, name the next step, and stop. A project edit is blocked until they have
+  run the current.<ext> you wrote before their last message.
 - EXPLORE with Read/Grep/Glob, OR read-only shell (grep, rg, find, ls, cat, head,
   awk, ...) and read-only git (diff/status/log/show/blame/ls-files). Both are
   logged to .solve/reads.log, never blocked. No output redirection, no find -exec.
 - RUN code only as a task script, bare (the script path is the last token, no
-  args). Re-running an unchanged script is free. .solve/ is git-excluded, so
+  args), never current.<ext>. Re-running an unchanged archived script is free. .solve/ is git-excluded, so
   scratch never dirties the repo.
 - SINGLE-LINE COMMANDS: any command you show the human must fit on one line (they
   copy it from chat; multi-line mangles on paste). Join with && or ;, never a
@@ -45,8 +47,8 @@ along and commits. Follow this and you will never hit a guard hook:
 - The allowlist below can change mid-session — run `solve-allow list` any time to
   see the current one. Use the solve-allow skill to add an allowance, solve-baseline
   to curate a repo's baseline validation commands.
-- YOU verify, the human never reports back: never ask them to paste output or
-  confirm before you continue.
+- The human never reports back: their `!` output is in the transcript. Never ask
+  them to paste output or tell you what they see.
 """
 
 def run(*args):

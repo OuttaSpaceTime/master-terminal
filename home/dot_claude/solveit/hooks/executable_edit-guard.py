@@ -28,7 +28,13 @@ Blocks (exit 2, message to stderr) when:
      scratch grows by design and only CAP bounds a write. Each .solve/tasks/<X>
      folder is auto-git-init'd on first write so the human can commit its history.
      Either way the agent never commits — it stops and the human commits.
-  3. a write would create a SECOND .solve/tasks/<X> folder in one session. The
+  3. a project write follows a current.<ext> Claude wrote before the human's last
+     prompt that the human has not run yet. Only the human runs current.<ext>,
+     with `! <command>` (bash-guard refuses Claude's runs), and the next step
+     waits for that output. The turn the human's `!` output starts only reads
+     it: no project write until their next message. Read from the transcript; a
+     write a guard denied doesn't count.
+  4. a write would create a SECOND .solve/tasks/<X> folder in one session. The
      first task folder written to is recorded per session_id (state file
      ~/.claude/solveit/state/<session>.taskdir); later writes must target that
      same folder — add more scripts there rather than opening a new folder.
@@ -38,6 +44,7 @@ error allows the tool call so a bug here never wedges a session.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -49,6 +56,9 @@ EDIT_CAP = 1  # project-code edits per human turn (reset by solve-init on each p
 DIRTY_CAP = 30  # unstaged + untracked -> pause & force stage
 WARN_CAP = 150  # staged + unstaged + untracked -> warn, proceed
 TOTAL_CAP = 300  # staged + unstaged + untracked -> hard block, force commit
+CURRENT = re.compile(r"\.solve/tasks/[^/\s]+/current\.\w+")
+NOT_RUNS = {"cat", "head", "tail", "less", "bat", "nvim", "vim", "view", "mv", "cp", "ls",
+            "wc", "grep", "rg", "sed", "awk"}
 
 
 def nlines(s):
@@ -86,6 +96,43 @@ def task_folder_root(fp):
     if i + 2 < len(parts) and parts[i + 1] == "tasks":
         return os.sep.join(parts[: i + 3])
     return None
+
+
+def runs_current(command):
+    """True when a segment of the command ends in current.<ext> and is not a read
+    or the archiving mv."""
+    for segment in re.split(r"&&|\|\||[;|]", command):
+        toks = segment.split()
+        if toks and CURRENT.search(toks[-1]) and toks[0] not in NOT_RUNS:
+            return True
+    return False
+
+
+def unrun_current(transcript):
+    """(the current.<ext> Claude wrote before the human's last prompt that the
+    human has not run with `!` since, or None; whether a `!` started this turn)."""
+    written, last_write, held, bang = {}, None, None, False
+    with open(transcript) as f:
+        for line in f:
+            e = json.loads(line)
+            content = (e.get("message") or {}).get("content")
+            if e.get("type") == "assistant" and isinstance(content, list):
+                for b in content:
+                    fp = (b.get("input") or {}).get("file_path") or ""
+                    if b.get("type") == "tool_use" and CURRENT.search(fp):
+                        written[b.get("id")] = CURRENT.search(fp).group()
+            elif e.get("type") == "user" and isinstance(content, list):
+                for b in content:
+                    if b.get("type") == "tool_result" and not b.get("is_error"):
+                        last_write = written.get(b.get("tool_use_id"), last_write)
+            elif e.get("type") == "user" and isinstance(content, str):
+                bang = content.startswith("<bash-")
+                ran = re.match(r"<bash-input>(.*)</bash-input>", content, re.S)
+                if ran and runs_current(ran.group(1)):
+                    last_write = held = None
+                elif not content.startswith("<bash-"):
+                    held = last_write
+    return held, bang
 
 
 def main():
@@ -155,6 +202,21 @@ def main():
         if not recorded:
             os.makedirs(os.path.dirname(marker), exist_ok=True)
             open(marker, "w").write(task_root + "\n")
+    transcript = data.get("transcript_path")
+    if transcript and os.path.exists(transcript):
+        held, bang = unrun_current(transcript)
+        if bang:
+            deny(
+                "SolveIt: the human's `!` output started this turn. Quote the lines "
+                "that matter, name the next step and stop — nothing is written until "
+                "their next message."
+            )
+        if held and not task_root:
+            deny(
+                f"SolveIt: the human hasn't run {held} since you wrote it. Give them "
+                f"its one-line run command prefixed with `! ` and stop — the next step "
+                f"waits for its output."
+            )
     if not task_root:
         session = data.get("session_id") or "nosession"
         counter = os.path.expanduser(f"~/.claude/solveit/state/{session}.edits")

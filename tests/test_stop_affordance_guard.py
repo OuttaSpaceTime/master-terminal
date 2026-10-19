@@ -309,94 +309,23 @@ def test_bash_task_script_listing_is_not_a_multiline_command(run):
     assert code == 0
 
 
-def test_blocks_project_change_without_running_current(run):
-    code, err = run([_user("next"), _assistant(_write("/repo/app/models/user.rb"), _text("Changed the scope."))])
-    assert code == 2
-    assert "current.<ext>" in err
-
-
-def test_project_change_verified_by_current_passes(run):
+def test_project_change_no_longer_needs_a_run_of_current(run):
     code, _ = run([_user("next"), _assistant(
         _write("/repo/app/models/user.rb"),
         _write("/repo/.solve/tasks/t/current.rb", "w2"),
-        _bash(RUN_CURRENT),
-        _text("total is 2; the SQL filters archived rows."),
+        _text("Scoped total to unarchived rows.\n```\n! ruby .solve/tasks/t/current.rb\n```"),
     )])
     assert code == 0
 
 
-def test_run_before_the_last_change_does_not_count(run):
-    code, err = run([_user("next"), _assistant(
-        _write("/repo/.solve/tasks/t/current.rb"),
-        _bash(RUN_CURRENT),
-        _write("/repo/app/models/user.rb", "w2"),
-        _text("total is 2."),
-    )])
-    assert code == 2
-    assert "user.rb" in err
-
-
-def test_running_an_archived_script_does_not_verify(run):
-    code, err = run([_user("next"), _assistant(
-        _write("/repo/app/models/user.rb"),
-        _bash("ruby .solve/tasks/t/02-probe-scope.rb"),
-        _text("total is 2."),
-    )])
-    assert code == 2
-    assert "current.<ext>" in err
-
-
-def test_archiving_current_is_not_a_run(run):
-    code, err = run([_user("next"), _assistant(
-        _write("/repo/app/models/user.rb"),
-        _bash("mv .solve/tasks/t/current.rb .solve/tasks/t/03-total.rb"),
-        _text("Archived the old check."),
-    )])
-    assert code == 2
-    assert "current.<ext>" in err
-
-
-def test_reading_current_is_not_a_run(run):
-    code, err = run([_user("next"), _assistant(
-        _write("/repo/app/models/user.rb"),
-        _bash("cat .solve/tasks/t/current.rb"),
-        _text("total is 2."),
-    )])
-    assert code == 2
-    assert "current.<ext>" in err
-
-
-def test_runner_or_piped_run_of_current_counts(run):
-    for cmd in ("bin/rails runner .solve/tasks/t/current.rb", "ruby .solve/tasks/t/current.rb | tail -3"):
-        code, _ = run([_user("next"), _assistant(
-            _write("/repo/app/models/user.rb"), _bash(cmd), _text("total is 2."),
-        )])
-        assert code == 0, cmd
-
-
-def test_rewritten_current_must_run(run):
-    code, err = run([_user("next"), _assistant(_write("/repo/.solve/tasks/t/current.rb"), _text("Wrote the check."))])
-    assert code == 2
-    assert "current.<ext>" in err
-
-
-def test_failing_run_of_current_still_counts(run):
+def test_confident_claim_passes_after_the_human_ran_current(run):
     code, _ = run([
         _user("next"),
-        _assistant(_write("/repo/app/models/user.rb"), _bash(RUN_CURRENT)),
-        _tool_result("b1", is_error=True),
-        _assistant(_text("Red as expected: total is 3, archived row still counted.")),
-    ])
-    assert code == 0
-
-
-def test_denied_write_does_not_need_a_run(run):
-    code, _ = run([
-        _user("next"),
-        _assistant(_write("/repo/app/a.rb"), _bash(RUN_CURRENT)),
-        _assistant(_write("/repo/app/b.rb", "w2")),
-        _tool_result("w2", is_error=True),
-        _assistant(_text("a.rb landed; b.rb waits for the next step.")),
+        _assistant(_write("/repo/.solve/tasks/t/current.rb"),
+                   _text("```\n! ruby .solve/tasks/t/current.rb\n```")),
+        _user("<bash-input>ruby .solve/tasks/t/current.rb</bash-input>"),
+        _user("<bash-stdout>total: 2</bash-stdout><bash-stderr></bash-stderr>"),
+        _assistant(_text("Confirmed: total is 2, the archived row is gone.")),
     ])
     assert code == 0
 
@@ -414,7 +343,6 @@ def test_repair_note_is_on_every_block_path(run):
         [_user("trace this"), _assistant(_text("Confirmed: the callback proves it."))],
         [_user("go"), _assistant(_text("Did the thing. Want me to also rename it?"))],
         [_user("go"), _assistant(_text("It is done.\nPaste the output here."))],
-        [_user("next"), _assistant(_write("/repo/app/a.rb"), _text("Changed it."))],
     ]
     for entries in paths:
         code, err = run(entries)

@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """SolveIt Stop hook: turn-level rules, checked once the turn ends.
 
-Every step is verified in the task folder's live script, current.<ext>: a turn
-that wrote a file (project code, or current.<ext> itself) must run current.<ext>
-after its last landed write, so the check is on disk in front of the human and
-has run once. A write a guard denied (its tool_result has is_error) does not
-count; a run counts even when it fails, since a red check is still a check.
-
-It also blocks a trailing menu, asking the human to paste output, prose past
+Blocks a trailing menu, asking the human to paste output, prose past
 BLOCK_CHARS when they did not ask for depth, an unhedged confident claim on a
-turn where nothing ran, a task script written but neither run nor shown, and any
+turn where nothing ran (the human's `!` run whose output started the turn
+counts as a run), a task script written but neither run nor shown, and any
 command the human would copy that spans more than one line (pasting a
 multi-line command mangles newlines).
 
@@ -55,9 +50,6 @@ WARN_CHARS, BLOCK_CHARS = 1200, 2200
 
 _FENCE_BLOCK = re.compile(r"```.*?```", re.S)
 TASK_SCRIPT = re.compile(r"(^|/)\.solve/tasks/[^/]+/.+")
-CURRENT = re.compile(r"\.solve/tasks/[^/\s]+/current\.\w+")
-NOT_RUNS = {"cat", "head", "tail", "less", "bat", "nvim", "vim", "view", "mv", "cp", "ls",
-            "wc", "grep", "rg", "sed", "awk"}
 
 
 MENU_MSG = (
@@ -67,26 +59,19 @@ MENU_MSG = (
     "between your plans.\n"
 )
 PASTE_MSG = (
-    "SolveIt: don't ask the human to paste output or report back. You run "
-    "current.<ext> yourself and quote what it printed; nothing waits on their "
-    "reply.\n"
+    "SolveIt: don't ask the human to paste output or report back. When they run "
+    "current.<ext> with `!`, its output lands in the transcript — read it there.\n"
 )
 HEDGE_MSG = (
     "SolveIt: this turn only read — nothing ran — yet it asserts. A claim drawn from "
     "reading is a hypothesis: say 'looks like' / 'I think', or prove it — write "
-    "current.<ext> so it prints the real value behind the claim, and run it.\n"
+    "current.<ext> so it prints the real value behind the claim, and give the human "
+    "its one-line `!` run command.\n"
 )
 SCRIPT_MSG = (
     "SolveIt: you wrote {name} but this turn neither ran it nor shows it. Run it "
     "now and report what it printed — or, if it is not ready to run, say in one "
     "line what it does and show it fenced.\n"
-)
-CURRENT_MSG = (
-    "SolveIt: this turn wrote {name} but did not run current.<ext> after it. Every "
-    "step's check lives in .solve/tasks/<f>/current.<ext>: archive the previous "
-    "one, write a fresh one that checks this step (first comment line = the run "
-    "command, then a short outline: what changed, what it checks, what to look at "
-    "in the output), run it once, and quote the output lines that matter.\n"
 )
 LENGTH_MSG = (
     "SolveIt: {n} characters of prose since the human's last message, and they did "
@@ -163,31 +148,6 @@ def _has_multiline_command(text):
     return False
 
 
-def _runs_current(command):
-    """True when a segment of the command executes current.<ext>: the path is its
-    last token (bash-guard requires that of every run), and the segment is not a
-    read or the archiving mv."""
-    for segment in re.split(r"&&|\|\||[;|]", command):
-        toks = segment.split()
-        if toks and CURRENT.search(toks[-1]) and toks[0] not in NOT_RUNS:
-            return True
-    return False
-
-
-def _unverified_write(steps, failed):
-    """The last landed write with no run of current.<ext> after it, or None.
-    Project files and current.<ext> need the check; other task scripts don't."""
-    pending = None
-    for tid, kind, arg in steps:
-        if kind == "run" and _runs_current(arg):
-            pending = None
-        elif kind == "write" and tid not in failed and (
-            CURRENT.search(arg) or not TASK_SCRIPT.search(arg)
-        ):
-            pending = arg
-    return pending
-
-
 def _is_tool_result(content):
     return isinstance(content, list) and any(
         isinstance(b, dict) and b.get("type") == "tool_result" for b in content
@@ -206,8 +166,7 @@ def _user_text(content):
 
 def _assistant_text_since_last_user(entries):
     """(assistant text since the human's last message, that message's text,
-    whether anything ran, task scripts written, the last landed write that
-    current.<ext> never checked)."""
+    whether anything ran, task scripts written)."""
     start, last_user = 0, ""
     for i in range(len(entries) - 1, -1, -1):
         e = entries[i]
@@ -218,18 +177,10 @@ def _assistant_text_since_last_user(entries):
             continue
         start, last_user = i + 1, _user_text(content)
         break
-    texts, ran, scripts, steps, failed = [], False, [], [], set()
+    texts, ran, scripts = [], last_user.startswith("<bash-stdout>"), []
     for e in entries[start:]:
         content = (e.get("message") or {}).get("content")
-        if not isinstance(content, list):
-            continue
-        if e.get("type") == "user":
-            failed.update(
-                b.get("tool_use_id") for b in content
-                if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("is_error")
-            )
-            continue
-        if e.get("type") != "assistant":
+        if not isinstance(content, list) or e.get("type") != "assistant":
             continue
         for b in content:
             if not isinstance(b, dict):
@@ -238,13 +189,11 @@ def _assistant_text_since_last_user(entries):
                 texts.append(b.get("text", ""))
             elif b.get("type") == "tool_use" and b.get("name") in RUNNERS:
                 ran = True
-                steps.append((b.get("id"), "run", (b.get("input") or {}).get("command") or ""))
             elif b.get("type") == "tool_use" and b.get("name") in WRITERS:
                 fp = (b.get("input") or {}).get("file_path") or ""
-                steps.append((b.get("id"), "write", fp))
                 if TASK_SCRIPT.search(fp):
                     scripts.append(fp[fp.index(".solve/"):])
-    return "\n".join(texts), last_user, ran, scripts, _unverified_write(steps, failed)
+    return "\n".join(texts), last_user, ran, scripts
 
 
 def _read_entries(path):
@@ -289,10 +238,8 @@ def main():
             break
         time.sleep(interval)
         entries = _read_entries(path)
-    span, last_user, ran, scripts, unverified = _assistant_text_since_last_user(entries)
+    span, last_user, ran, scripts = _assistant_text_since_last_user(entries)
     body = _prose(span)
-    if unverified:
-        die(CURRENT_MSG.format(name=os.path.basename(unverified)))
     for fp in scripts if not ran else []:
         name = os.path.basename(fp)
         if name not in span or not _FENCE_BLOCK.search(span):

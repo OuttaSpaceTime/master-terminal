@@ -9,9 +9,9 @@ A command is allowed only if every segment is one of:
     file; or any non-destructive runner (bin/rails runner, bundle exec ruby,
     npx tsx, rake, ...) that has such a task-script file among its arguments.
     The script path must be the LAST token — no args/flags/redirects may be
-    passed at run time, so a script can't be a generic command forwarder. A
-    script may run in the same turn it was written: current.<ext> is the step's
-    verification, which the human reads in their open buffer;
+    passed at run time, so a script can't be a generic command forwarder. The
+    one exception is current.<ext>, the step's check: only the human runs it,
+    with `! <command>`, and its output lands in the transcript;
   - read-only search/inspection: grep, rg, find, ls, cat, head, awk, ... — the
     shell stand-ins for the Read/Grep/Glob tools, which a tool-registration bug
     can drop entirely (issue #52121), leaving the agent no other way to look at
@@ -111,6 +111,11 @@ ARGS_MSG = (
 NOCODE_MSG = (
     "SolveIt: a runner points at a task-script FILE, never inline code (-e/-c/--eval). "
     "Put it under .solve/tasks/<f>/ and run that file."
+)
+CURRENT_MSG = (
+    "SolveIt: the human runs current.<ext>, not you. Give them its one-line run "
+    "command prefixed with `!` (e.g. `! ruby .solve/tasks/<f>/current.rb`) and stop; "
+    "its output lands in the transcript for you to read.\n"
 )
 GIT_MSG = (
     "SolveIt: git may only LOOK — diff/status/log/show/blame/ls-files/rev-parse, plus "
@@ -245,6 +250,8 @@ def segment_ok(toks, cwd):
         if base == "find" and any(t in FIND_DANGEROUS for t in toks):
             return (False, FIND_MSG, False)
         return (True, None, True)
+    if under_tasks(toks[-1], cwd) and re.fullmatch(r"current\.\w+", os.path.basename(toks[-1])):
+        return (False, CURRENT_MSG, False)
     # Past the read-only branches, anything that runs must point at a task-script
     # FILE — never carry an inline code/command string (ruby -e, python -c, sh -c,
     # rails runner -e "...", ...). Reject those outright.
@@ -376,7 +383,7 @@ def main():
     is_search = False
     for toks in split_segments(cmd):
         ok, msg, search = segment_ok(toks, cwd)
-        if not ok:
+        if not ok and msg is not CURRENT_MSG:
             seg = " ".join(toks).strip()
             if seg and allowlisted(seg, patterns):
                 ok, search = True, False
