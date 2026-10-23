@@ -137,7 +137,7 @@ vim.api.nvim_create_autocmd("CursorMoved", {
     vim.api.nvim_buf_clear_namespace(ev.buf, ruby_def_references, 0, -1)
 
     local node = vim.treesitter.get_node()
-    if node:type() ~= "identifier" or not is_def_name(node) then
+    if not node or node:type() ~= "identifier" or not is_def_name(node) then
       return
     end
 

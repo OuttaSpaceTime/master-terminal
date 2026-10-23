@@ -27,7 +27,6 @@ return {
             -- "auto" lets ruby-lsp detect rubocop vs. standard per project from
             -- the bundle, instead of forcing rubocop everywhere.
             formatter = "auto",
-            linters = { "rubocop" },
             -- Inlay hints are listed in enabledFeatures, but ruby-lsp only emits
             -- the hint content when these are turned on.
             featuresConfiguration = {

@@ -153,7 +153,7 @@ Chezmoi source filenames encode target attributes:
 The SolveIt PreToolUse guards live under `home/dot_claude/solveit/hooks/` and deploy via chezmoi to `~/.claude/solveit/hooks/`. We work on these frequently.
 
 - `executable_bash-guard.py` — allows Bash only for task scripts + read-only search/git inspection; blocks everything else, including Claude running `current.<ext>` (only the human runs it, with `!`) (command recognition lives in `segment_ok`/`split_segments`)
-- `executable_edit-guard.py` — enforces the 30-line-per-edit ceiling (`CAP`), 1 project edit per turn (`EDIT_CAP`, the one-step-per-turn rhythm), the dirty (30) / warn (150) / hard (300) uncommitted caps, and holds project edits until the human has `!`-run the `current.<ext>` written before their last prompt (`unrun_current`, read from the transcript)
+- `executable_edit-guard.py` — enforces the 30-line-per-edit ceiling (`CAP`), 1 project edit per turn (`EDIT_CAP`, the one-step-per-turn rhythm), the dirty (30) / warn (150) / hard (300) uncommitted caps, and holds a *new* `current.<ext>` (project edits and in-place fixes still land) until the human has `!`-run the one written before their last prompt (`unrun_current`, read from the transcript)
 - `executable_stop-affordance-guard.py` — turn-level rules: prose length, no trailing menus, no asking the human to paste output, hedging on read-only turns, single-line commands
 - `executable_log-reads.py` — mirrors Read/Grep/Glob into `.solve/reads.log`
 - `executable_solve-init.py` — session bootstrap; resets the per-turn edit counter

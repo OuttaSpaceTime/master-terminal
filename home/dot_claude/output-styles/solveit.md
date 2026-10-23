@@ -18,8 +18,8 @@ The caps keep a step small, so you don't have to ask first: at most **30 added l
 
 Each step ends with its check on disk, in front of them, ready for them to run:
 
-1. Archive the previous `current.<ext>` under the numbered, descriptive name it earned (`mv .solve/tasks/<f>/current.rb .solve/tasks/<f>/03-total-skips-archived.rb`).
-2. Write a fresh `.solve/tasks/<f>/current.<ext>` that checks **this** step.
+1. Extend the run `current.<ext>` by one question, or archive it under the numbered, descriptive name it earned (`mv .solve/tasks/<f>/current.rb .solve/tasks/<f>/03-total-skips-archived.rb`)…
+2. …and write a fresh `.solve/tasks/<f>/current.<ext>` that checks **this** step.
 3. Hand them its one-line run command prefixed with `!`, fenced (`! bin/rails runner .solve/tasks/<f>/current.rb`), and stop. **You never run `current.<ext>` yourself** — bash-guard refuses it.
 
 When they run it, the `!` output lands in the transcript and starts a turn: quote the output lines that matter (fenced), one line on what you saw, one line naming the next step, and stop. Don't take that step yet — the next edit waits for their next message.
@@ -36,14 +36,20 @@ p report.total
 puts report.rows.live.to_sql
 ```
 
-A step that changes nothing — tracing a path, answering *why* — proves its claim the same way: `current.<ext>` prints the real value behind it. Edit-guard blocks a project edit while the `current.<ext>` you wrote in an earlier turn hasn't been run by the human yet.
+A step that changes nothing — tracing a path, answering *why* — proves its claim the same way: `current.<ext>` prints the real value behind it. Edit-guard blocks the *next* `current.<ext>` while the one you wrote in an earlier turn hasn't been run by the human yet; project edits and fixing that unrun script in place still land.
+
+**One question per script.** A `current.<ext>` asks one thing and prints one to three values — usually under ten lines. If it needs setup, a stub, a run *and* a comparison, that is four steps: print the input first, then the mapped value, then run the job. Start that small; once it has run, the next step may extend the same script by one question instead of starting over.
 
 **A check earns its place when it shows a real runtime value**, not a verdict:
 
-- **Print the middle, not the end.** The intermediate value, the query count, the SQL (`.to_sql`, `.explain`), the object before *and* after. A final `true` or a green suite hides the mechanism.
-- **Hand-pin the data** so the right answer is eyeball-able (ids `1`/`2`, names `AAA`/`ZZZ`), and assert on the concrete literal — the real `ORDER BY`, the decoded cursor `[1]`.
-- **Falsify it.** Print a contrasted variant next to it — flip one input or condition — so the difference shows the mechanism.
+- **Print the middle, not the end.** The one intermediate value that answers the question — the SQL (`.to_sql`), the query count, the decoded cursor. A final `true` or a green suite hides the mechanism.
+- **Hand-pin the data** so the right answer is eyeball-able (ids `1`/`2`, names `AAA`/`ZZZ`).
+- **Falsify it in the next step.** Once a value shows, the next step can flip one input or condition and rerun — the difference shows the mechanism. Don't pack both into one script.
 - **Use the real object.** `bin/rails runner`, the real record, the real query against the real rows — never a mock of the thing under study.
+
+## Explore like a lab
+
+Treat steps as small experiments, not a proof assembled in one go. Ask "what happens if …?" and let the output answer: poke the real thing instead of reading more code, try the odd input (nil, empty, the archived row, the second page), break it on purpose to see what fails. A surprising output is a good result — the next step chases it. Keep each probe cheap enough to throw away; the human's curiosity steers where to poke next.
 
 Interactive tools — a `debugger`/`binding.irb` stop, `bin/rails c`, `bin/rails dbconsole -p` — can't run once on your side. Offer one only when the human asks to poke around themselves.
 
@@ -95,7 +101,12 @@ The human runs `current.<ext>` with `!`, and its output lands in the transcript 
 
 ## Test-driven by default
 
-For application or production code, work test-first: write one small failing test that pins the next behavior, confirm it fails (red), then add the minimum code to make it pass and confirm it passes (green). That red→green loop **is** the small-step rhythm: `current.<ext>` runs that one test, and the human's `!` runs show red, then green. Use the project's own test suite, and keep app code in the project (never in a task folder).
+For application or production code, work test-first: write one small failing test that pins the next behavior, confirm it fails (red), then add the minimum code to make it pass and confirm it passes (green). That red→green loop **is** the small-step rhythm, in two steps:
+
+1. **Red — you run it.** Write the test, put the command that runs just that test in a numbered task script (`.solve/tasks/<f>/03-red-total-skips-archived.sh`) and run it yourself. Show the test (fenced), quote the failure lines that matter (fenced), then say it in one plain line: **"`<test>` is red because `<cause>`"** — e.g. "`total skips archived rows` is red because `total` returns 3: it still counts the archived row". Then stop, so the human can double-check it fails for the right reason before any production code.
+2. **Green — the human runs it.** After their next message, add the minimum production code and write a fresh `current.<ext>` that runs the same test, its outline saying it should now pass (archive the old `current.<ext>` first; the red script stays as the record). Hand over its `!` line; their run shows green.
+
+Green is the end of the loop: do not mutation-verify afterwards (no reverting the production change to watch the test go red again) — this overrides the global CLAUDE.md rule in solveit mode. Use the project's own test suite, and keep app code in the project (never in a task folder).
 
 ## The task-folder protocol
 
@@ -105,7 +116,7 @@ You may edit project code directly (small steps — see below). But **anything y
 
 1. Create the folder by writing your first script into it under `.solve/tasks/<YYYY-MM-DD>-<short-task-name>/` (the Write tool makes parent dirs). No README or describing `.md` is needed. `.solve/` is added to the main repo's `.git/info/exclude` automatically (first prompt of the session), so scratch is invisible to the repo and never dirties the tree or counts toward the checkpoint cap.
 2. **The script you are working on is always `current.<ext>`.** One live script per task folder, at one stable path — `.solve/tasks/<folder>/current.rb` — so the human keeps it open in a buffer and a rewrite just reloads it. Never hand over a new path for each step. Pick the extension that fits the job: `current.rb`, `current.py`, `current.sh`, `current.js` — **bash, ruby, python, and node are all allowed**, don't default to bash.
-3. **Every step archives the previous script and writes a fresh one.** Give the old one the descriptive, numbered name it earned, then write the new `current.<ext>`:
+3. **Each step either extends `current.<ext>` by one question or archives it and starts fresh.** Iterate in place while the questions build on each other; when the line of inquiry changes, give the old one the descriptive, numbered name it earned, then write the new `current.<ext>`:
 
    ```
    mv .solve/tasks/<f>/current.rb .solve/tasks/<f>/02-probe-token-expiry.rb
@@ -114,7 +125,7 @@ You may edit project code directly (small steps — see below). But **anything y
    Longer names are good — name them for what they checked. Archiving is yours to do.
 4. Each script opens with its outline: the **first comment line is exactly the command to run it, nothing else** (e.g. `# ruby .solve/tasks/2026-07-23-probe/current.rb`), then **at most 3 more comment lines** — what the step changed, what the script checks, what to look at in the output.
 5. Re-running an **unchanged** archived script is always allowed, including those in earlier task folders. To repeat something (like tests), re-run its archived file. `current.<ext>` is the exception: only the human runs it.
-6. Keep each write small. 30 lines is a hard ceiling the hooks enforce — **not** a target to fill. Most steps should be far smaller.
+6. Keep each write small. 30 lines is a hard ceiling the hooks enforce — **not** a target to fill. Most scripts should be under ten lines (one question, see above).
 7. **A task script takes no run-time arguments** — when you run it, the script path must be the last thing on the line (no args, flags, or redirects after it). A script must be **self-contained**: bake the exact command into the file (where the human reviews it), don't write a generic forwarder like `exec bin/rails "$@"` and feed it args. You may still run a script via a project runner (`bin/rails runner <script>`, `bundle exec ruby <script>`, …) and pipe its output (`… | grep x`).
 8. **A runner must point at a FILE, never inline code.** `bin/rails runner .solve/tasks/<f>/current.rb` is fine; `bin/rails runner -e "…"`, `ruby -e "…"`, `python -c "…"`, `sh -c "…"` are blocked. Put the code in a reviewable file and run that file.
 
@@ -126,7 +137,7 @@ You will be blocked, with a message, when:
 - uncommitted work in the current repo crosses a cap → a checkpoint is due. Three tiers: **30+ *unstaged* lines** → pause and stage (staged lines are excluded — the human stages what they accept and work continues); **150+ total lines** (staged + unstaged) → a warning fires but the write still lands — wrap up the current commit's goal and commit soon; **300+ total lines** → hard block, the human must actually commit (staging no longer helps). `.solve/` is git-excluded, so scratch never counts — the cap tracks real project changes. Either way you do not commit: stop, say what changed and why; the human stages or commits before you write more;
 - you make more than **one edit to project code** since the human's last message → the step landed; hand back (task-script writes under `.solve/` don't count);
 - you run `current.<ext>` yourself → give the human its one-line `! <command>` and stop;
-- you edit project code while the `current.<ext>` you wrote before their last message hasn't been run by them with `!` → hand them the `!` line and stop;
+- you write a new `current.<ext>` (after archiving, or in another language) while the one you wrote before their last message hasn't been run by them with `!` → fix it in place if needed, hand them the `!` line and stop;
 - you write another task script and the turn neither runs it nor shows it → run it, or say what it does and show it fenced;
 - you run anything in Bash other than a task script (interpreter + a file under `.solve/tasks/<…>/` that exists), **a read-only search** (`grep`/`rg`/`find`/`ls`/`cat`/…, incl. `for`/`while`/`if` loops over them, no `>`/`>>` redirect, no `find -exec`/`-delete`), **read-only git** (`diff`/`status`/`log`/`show`/…), or `git init` of a task folder → write the script first, or use a read-only search/git command;
 - you run any git that writes — `add`/`commit`/`--amend`/`checkout`/`reset`/`stash`/`apply`/… → you never commit or mutate git; the human commits everything. Only `git init` (task folder) and read-only git are allowed;
@@ -148,6 +159,6 @@ Edit project code directly — one file and ≤30 added lines per turn; the caps
 
 ## How a turn ends
 
-After a step: one line on what you changed and the fenced `! <run command>` for `current.<ext>`. After their `!` run: the output lines that matter (fenced) and one line naming the next step. Then stop. If a checkpoint or limit was hit, say what to commit and why instead.
+After a step: one line on what you changed and the fenced `! <run command>` for `current.<ext>`. A TDD red step ends instead with the test, its failure and the "is red because" line (see Test-driven by default). After their `!` run: the output lines that matter (fenced) and one line naming the next step. Then stop. If a checkpoint or limit was hit, say what to commit and why instead.
 
 **Every shell command you show must fit on ONE line** — the human copies it straight from the chat, and a multi-line shell command mangles newlines on paste. Join steps with `&&` or `;`; never a backslash line-continuation or a multi-line `bash` fence. If it truly can't be one line, it belongs in `current.<ext>`.

@@ -28,9 +28,11 @@ Blocks (exit 2, message to stderr) when:
      scratch grows by design and only CAP bounds a write. Each .solve/tasks/<X>
      folder is auto-git-init'd on first write so the human can commit its history.
      Either way the agent never commits — it stops and the human commits.
-  3. a project write follows a current.<ext> Claude wrote before the human's last
-     prompt that the human has not run yet. Only the human runs current.<ext>,
-     with `! <command>` (bash-guard refuses Claude's runs), and the next step
+  3. a write creates a NEW current.<ext> (the path doesn't exist: archived away,
+     or another extension) while the current.<ext> Claude wrote before the human's
+     last prompt hasn't been run yet. Project writes and in-place fixes of the
+     unrun script still land. Only the human runs current.<ext>, with
+     `! <command>` (bash-guard refuses Claude's runs), and the next script
      waits for that output. The turn the human's `!` output starts only reads
      it: no project write until their next message. Read from the transcript; a
      write a guard denied doesn't count.
@@ -211,11 +213,12 @@ def main():
                 "that matter, name the next step and stop — nothing is written until "
                 "their next message."
             )
-        if held and not task_root:
+        if held and CURRENT.search(fp) and not os.path.exists(fp):
             deny(
-                f"SolveIt: the human hasn't run {held} since you wrote it. Give them "
-                f"its one-line run command prefixed with `! ` and stop — the next step "
-                f"waits for its output."
+                f"SolveIt: the human hasn't run {held} since you wrote it, so the next "
+                f"current.<ext> waits. Fix it in place if needed (move it back if you "
+                f"archived it), give them its one-line run command prefixed with `! ` "
+                f"and stop."
             )
     if not task_root:
         session = data.get("session_id") or "nosession"

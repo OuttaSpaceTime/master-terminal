@@ -257,27 +257,43 @@ def _human(cmd, out=""):
 APP = "app.rb"
 
 
-def test_project_write_waits_for_the_human_to_run_current(repo, run):
+CURRENT = ".solve/tasks/t/current.rb"
+
+
+def test_project_write_lands_while_current_is_unrun(repo, run):
     t = [_prompt("go"), _write_current(), _result(), _prompt("next")]
-    code, err = run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)
+    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+
+
+def test_next_current_waits_for_the_human_to_run_current(repo, run):
+    t = [_prompt("go"), _write_current(), _result(), _prompt("next")]
+    code, err = run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)
     assert code == 2 and "current.rb" in err and "`! " in err
 
 
-def test_project_write_lands_once_the_human_ran_current(repo, run):
+def test_next_current_in_another_language_waits_too(repo, run):
+    (repo / CURRENT).parent.mkdir(parents=True)
+    (repo / CURRENT).write_text("p 1\n")
+    t = [_prompt("go"), _write_current(), _result(), _prompt("next")]
+    current_py = repo / ".solve/tasks/t/current.py"
+    assert run("Write", {"file_path": str(current_py), "content": "x\n"}, repo, transcript=t)[0] == 2
+
+
+def test_next_current_lands_once_the_human_ran_current(repo, run):
     t = [_prompt("go"), _write_current(), _result(),
          *_human("ruby .solve/tasks/t/current.rb", "total: 2"), _prompt("next")]
-    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+    assert run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)[0] == 0
 
 
 def test_another_human_command_is_not_a_run_of_current(repo, run):
     t = [_prompt("go"), _write_current(), _result(), *_human("git status"), _prompt("next")]
-    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 2
+    assert run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)[0] == 2
 
 
 def test_a_human_run_clears_a_current_written_after_the_last_prompt(repo, run):
     t = [_prompt("go"), _write_current(), _result(), _prompt("next"),
          _write_current("c2"), _result("c2"), *_human("ruby .solve/tasks/t/current.rb"), _prompt("go on")]
-    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+    assert run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)[0] == 0
 
 
 def test_the_turn_a_human_run_starts_only_reads(repo, run):
@@ -295,15 +311,16 @@ def test_the_turn_a_human_run_starts_does_not_write_the_next_current(repo, run):
 
 def test_current_written_this_turn_does_not_hold_the_turn(repo, run):
     t = [_prompt("go"), _write_current(), _result()]
-    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+    assert run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)[0] == 0
 
 
 def test_denied_current_write_holds_nothing(repo, run):
     t = [_prompt("go"), _write_current(), _result(is_error=True), _prompt("next")]
-    assert run("Write", {"file_path": str(repo / APP), "content": "x\n"}, repo, transcript=t)[0] == 0
+    assert run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)[0] == 0
 
 
-def test_rewriting_current_is_never_held(repo, run):
-    t = [_prompt("go"), _write_current(), _result(), _prompt("next")]
-    current = repo / ".solve/tasks/t/current.rb"
-    assert run("Write", {"file_path": str(current), "content": "x\n"}, repo, transcript=t)[0] == 0
+def test_fixing_the_unrun_current_in_place_is_allowed(repo, run):
+    (repo / CURRENT).parent.mkdir(parents=True)
+    (repo / CURRENT).write_text("p 1\n")
+    t = [_prompt("go"), _write_current(), _result(), _prompt("check X instead")]
+    assert run("Write", {"file_path": str(repo / CURRENT), "content": "x\n"}, repo, transcript=t)[0] == 0

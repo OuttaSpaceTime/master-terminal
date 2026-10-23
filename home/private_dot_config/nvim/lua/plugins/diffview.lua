@@ -189,15 +189,33 @@ return {
         function()
           Snacks.picker.git_log({
             cmd_args = { "-n", "30" },
-            confirm = function(picker, item)
+            win = {
+              input = {
+                keys = {
+                  ["<S-Down>"] = { "select_and_next", mode = { "i", "n" } },
+                  ["<S-Up>"] = { "select_and_prev", mode = { "i", "n" } },
+                },
+              },
+              list = {
+                keys = {
+                  ["<S-Down>"] = "select_and_next",
+                  ["<S-Up>"] = "select_and_prev",
+                },
+              },
+            },
+            confirm = function(picker)
+              local items = picker:selected({ fallback = true })
               picker:close()
-              if item and item.commit then
-                vim.cmd("DiffviewOpen " .. item.commit .. "...HEAD --imply-local")
+              if #items == 2 then
+                table.sort(items, function(a, b) return a.idx > b.idx end)
+                vim.cmd("DiffviewOpen " .. items[1].commit .. ".." .. items[2].commit)
+              elseif items[1] and items[1].commit then
+                vim.cmd("DiffviewOpen " .. items[1].commit .. "...HEAD --imply-local")
               end
             end,
           })
         end,
-        desc = "Diffview Since Commit (local files)",
+        desc = "Diffview Since Commit, or Between Two Selected (local files)",
       },
       {
         "<leader>Dh",
