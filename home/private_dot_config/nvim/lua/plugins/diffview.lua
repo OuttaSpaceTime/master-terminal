@@ -185,7 +185,7 @@ return {
         desc = "Diffview Since Main (local files)",
       },
       {
-        "<leader>Dp",
+        "<leader>DP",
         function()
           Snacks.picker.git_log({
             cmd_args = { "-n", "30" },
@@ -218,7 +218,7 @@ return {
         desc = "Diffview Since Commit, or Between Two Selected (local files)",
       },
       {
-        "<leader>Dh",
+        "<leader>Dp",
         function()
           Snacks.picker.git_log({
             confirm = function(picker, item)
