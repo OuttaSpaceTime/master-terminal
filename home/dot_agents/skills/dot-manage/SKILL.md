@@ -61,7 +61,7 @@ When `interactive-principles.md` changes, or when a skill's inline constraints d
 
 - Edit the canonical source: `home/dot_agents/skills/references/interactive-principles.md`
 - Each interactive skill has a chezmoi symlink (`symlink_interactive-principles.md`) in its `references/` dir that points to the canonical copy — no manual copying needed
-- Verify all 8 interactive skills have the `## Interactive Constraints (mandatory)` block inline
+- Verify every interactive skill has the `## Interactive Constraints (mandatory)` block inline; the interactive skills are the ones with `references/symlink_interactive-principles.md` (`ls home/dot_agents/skills/*/references/symlink_interactive-principles.md`)
 - Deploy via `chezmoi -S home apply --force ~/.agents/skills`
 
 ### Shared reference symlink convention
@@ -74,7 +74,7 @@ When adding a new shared reference or when a skill newly needs one, create the `
 
 ### Interactive skills requiring the constraints block
 
-scout, plan, review, walkthrough, diff-review, explore-solutions, autoresearch, control-flow-trace
+Derive the list instead of keeping one here: `ls home/dot_agents/skills/*/references/symlink_interactive-principles.md`
 
 ## Dotfile Management
 
@@ -84,13 +84,10 @@ scout, plan, review, walkthrough, diff-review, explore-solutions, autoresearch, 
 
 ## Local Wiki Documentation
 
-When a request produces a durable repo-specific result:
-
-1. Read `wiki/index.md` for existing topics
-2. Grep `wiki/` for keywords when the index isn't enough
-3. Inspect `home/`, repo files, or workspace skills directly when the answer depends on current implementation
-4. Extend an existing topic file or create a new one — one file per topic, flat directory
-5. Update `wiki/index.md` when a file is added or removed
+Follow the Query Workflow and page format in the repo's `AGENTS.md` ("Working With The Local Wiki"):
+check the matching page first, verify it against `home/` and (for anything that changes upstream)
+authoritative sources, escalate to `wiki-scout` / `wiki-researcher` only on a miss, and record the
+end state with its gotchas, rejected approaches and upstream links.
 
 If the work also produces general knowledge or reflection material worth keeping, write it to `~/Code/Misc/wiki/` separately, but never use that location as a source during normal repo work.
 

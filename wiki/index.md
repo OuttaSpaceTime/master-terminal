@@ -1,12 +1,10 @@
 ---
 title: Wiki Index
 created: 2026-04-07
-updated: 2026-09-22
+updated: 2026-10-25
 ---
 
 # Wiki Index
-
-
 
 - [Repo Purpose](repo-purpose.md) — what this repo is and how it's structured
 - [Chezmoi](chezmoi.md) — commands, workflow, decisions

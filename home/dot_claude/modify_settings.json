@@ -185,4 +185,4 @@ out = json.loads(live, object_pairs_hook=collections.OrderedDict) if live else c
 out.update(MANAGED)
 for key, value in DEFAULTS.items():
     out.setdefault(key, value)
-sys.stdout.write(json.dumps(out, indent=2) + "\n")
+sys.stdout.write(json.dumps(out, indent=2, ensure_ascii=False) + "\n")

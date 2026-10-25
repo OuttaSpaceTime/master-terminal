@@ -57,21 +57,30 @@ This repository has three responsibilities:
 
 ## Working With The Local Wiki
 
-- `wiki/` is a flat directory — one file per topic, no subdirectories
-- `wiki/index.md` is the content catalog and starting point
+The wiki is read by agents, not humans: it exists so the same question never goes through the same
+heavy lifting twice, and so dead ends are not proposed again.
+
+- `wiki/` is a flat directory — one file per topic, no subdirectories, kebab-case filenames
+- `wiki/index.md` is the content catalog and starting point: one line per page with the keywords an agent would grep for
 - Each topic file has YAML frontmatter with `title`, `tags`, `created`, `updated`
-- Use kebab-case filenames
 - Update existing pages before creating near-duplicates
 - Keep updates minimal and tied to what the user actually asked or what the current task proved
+- Record the end state, not the journey. Keep a page under ~150 lines (`tests/test_wiki.py` warns above that): move install history out, split a topic that grew two
+- Page sections, leaving out empty ones: `## Current setup` (what is live, with `home/` source paths), `## How to`, `## Gotchas` (trap + cause), `## Tried and rejected` (what was dropped and why, in the user's words when it was their call), `## Upstream` (link + `status as of YYYY-MM-DD`)
 
 ## Query Workflow
 
-1. Read `wiki/index.md` for existing topics
-2. Grep `wiki/` for keywords when the index isn't enough
-3. Inspect `home/`, repo files, and workspace skills directly when the answer depends on current configuration
-4. If the answer is still missing, research the web
-5. Persist the smallest update that makes the answer rediscoverable — extend an existing topic file or create a new one
-6. Update `wiki/index.md` when a file is added or removed
+Escalate only on a miss. Steps 1–3 stay in the main thread: a subagent starts cold and costs more than reading one page.
+
+1. Read `wiki/index.md`, then the one or two matching pages
+2. Check the page against reality before relying on it:
+   - local state (keys, settings, paths): read the `home/` source file — it wins over the page; fix the page if they disagree
+   - anything that changes upstream (issue/PR status, docs, versions, "X can't do Y", recommended settings): treat the page as a dated hint and re-check authoritative sources (`gh issue view`, official docs, changelogs, release notes; blog posts only as opinion) when relying on it, when `updated` is older than ~30 days, or when the user asks for something listed under Tried and rejected. A rejection that was the user's taste stays rejected until they say otherwise
+3. Grep `wiki/`, `home/` and `git log --grep` when the index isn't enough
+4. Still missing: delegate the sweep to a cheap read-only subagent (Claude: `wiki-scout`, Haiku) — session transcripts, git history, deployed config, local docs
+5. Needs the web or a re-check: delegate to `wiki-researcher` (Sonnet) with the page's claim and its `updated` date; authoritative sources win over the wiki and over memory
+6. Decisions, debugging and edits stay in the main thread
+7. Persist the smallest update that makes the answer rediscoverable — extend an existing topic file or create a new one, set `updated`, and update `wiki/index.md` when a file is added or removed
 
 ## Commands
 
@@ -165,6 +174,6 @@ Tests live in `tests/` (pytest, `uv run pytest`). The `executable_`/hyphen sourc
 
 ## Validation
 
-- There is no application build or test pipeline in this repository snapshot
-- Validate wiki edits by checking structure, links, and note consistency
+- `uv run pytest` runs the hook/script tests in `tests/` and the wiki checks in `tests/test_wiki.py` (frontmatter, index ↔ pages, broken links, page size)
+- Validate wiki edits with `uv run pytest tests/test_wiki.py`
 - Validate `home/` changes with `chezmoi -S home diff` when relevant
