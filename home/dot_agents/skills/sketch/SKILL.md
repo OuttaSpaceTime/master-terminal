@@ -34,7 +34,7 @@ Draft diffs with context, a file-impact table, and affected tests for a small-sc
 
 ### 1. Read Every File You Will Diff
 
-- Use Grep/Glob to locate files if needed, then Read each file before drafting its diff. No exceptions — diffs based on assumptions produce incorrect sketches.
+- Locate files if needed (Grep/Glob, or `grep`/`find` in the shell when those tools are missing), then Read each file before drafting its diff. No exceptions — diffs based on assumptions produce incorrect sketches.
 - Match the existing code exactly: variable names, import paths, indentation, conventions.
 
 ### 2. Produce Diff-First Sketch

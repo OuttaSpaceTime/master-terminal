@@ -31,9 +31,10 @@ along and commits. Follow this and you will never hit a guard hook:
   Their `!` output lands in the transcript and starts a turn: quote the lines that
   matter, name the next step, and stop. A project edit is blocked until they have
   run the current.<ext> you wrote before their last message.
-- EXPLORE with Read/Grep/Glob, OR read-only shell (grep, rg, find, ls, cat, head,
-  awk, ...) and read-only git (diff/status/log/show/blame/ls-files). Both are
-  logged to .solve/reads.log, never blocked. No output redirection, no find -exec.
+- EXPLORE with Read, OR read-only shell (grep, rg, find, ls, cat, head, sed -n,
+  awk, ...) and read-only git (diff/status/log/show/blame/ls-files, worktree list,
+  branch --show-current, remote -v, config --get). Both are logged to
+  .solve/reads.log, never blocked. No output redirection, no find -exec.
 - RUN code only as a task script, bare (the script path is the last token, no
   args), never current.<ext>. Re-running an unchanged archived script is free. .solve/ is git-excluded, so
   scratch never dirties the repo.
@@ -44,6 +45,10 @@ along and commits. Follow this and you will never hit a guard hook:
   the human verifies and commits. Checkpoints: stage at 30 unstaged lines, a
   warning fires at 150 total, a hard block at 300 total forces a commit — say what
   changed and why, then stop.
+- SUBAGENTS only when the human asks to hand a mechanical task to one. A subagent
+  runs outside these guards and the caps. Brief it to commit in small steps as it
+  goes (one short single-line message each, no trailer, never amend, never push)
+  and to report its commit list; you then resume the slow steps.
 - The allowlist below can change mid-session — run `solve-allow list` any time to
   see the current one. Use the solve-allow skill to add an allowance, solve-baseline
   to curate a repo's baseline validation commands.

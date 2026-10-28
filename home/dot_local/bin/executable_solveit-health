@@ -123,6 +123,9 @@ def scan(root, since):
                 cur = {"day": day, "project": project, "texts": [], "tools": 0, "edits": 0,
                        "steps": [], "failed": set()}
                 turns.append(cur)
+            elif e.get("type") == "user" and cur is not None and text_of(content).startswith("<bash-input>"):
+                # Since 2026-10-15 the human runs current.<ext> with `!`; that run verifies the turn that wrote it.
+                cur["steps"].append((None, "run", re.sub(r"</?bash-input>", "", text_of(content))))
             elif e.get("type") == "assistant" and isinstance(content, list):
                 for b in content:
                     if not isinstance(b, dict) or cur is None:

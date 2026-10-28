@@ -18,8 +18,11 @@ A command is allowed only if every segment is one of:
     code. No output redirection (>, >>); `find` may not -exec/-delete. May be
     wrapped in read-only shell structure (for/while/if loops over the above).
     Each such command is appended to reads.log so the human sees what was read;
-  - read-only git inspection: git diff/status/log/show/blame/ls-files/... — for
-    looking at changes; no output redirection; also appended to reads.log;
+  - `sed` that only prints (`sed -n 10,40p`, `s///` to stdout) — no -i, no w/e;
+  - read-only git inspection: git diff/status/log/show/blame/ls-files/... plus the
+    read-only forms of worktree/branch/remote/config (`worktree list`,
+    `branch --show-current`, `remote -v`, `config --get`) — for looking at
+    changes; no output redirection; also appended to reads.log;
   - `git init` of a task folder — to make it its own scratch repo; commits NOTHING;
   - `cd <path>` (navigation); `mv` within .solve/tasks/ (renaming the folder).
 The agent NEVER commits — not the main repo, not its own task folders; the
@@ -90,8 +93,23 @@ GIT_READONLY = {
     "diff", "status", "log", "show", "blame", "grep", "shortlog", "reflog",
     "rev-parse", "rev-list", "ls-files", "ls-tree", "cat-file", "describe",
     "diff-tree", "diff-index", "diff-files", "whatchanged", "show-branch",
-    "name-rev", "count-objects",
+    "name-rev", "count-objects", "check-ignore", "merge-base", "range-diff",
 }
+# Dual-use git subcommands, allowed only in their read-only forms (see git_dual_use_reads).
+BRANCH_READ_FLAGS = {
+    "--show-current", "-a", "--all", "-r", "--remotes", "-v", "-vv", "--verbose",
+    "--list", "-l", "--no-color", "--no-column",
+}
+BRANCH_VALUE_FLAGS = {"--contains", "--no-contains", "--merged", "--no-merged", "--points-at", "--sort", "--format"}
+CONFIG_READ = {"--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l", "get", "list"}
+CONFIG_WRITE = {
+    "--unset", "--unset-all", "--add", "--replace-all", "--edit", "-e",
+    "--rename-section", "--remove-section", "set", "unset", "edit", "rename-section", "remove-section",
+}
+# A sed script that only prints: line/regex addresses + `p`, or `s///` without the `w`/`e` flags.
+SED_ADDR = r"(?:\d+|\$|/(?:\\.|[^/])*/)"
+SED_PRINT = re.compile(rf"{SED_ADDR}(?:,(?:{SED_ADDR}|\+\d+))?p")
+SED_SUBST = re.compile(r"s(.)(?:\\.|(?!\1).)*\1(?:\\.|(?!\1).)*\1[gpI0-9]*")
 BUNDLE_READONLY = {
     "show", "info", "list", "env", "platform", "check", "outdated",
     "doctor", "version",
@@ -135,6 +153,67 @@ def git_subcommand(tokens):
             continue
         return t
     return None
+
+
+def git_dual_use_reads(tokens, sub):
+    """True for the read-only forms of worktree/branch/remote/config:
+    `worktree list`, `branch --show-current|-vv|--list <pattern>`, `remote -v|get-url|show`,
+    `config --get*|--list`. Anything that could create, rename, delete or set stays blocked."""
+    if sub is None:
+        return False
+    rest = tokens[tokens.index(sub) + 1:]
+    args = [t for t in rest if not t.startswith("-")]
+    if sub == "worktree":
+        return bool(args) and args[0] == "list"
+    if sub == "remote":
+        return not args and all(t in ("-v", "--verbose") for t in rest) or bool(args) and args[0] in ("get-url", "show")
+    if sub == "config":
+        return any(t in CONFIG_READ for t in rest) and not any(t in CONFIG_WRITE for t in rest)
+    if sub == "branch":
+        listing = "--list" in rest or "-l" in rest
+        k = 0
+        while k < len(rest):
+            t = rest[k]
+            if t in BRANCH_VALUE_FLAGS:
+                k += 2
+                continue
+            if t.split("=", 1)[0] in BRANCH_VALUE_FLAGS or t in BRANCH_READ_FLAGS or (listing and not t.startswith("-")):
+                k += 1
+                continue
+            return False
+        return True
+    return False
+
+
+def sed_prints_only(toks):
+    """True if sed only writes to stdout: no in-place flag, no script file, and every
+    script is a print (`10,20p`, `/a/,/b/p`) or a substitution without the w/e flags."""
+    scripts, explicit = [], False
+    k = 1
+    while k < len(toks):
+        t = toks[k]
+        if t in ("-e", "--expression"):
+            scripts.append(toks[k + 1] if k + 1 < len(toks) else "")
+            explicit = True
+            k += 2
+            continue
+        if t.startswith("--expression="):
+            scripts.append(t.split("=", 1)[1])
+            explicit = True
+        elif t.startswith("--in-place") or t in ("-f", "--file") or t.startswith("--file="):
+            return False
+        elif t.startswith("-") and not t.startswith("--") and ("i" in t or "f" in t):
+            return False
+        elif not t.startswith("-") and not explicit and not scripts:
+            scripts.append(t)
+        k += 1
+    def prints(s):
+        return SED_PRINT.fullmatch(s) or SED_SUBST.fullmatch(s)
+
+    return bool(scripts) and all(
+        s.strip() and (prints(s.strip()) or all(prints(p.strip()) for p in s.split(";") if p.strip()))
+        for s in scripts
+    )
 
 
 def git_target_dir(tokens, cwd):
@@ -229,7 +308,7 @@ def segment_ok(toks, cwd):
         sub = git_subcommand(toks)
         if sub == "init":  # optionally make a task folder its own scratch repo;
             return (True, None, False)  # `init` commits NOTHING
-        if sub in GIT_READONLY:  # inspect the repo (diff/status/log/...) — logged, never mutates
+        if sub in GIT_READONLY or git_dual_use_reads(toks, sub):  # inspect the repo — logged, never mutates
             if redirects_to_file(toks):
                 return (False, REDIR_MSG, False)
             return (True, None, True)
@@ -244,6 +323,10 @@ def segment_ok(toks, cwd):
             if redirects_to_file(toks):
                 return (False, REDIR_MSG, False)
             return (True, None, True)
+    if base == "sed" and sed_prints_only(toks):
+        if redirects_to_file(toks):
+            return (False, REDIR_MSG, False)
+        return (True, None, True)
     if base in READONLY:  # read-only search/inspection — the Read/Grep/Glob stand-ins
         if redirects_to_file(toks):
             return (False, REDIR_MSG, False)
@@ -375,6 +458,8 @@ def main():
     if os.environ.get("SOLVEIT_OFF"):
         return
     data = json.load(sys.stdin)
+    if data.get("agent_id"):  # a subagent the human asked for runs a mechanical task outside the jail
+        return
     cmd = (data.get("tool_input") or {}).get("command", "")
     cwd = data.get("cwd") or os.getcwd()
     if not cmd:

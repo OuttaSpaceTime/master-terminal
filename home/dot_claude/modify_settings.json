@@ -21,7 +21,6 @@ MANAGED = json.loads(r'''
       "Bash(bundle show:*)",
       "Bash(npx ng test:*)",
       "Bash(npx ng lint:*)",
-      "Bash(npx editorconfig-checker:*)",
       "Bash(scripts/srs-pressure:*)",
       "Bash(scripts/wiki-due:*)",
       "Bash(scripts/anki-sync:*)",

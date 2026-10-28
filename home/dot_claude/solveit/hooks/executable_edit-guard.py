@@ -156,6 +156,8 @@ def main():
             "SolveIt: .solve/splitting is the human's escape valve — they drop it "
             "with `touch .solve/splitting`, never you."
         )
+    if data.get("agent_id"):  # a subagent the human asked for runs a mechanical task outside the caps
+        return
 
     session = data.get("session_id") or "nosession"
     splitting = False
