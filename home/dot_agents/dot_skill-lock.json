@@ -1,0 +1,85 @@
+{
+  "version": 3,
+  "skills": {
+    "parallel-data-enrichment": {
+      "source": "parallel-web/parallel-agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/parallel-web/parallel-agent-skills.git",
+      "skillPath": "skills/parallel-data-enrichment/SKILL.md",
+      "skillFolderHash": "b5bf084a33ada3829ca7a748bc962371b41888d4",
+      "installedAt": "2026-02-22T06:06:38.200Z",
+      "updatedAt": "2026-02-22T06:06:38.200Z"
+    },
+    "parallel-deep-research": {
+      "source": "parallel-web/parallel-agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/parallel-web/parallel-agent-skills.git",
+      "skillPath": "skills/parallel-deep-research/SKILL.md",
+      "skillFolderHash": "cf7e8d38d4637795b2c92e2e1fb6dc9e39ad359c",
+      "installedAt": "2026-02-22T06:06:38.231Z",
+      "updatedAt": "2026-02-22T06:06:38.231Z"
+    },
+    "parallel-web-extract": {
+      "source": "parallel-web/parallel-agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/parallel-web/parallel-agent-skills.git",
+      "skillPath": "skills/parallel-web-extract/SKILL.md",
+      "skillFolderHash": "6d927de70ff3ea97a8b5e3a780df63d2eefad550",
+      "installedAt": "2026-02-22T06:06:38.263Z",
+      "updatedAt": "2026-02-22T06:06:38.263Z"
+    },
+    "parallel-web-search": {
+      "source": "parallel-web/parallel-agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/parallel-web/parallel-agent-skills.git",
+      "skillPath": "skills/parallel-web-search/SKILL.md",
+      "skillFolderHash": "d74e0f5920a65d629ca4c109523c6f14d2c314f7",
+      "installedAt": "2026-02-22T06:06:38.296Z",
+      "updatedAt": "2026-02-22T06:06:38.296Z"
+    },
+    "trim-code": {
+      "source": "triskweline/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/triskweline/skills.git",
+      "skillPath": "skills/trim-code/SKILL.md",
+      "skillFolderHash": "79146762c9b83b9cb9b80ab959406114a4dc5f04",
+      "installedAt": "2026-09-29T06:38:52.716Z",
+      "updatedAt": "2026-09-29T07:16:50.207Z"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/skills.git",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "skillFolderHash": "76a98a285cb0434f3d39e1a873823556330e398b",
+      "installedAt": "2026-09-29T06:38:58.534Z",
+      "updatedAt": "2026-09-29T06:38:58.534Z"
+    },
+    "diff-tour": {
+      "source": "triskweline/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/triskweline/skills.git",
+      "skillPath": "skills/diff-tour/SKILL.md",
+      "skillFolderHash": "1208b2a7d74d34683522ade4194b89b58ae0bfaf",
+      "installedAt": "2026-09-29T07:07:16.738Z",
+      "updatedAt": "2026-09-29T07:07:16.738Z"
+    }
+  },
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "cline",
+    "codex",
+    "cursor",
+    "droid",
+    "gemini-cli",
+    "github-copilot",
+    "kilo",
+    "kimi-code-cli",
+    "opencode",
+    "warp",
+    "zed"
+  ]
+}

@@ -1,0 +1,215 @@
+<!doctype html>
+<!--
+  diff tour — the page shell, and the design fixture.
+
+  Opens standalone in a browser: it links report.css and report.js by relative path
+  and script-tags the vendored Prism, and the block between the REPORT markers holds
+  one of every component with sample content. Edit report.css, reload this file.
+
+  difftour_html.py assembles a tour from exactly this file, replacing what sits between
+  each pair of markers — PRISM, CSS, JS, REPORT, NAVTITLE — with inline content, so
+  a tour is one file with no external requests.
+
+  THE COMPONENTS, and where each comes from:
+
+    h1 + p.meta + p.standfirst     the orchestrator's <h1>, the script's stats, fixed text
+    div.legend                     the five attention levels, fixed text
+    div.summary                    the orchestrator's prose after its <h1>
+    section.chapter > h2           a worker's <h2>; numbered by the script
+    div.intro                      prose between the <h2> and the first <h3>
+    section.beat                   a worker's <h3>: .say left (h3 + prose), .show right
+      figure.hunk.lvl-*          one hunk: sentence, reason, diff; the level is its left edge
+        div.note > p > .lvl      the worker's sentence, opened by the level badge
+        p.flag.*                 the level's "why", in the level's colour
+        div.card                 the diff card: header bar (path, tools), context, code
+    ol.heat                        one square per hunk under each sidebar entry (report.js)
+      figure.hunk.file             a hunk with no text body (binary, mode, rename)
+      div.ctx                      git's function context: the nearest declaration above the hunk
+    section.beat.solo              a beat with no hunks — full width
+
+  Every control — the chapter nav with its heat stripes, the legend's mark-viewed
+  buttons, the beats' change lists, the viewed toggles, the theme switch, the flash that
+  announces a finished chapter — is injected by report.js. The progress bar along the
+  bottom edge is the one fixed element outside the nav.
+-->
+<html lang="en" data-uid="fixture">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>diff tour</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22#1b1f24%22/%3E%3Crect x=%226%22 y=%227%22 width=%225%22 height=%2218%22 rx=%221.5%22 fill=%22#eda%22/%3E%3Crect x=%2213.5%22 y=%227%22 width=%225%22 height=%2218%22 rx=%221.5%22 fill=%22#fc0%22/%3E%3Crect x=%2221%22 y=%227%22 width=%225%22 height=%2218%22 rx=%221.5%22 fill=%22#f14%22/%3E%3C/svg%3E">
+<!--PRISM-->
+<script>window.Prism = { manual: true };</script>
+<script src="../vendor/prism/prism-core.min.js"></script>
+<script src="../vendor/prism/prism-clike.min.js"></script>
+<script src="../vendor/prism/prism-javascript.min.js"></script>
+<script src="../vendor/prism/prism-ruby.min.js"></script>
+<script src="../vendor/prism/prism-diff.min.js"></script>
+<script src="../vendor/prism/prism-diff-highlight.min.js"></script>
+<!--/PRISM-->
+<!--CSS-->
+<link rel="stylesheet" href="report.css">
+<!--/CSS-->
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-head">
+    <b><!--NAVTITLE-->Layout fixture<!--/NAVTITLE--></b>
+    <button class="plain reset" type="button" title="clear every viewed mark">reset</button>
+    <button class="plain theme" type="button" title="light or dark">◐</button>
+  </div>
+  <ol></ol>
+</nav>
+<div class="progress" aria-hidden="true"><i></i></div>
+
+<main>
+<!--REPORT-->
+<h1>Thread the tenant id through the cache key</h1>
+<p class="meta"><b>billing-api</b> · <b>12</b> files · <b class="added">+204</b> <b class="removed">−58</b> · <b>31</b> hunks · <code>main..HEAD</code> · 2026-08-25</p>
+<p class="standfirst">A fast, narrated tour through one change, for a human reviewing code they did not
+write. It groups the diff into topics and shows every hunk, each with a first-read attention level.
+Nothing was verified, and the judgement is yours.</p>
+</div>
+<div class="summary">
+<h2>The problem</h2>
+<div class="problem">
+<p>Cache entries were keyed by resource id alone, so two tenants asking for resource <code>7</code>
+shared one entry. Support saw it as intermittent wrong data and could not reproduce it, because it
+needed two tenants to ask within the same cache window. One tenant could read another tenant's
+data, and nobody would know.</p>
+</div>
+<h2>What changes</h2>
+<table>
+  <tr><th>Before</th><th>After</th></tr>
+  <tr><td>Two tenants requesting the same resource id could read each other's cached copy</td><td>Each tenant reads only entries written under its own id</td></tr>
+  <tr><td>Entries written before the change stayed reachable by every tenant</td><td>A backfill rekeys them once on deploy</td></tr>
+</table>
+<h2>Not changed, deliberately</h2>
+<ul>
+  <li>The cache store itself and its expiry rules. Entries still live for the configured hour and are evicted by size.</li>
+  <li>Keys written by background jobs, which never carried a tenant. Those entries stay global and shared.</li>
+</ul>
+<h2>The spectrum of solutions</h2>
+<p class="byline">Three other ways this could have been built, so you can see the room the author was standing in. Then where this change sits.</p>
+<div class="spectrum">
+<div class="row"><div class="lbl"><h3>The minimal solution</h3>
+<p class="byline">The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.</p></div><div class="prose"><p>Prefix the tenant id in the one reader that leaks. <span class="buys"><strong>Buys:</strong> two lines, no migration, ships today.</span> <span class="costs"><strong>Costs:</strong> every other reader keeps leaking.</span></p></div></div>
+<div class="row"><div class="lbl"><h3>The maximal solution</h3>
+<p class="byline">The thorough fix: solves the problem completely, restructuring whatever stands in the way.</p></div><div class="prose"><p>Give the cache a tenant-scoped namespace at the store level, so no reader can build an unscoped key. <span class="buys"><strong>Buys:</strong> no reader can get it wrong again.</span> <span class="costs"><strong>Costs:</strong> touches the store adapter and every reader, a deploy that rekeys everything.</span></p></div></div>
+<div class="row"><div class="lbl"><h3>Where this change sits</h3>
+</div><div class="prose"><p>Between the two: every key is threaded, but the cache store itself is untouched.</p></div></div>
+</div>
+</div>
+
+<h2 class="legend-title">How to read this tour</h2>
+<div class="legend">
+  <div class="row"><span class="sq l1"></span><b>read</b><span>Ordinary code. One attentive pass.</span><button type="button" class="seen level" data-level="1">Mark viewed</button></div>
+  <div class="row"><span class="sq l2"></span><b>note</b><span>You have a decision to make. The explanation says which.</span><button type="button" class="seen level" data-level="2">Mark viewed</button></div>
+  <div class="row"><span class="sq l3"></span><b>fishy</b><span>Something here does not add up. The explanation says how far it was checked.</span><span></span></div>
+  <div class="row"><span class="sq l4"></span><b>hot</b><span>This hunk decides something costly. Read every line, however it looks.</span><span></span></div>
+  <div class="row"><span class="sq l0"></span><b>skip</b><span>Nothing to decide or fear. Trust the description.</span><button type="button" class="seen level" data-level="0">Mark viewed</button></div>
+</div>
+<h3 class="marks-title">Inside a hunk</h3>
+<div class="marks-demo"><div class="code"><pre class="diff"><code class="language-diff highlighted"><span class="ln dim"><span class="token unchanged"><span class="token prefix unchanged"> </span>def initialize(user, deck)</span></span><span class="ln dim"><span class="token unchanged"><span class="token prefix unchanged"> </span>  @user = user</span></span><span class="ln dim"><span class="token unchanged"><span class="token prefix unchanged"> </span>  @deck = deck</span></span><span class="ln dim"><span class="token unchanged"><span class="token prefix unchanged"> </span>end</span></span></code></pre></div><div class="say"><b>Skippable</b> Its name or shape says what is there. Hover to read it.</div><div class="code"><pre class="diff"><code class="language-diff highlighted"><span class="ln"><span class="token unchanged"><span class="token prefix unchanged"> </span></span></span><span class="ln"><span class="token unchanged"><span class="token prefix unchanged"> </span>def allowed?</span></span><span class="ln"><span class="token deleted"><span class="token prefix deleted">-</span>  @deck.public?</span></span><span class="ln"><span class="token inserted"><span class="token prefix inserted">+</span>  return true if @user.admin?</span></span></code></pre></div><div class="say"><b>Normal</b> What you need to understand the change.</div><div class="code"><pre class="diff"><code class="language-diff highlighted"><span class="ln focus"><span class="token inserted"><span class="token prefix inserted">+</span>  @deck.public? &amp;&amp; !@user.suspended?</span></span></code></pre></div><div class="say"><b>Must see</b> Read these if you read nothing else.</div><div class="code"><pre class="diff"><code class="language-diff highlighted"><span class="ln"><span class="token unchanged"><span class="token prefix unchanged"> </span>end</span></span></code></pre></div><div class="say"></div></div>
+
+<section class="chapter" id="topic-1">
+  <h2><span class="n">1</span><span class="t">One accessor per field question</span></h2>
+  <div class="intro"><p>The chapter's introductory paragraph. It says what this topic is about
+  before any code appears.</p></div>
+
+  <section class="beat">
+    <div class="say">
+      <h3>Why absence and not falseness</h3>
+      <p>The old code read <code>form.disabled</code> directly, which conflated
+      &ldquo;not set&rdquo; with &ldquo;set to false&rdquo;. The <code>??</code> is doing precise
+      work: an explicit <code>false</code> has to survive.</p>
+      <p>A second paragraph, so the sticky column has something to be sticky about.</p>
+    </div>
+    <div class="show">
+      <figure class="hunk lvl-hot" id="h1" data-key="deadbeef" data-level="4" data-reason="runs on every request" data-focus="3,6-7" data-dim="4-5">
+        <div class="note"><p><span class="lvl">hot</span>The four readers and writers, swapped for the accessor.</p></div>
+        <p class="flag hot"><b>Costly if wrong:</b> runs on every request; a wrong reader here lets every form through</p>
+        <div class="card">
+        <figcaption><span class="where">src/unpoly/form.js:233 · <span class="sz">+4 −2</span></span><span class="tools"></span></figcaption>
+        <pre class="diff"><code class="language-diff-javascript diff-highlight"> function fields(root) {
+-  let fields = up.form.fields(root)
+-  return u.map(fields, 'name')
++  /* Absence and falseness are different answers here, and the
++     old reader could not tell them apart. */
++  let fields = readFields(root)
++  return u.map(fields, (f) =&gt; f.name ?? null)
+ }
+</code></pre>
+        </div>
+      </figure>
+      <figure class="hunk lvl-fishy" id="h2" data-key="cafebabe" data-level="3" data-reason="submitter can be null">
+        <div class="note"><p><span class="lvl">fishy</span>The disable path, same swap.</p></div>
+        <p class="flag fishy"><b>Weird:</b> readDisabled is called with a submitter that can be null two lines up</p>
+        <div class="card">
+        <figcaption><span class="where">src/unpoly/form.js:410 · <span class="sz">+1 −1</span></span><span class="tools"></span></figcaption>
+        <div class="ctx">function disable(form) {</div>
+        <pre class="diff"><code class="language-diff-javascript diff-highlight">   let submitter = form.querySelector('[type=submit]')
+-  if (submitter.disabled) return
++  if (readDisabled(submitter)) return
+</code></pre>
+        </div>
+      </figure>
+      <figure class="hunk lvl-plain" id="h5" data-key="0badf00d" data-level="1">
+        <div class="note"><p><span class="lvl">read</span>The params reader, same swap.</p></div>
+        <div class="card">
+        <figcaption><span class="where">src/unpoly/params.rb:512 · <span class="sz">+2 −1</span></span><span class="tools"></span></figcaption>
+        <div class="ctx">class Params</div>
+        <pre class="diff"><code class="language-diff-ruby diff-highlight"> def self.from_form(form, **options)
+   form = Element.get(form)
+-  new(form.serialize)
++  params = new(form.serialize)
++  params.merge(options)
+ end
+</code></pre>
+        </div>
+      </figure>
+      <figure class="hunk lvl-note file" id="h3" data-key="feedface" data-level="2" data-reason="a 2x asset with no 1x sibling">
+        <div class="note"><p><span class="lvl">note</span>The retina logo, replaced wholesale.</p></div>
+        <p class="flag note"><b>Decide:</b> a 2x asset with no 1x sibling; fine if the layout only ever uses this size</p>
+        <div class="card">
+        <figcaption><span class="where">assets/logo@2x.png <span class="tag added">added</span> <span class="tag binary">binary</span></span><span class="tools"></span></figcaption>
+        <div class="binary">A binary file. A diff of bytes tells a reviewer nothing, so it is named, not shown.</div>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="beat solo">
+    <div class="say">
+      <h3>A beat with no hunks</h3>
+      <p>Full width, because there is nothing to put beside it.</p>
+    </div>
+  </section>
+</section>
+
+<section class="chapter" id="topic-2">
+  <h2><span class="n">2</span><span class="t">Editor and ignore files</span></h2>
+  <section class="beat">
+    <div class="say"><p>No topic in the change would lose these if it were reverted.</p></div>
+    <div class="show">
+      <figure class="hunk lvl-skip" id="h4" data-key="12345678" data-level="0">
+        <div class="note"><p><span class="lvl">skip</span>A build directory added to the ignore list.</p></div>
+        <div class="card">
+        <figcaption><span class="where">.gitignore:17 · <span class="sz">+1</span></span><span class="tools"></span></figcaption>
+        <pre class="diff"><code class="language-diff-none diff-highlight"> node_modules/
++tmp/build/
+</code></pre>
+        </div>
+      </figure>
+    </div>
+  </section>
+</section>
+<!--/REPORT-->
+</main>
+
+<!--JS-->
+<script src="report.js" defer></script>
+<!--/JS-->
+</body>
+</html>

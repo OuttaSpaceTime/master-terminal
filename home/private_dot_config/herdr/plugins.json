@@ -1,0 +1,167 @@
+[
+  {
+    "plugin_id": "smart-resize",
+    "name": "smart-resize",
+    "version": "0.1.0",
+    "min_herdr_version": "0.9.1",
+    "description": "Alt+h/j/k/l resizes Neovim splits in a Neovim pane and herdr panes everywhere else",
+    "manifest_path": "/home/felix/.config/herdr/smart-resize/herdr-plugin.toml",
+    "plugin_root": "/home/felix/.config/herdr/smart-resize",
+    "enabled": true,
+    "platforms": [
+      "linux"
+    ],
+    "actions": [
+      {
+        "id": "down",
+        "title": "Resize down (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-resize.sh",
+          "down"
+        ]
+      },
+      {
+        "id": "left",
+        "title": "Resize left (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-resize.sh",
+          "left"
+        ]
+      },
+      {
+        "id": "right",
+        "title": "Resize right (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-resize.sh",
+          "right"
+        ]
+      },
+      {
+        "id": "up",
+        "title": "Resize up (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-resize.sh",
+          "up"
+        ]
+      }
+    ],
+    "source": {
+      "kind": "local"
+    }
+  },
+  {
+    "plugin_id": "smart-splits.nvim",
+    "name": "smart-splits.nvim",
+    "version": "0.1.0",
+    "min_herdr_version": "0.7.0",
+    "description": "Seamless Ctrl+h/j/k/l navigation across herdr panes and Vim/Neovim splits",
+    "manifest_path": "/home/felix/.local/share/nvim/lazy/smart-splits.nvim/herdr-plugin.toml",
+    "plugin_root": "/home/felix/.local/share/nvim/lazy/smart-splits.nvim",
+    "enabled": true,
+    "platforms": [
+      "linux",
+      "macos"
+    ],
+    "actions": [
+      {
+        "id": "down",
+        "title": "Navigate down (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-navigate.sh",
+          "down"
+        ]
+      },
+      {
+        "id": "left",
+        "title": "Navigate left (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-navigate.sh",
+          "left"
+        ]
+      },
+      {
+        "id": "right",
+        "title": "Navigate right (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-navigate.sh",
+          "right"
+        ]
+      },
+      {
+        "id": "up",
+        "title": "Navigate up (Vim/herdr)",
+        "contexts": [
+          "global"
+        ],
+        "command": [
+          "bash",
+          "scripts/herdr-navigate.sh",
+          "up"
+        ]
+      }
+    ],
+    "source": {
+      "kind": "local"
+    }
+  },
+  {
+    "plugin_id": "vilocify.worktrees",
+    "name": "Vilocify Worktrees",
+    "version": "0.1.0",
+    "min_herdr_version": "0.9.1",
+    "description": "Provision and tear down per-worktree Vilocify databases",
+    "manifest_path": "/home/felix/Code/Vilocify/herdr-vilocify/herdr-plugin.toml",
+    "plugin_root": "/home/felix/Code/Vilocify/herdr-vilocify",
+    "enabled": true,
+    "platforms": [
+      "linux"
+    ],
+    "events": [
+      {
+        "on": "worktree.created",
+        "command": [
+          "sh",
+          "bin/worktree_created.sh"
+        ]
+      },
+      {
+        "on": "worktree.removed",
+        "command": [
+          "sh",
+          "bin/worktree_removed.sh"
+        ]
+      }
+    ],
+    "source": {
+      "kind": "local"
+    }
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "provider": {
+    "siemens": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Siemens LLM",
+      "options": {
+        "baseURL": "https://api.siemens.com/llm/v1"
+      },
+      "models": {
+        "devstral-small-2505": {
+          "name": "Devstral Small 2505 (Stable, Agentic Coding)"
+        },
+        "code-agentic": {
+          "name": "Code Agentic (Alias)"
+        },
+        "qwen3-coder-30b-a3b-instruct": {
+          "name": "Qwen3 Coder 30B A3B Instruct (Alpha, Coding)"
+        },
+        "qwen2.5-coder-7b": {
+          "name": "Qwen2.5 Coder 7B (Completions)"
+        }
+      }
+    }
+  }
+}

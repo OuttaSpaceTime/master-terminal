@@ -1,0 +1,78 @@
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+approvel_policy= "never"
+sandbox_mode= "danger-full-access"
+personality = "pragmatic"
+plan_mode_reasoning_effort = "high"
+[projects."/home/felix/Code/zeiterfassung"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/zeiterfassung-second"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/AI"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Vilocify/vilocify-portal"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Vilocify/vilocify-frontend"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Misc/spaced-repitition"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/AI/certitude/ai-platform"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/AI/certitude"]
+trust_level = "trusted"
+
+[projects."/home/felix"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Misc/master-terminal"]
+trust_level = "trusted"
+
+[projects."/home/felix/Downloads"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Misc/study"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/why"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Vilocify"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Misc/defi-tracker/liquidity-tax"]
+trust_level = "trusted"
+
+[projects."/home/felix/Code/Misc/rails-templates"]
+trust_level = "trusted"
+
+[notice]
+hide_full_access_warning = true
+hide_gpt5_1_migration_prompt = true
+"hide_gpt-5.1-codex-max_migration_prompt" = true
+
+[notice.model_migrations]
+"gpt-5.1-codex-max" = "gpt-5.2-codex"
+"gpt-5.3-codex" = "gpt-5.4"
+
+[features]
+hooks = true
+multi_agent = true
+js_repl = true
+prevent_idle_sleep = true
+
+[tui]
+status_line = ["model-with-reasoning", "current-dir", "context-used"]
+status_line_use_colors = true
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
