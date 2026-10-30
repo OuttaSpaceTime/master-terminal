@@ -155,3 +155,9 @@ vim.api.nvim_create_autocmd("CursorMoved", {
     end
   end,
 })
+
+vim.api.nvim_create_autocmd("BufReadPost", {
+  group = vim.api.nvim_create_augroup("herdr_scrollback", { clear = true }),
+  pattern = "*/herdr-scrollback-*.txt",
+  command = "normal! G",
+})

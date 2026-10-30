@@ -11,6 +11,7 @@ Panes
   alt+h/j/k/l               resize (nvim split inside nvim)
   ctrl+shift+r              resize mode (h/l width, j/k height, esc)
   f6                        zoom
+  ctrl+shift+f              pane scrollback in nvim
 
 Agents
   alt+shift+h / l           previous / next agent

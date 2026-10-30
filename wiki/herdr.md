@@ -39,6 +39,7 @@ tab maps to a herdr workspace (both are sidebar rows), a kitty split to a herdr 
 | `alt+shift+h` / `alt+shift+l` | `previous_agent` / `next_agent` |
 | `alt+h/j/k/l` | `smart-resize.*`: resizes the nvim split when nvim is focused, else the herdr pane |
 | `f6` / `ctrl+shift+r` | `zoom` / `resize_mode` |
+| `ctrl+shift+f` | `edit_scrollback`: the focused pane's scrollback in `$EDITOR` (default `prefix+e`) |
 | `ctrl+shift+h` / `ctrl+shift+l` | `previous_tab` / `next_tab` (herdr tabs) |
 | `ctrl+shift+n` | `new_tab` (asks for a name; Enter keeps the number) |
 | `ctrl+shift+m` | `rename_tab` |
@@ -55,6 +56,20 @@ tab maps to a herdr workspace (both are sidebar rows), a kitty split to a herdr 
   in `less` as a kitty overlay, in herdr and in plain kitty. Herdr's own help (`ctrl+b ?`) doesn't list
   these keys. kitty matches `ctrl+alt+?` against a real `ctrl+alt+shift+/` through its default
   `allow_fallback shifted`. The sheet is hand-written: update it along with the table.
+
+kitty-scrollback.nvim (`kitty_mod+h`) only sees herdr's own full-screen UI inside herdr, not a
+pane's history, so `ctrl+shift+h` stays `previous_tab` and scrollback is herdr's
+`edit_scrollback` on `ctrl+shift+f`. `herdr pane read --source recent` is no substitute: it stops
+at 1000 lines even with `--lines 5000` (probed on a pane that had printed 3000).
+
+`edit_scrollback` runs `$EDITOR` on a temp `herdr-scrollback-*.txt` with no start-at-end argument.
+The `herdr_scrollback` autocmd in `nvim/lua/config/autocmds.lua` jumps to the last line
+(`tests/test_nvim_herdr_scrollback.py`; the test fires `User VeryLazy` itself, because headless nvim
+runs `-c` before LazyVim's autocmds load). It asks for every row, so it is not subject to the
+`pane read` cap. History depth is whatever the pane holds: a Claude Code pane reported
+`scroll.max_offset_from_bottom: 0` in `herdr pane current`, so there is nothing above the screen to open.
+Pressing the key again while the overlay is focused stacks another overlay, because herdr only checks
+that the target pane is focused (`src/app/api_panes.rs`, `handle_pane_edit_scrollback`).
 
 Every key needs both halves:
 - kitty: `map --when-focus-on title:^herdr: <key>` (no action, so the key passes through). It must come

@@ -56,6 +56,7 @@ cycle_pane_next = ["prefix+tab", "ctrl+shift+]"]
 zoom = ["prefix+z", "f6"]
 resize_mode = ["prefix+r", "ctrl+shift+r"]
 toggle_sidebar = ["prefix+b", "ctrl+shift+b"]
+edit_scrollback = ["prefix+e", "ctrl+shift+f"]
 
 [[keys.command]]
 key = "ctrl+h"
