@@ -28,24 +28,15 @@ All skills that produce artifacts write to `.claude/` relative to the project ro
 
 | Skill | Artifact Path | Naming Pattern |
 |-------|--------------|----------------|
-| /scout | `.claude/docs/scouts/` | `NNN-<name>-YYYYMMDD.md` |
-| /plan | `.claude/docs/plans/` | `plan-YYYYMMDD-HHMMSS.md` |
-| /review | `.claude/docs/reviews/` | `NNN-<name>-YYYYMMDD.md` |
 | /sketch | `.claude/docs/sketches/` | `YYYYMMDD-<topic>.md` |
 | /diff-tour | system temp or `tmp/` | `diff-tour.<rand>/diff-tour.html` |
 | /sketch-diff-tour | system temp | `sketch-tour.<rand>/sketch-tour.html` |
 | /walkthrough | none (interactive only) | — |
-| /control-flow-trace | none (inline output) | — |
-| /strict-diff | none (inline output) | — |
 
 ## Chaining
 
 Skills can be chained — the output of one feeds the next:
 
-- `/scout` → `/plan` (plan reads the scout artifact, uses Mode A)
-- `/review` → `/walkthrough` (walkthrough reads review findings)
-- `/scout` → `/walkthrough` (walkthrough walks through unknowns)
-- `/plan` → `/walkthrough` (walkthrough walks through the execution flow)
 - `/explore-solutions` → `/walkthrough` (walkthrough on chosen approach)
 - `/sketch` → `/sketch-diff-tour` (the sketch's file list and decisions seed the draft)
 - `/explore-solutions` → `/sketch-diff-tour` (one worktree and one tour per candidate approach)
@@ -57,7 +48,6 @@ Exception: `/walkthrough` consumes upstream artifacts but produces none itself.
 
 ## Skill Categories
 
-**Interactive (checkpoint-based)**: scout, plan, review, walkthrough, diff-review, explore-solutions, control-flow-trace, shape-code
-**Autonomous loop**: autoresearch
-**Single-pass**: sketch, strict-diff, research, diff-tour, sketch-diff-tour
+**Interactive (checkpoint-based)**: walkthrough, explore-solutions, shape-code
+**Single-pass**: sketch, diff-tour, sketch-diff-tour
 **Workspace-local orchestration**: dot-manage
