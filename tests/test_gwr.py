@@ -3,8 +3,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-ZSHRC = ROOT / "home/dot_zshrc"
+ALIASES = Path.home() / "Code/Misc/agentic-setup/shell/aliases.zsh"
 
 
 def git(*args):
@@ -25,7 +24,7 @@ def repo(tmp_path):
 def gwr(cwd, pick):
     # The database sweep only runs for ~/Code/Vilocify/vilocify-portal, so it never runs here.
     script = f"""
-eval "$(sed -n '/^gwr() {{/,/^}}/p' {ZSHRC})"
+eval "$(sed -n '/^gwr() {{/,/^}}/p' {ALIASES})"
 fzf() {{ grep -E "^({pick})\t" }}
 cd {cwd}
 gwr
