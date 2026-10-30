@@ -69,7 +69,7 @@ Every `Read`, `Grep`, and `Glob` is appended (timestamp, tool, target) to **`<re
 Anything the agent **executes** lives here (Bash can only run task scripts); app code is still edited directly in the project. Path: `.solve/tasks/<YYYY-MM-DD>-<name>/`:
 
 - `.solve/` is added to the repo's `.git/info/exclude` automatically (by `solve-init.py` on the first prompt), so scratch is invisible to the repo. You can optionally `git init` a task folder to make it its own scratch repo, but it isn't required.
-- Numbered, **descriptively named** files `01-run-rspec-for-auth-model.sh`, `02-…` (longer names encouraged). No `.md` is required (dropped 2026-07-23) — instead the script's **first comment line is exactly the command to run it**, followed by at most 3 outline lines (what changed, what it checks, what to look at). A script is written and run in the same turn.
+- Numbered, **descriptively named** files `01-run-rspec-for-auth-model.sh`, `02-…` (longer names encouraged). No `.md` is required (dropped 2026-07-23) — instead the script's **first comment line is exactly the command to run it**, followed by at most 3 outline lines (what changed, what it checks, what to look at), then the debug hint `~/.claude/CLAUDE.md` gives per runner (Ruby `debugger`, Node `debugger;` under `node inspect`, shell `set -x`; run it from a terminal pane, since without a TTY the debugger quits at the breakpoint with exit 0 or hangs waiting for input, and skips the rest). A script is written and run in the same turn.
 - The Write tool auto-creates parent dirs, so no `mkdir` is needed (and `mkdir` would be blocked anyway).
 
 ## chezmoi sources

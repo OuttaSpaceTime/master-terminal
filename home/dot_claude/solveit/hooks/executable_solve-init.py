@@ -27,7 +27,8 @@ along and commits. Follow this and you will never hit a guard hook:
   .solve/tasks/<YYYY-MM-DD>-<name>/current.<ext> that checks this step, hand over
   its one-line run command prefixed with `!` (fenced), and stop. First comment
   line = exactly how to run it; then a short outline: what changed, what it
-  checks, what to look at in the output. You never run current.<ext> yourself.
+  checks, what to look at in the output; then the debug hint CLAUDE.md gives
+  for task scripts. You never run current.<ext> yourself.
   Their `!` output lands in the transcript and starts a turn: quote the lines that
   matter, name the next step, and stop. A project edit is blocked until they have
   run the current.<ext> you wrote before their last message.
